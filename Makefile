@@ -1,11 +1,12 @@
-CC = g++
-FLAGS = -Wall `pkg-config --cflags --libs opencv`
+CC = g++ -std=c++11
+FLAGS = -O3 -Wall `pkg-config --cflags --libs opencv`
 
 all: clean main
 
 main:
 	make -C canny
-	$(CC) main.cpp canny/canny.o -o main $(FLAGS)
+	make -C libs
+	$(CC) main.cpp canny/canny.o libs/libs.o -o main $(FLAGS)
 
 clean:
 	rm -f main

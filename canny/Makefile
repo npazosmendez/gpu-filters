@@ -1,5 +1,5 @@
 CC = g++
-FLAGS = -Wall
+FLAGS = -Wall -O3
 
 all: clean canny.o
 
