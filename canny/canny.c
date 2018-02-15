@@ -9,7 +9,8 @@ NOTE: might be a good idea to let aux arrays be global, as they are being used
 constantly. Malloc es very caro.
 */
 void canny(char * ptr, int width, int height, float uthreshold, float lthreshold){
-    unsigned char (*img_inten)[width] = (unsigned char (*)[width])malloc(width*height);
+    float (*img_inten2)[width] = (float (*)[width])malloc(width*height*sizeof(float));
+    float * img_inten = (float*)malloc(width*height*sizeof(float));
     float * Gx = (float *)malloc(width*height*sizeof(float));
     float * Gy = (float *)malloc(width*height*sizeof(float));
 
@@ -18,12 +19,20 @@ void canny(char * ptr, int width, int height, float uthreshold, float lthreshold
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             unsigned int temp = imgRGB[i][j][0]+imgRGB[i][j][2]+imgRGB[i][j][2];
-            img_inten[i][j] = temp/3;
+            img_inten2[i][j] = temp/3;
         }
     }
 
-    /* 1. Smooth image: Gaussian filter (TODO)*/
-    // GaussianBlur(cameraFrame, cameraFrame, Size(5,5), 1, 1);
+    /* 1. Smooth image: Gaussian filter */
+    float Gauss_kernel[25] = {
+        // sigma = 1
+        1.0 /273.0,4.0 /273.0,7.0 /273.0,4.0 /273.0,1.0 /273.0,
+        4.0 /273.0,16.0 /273.0,26.0 /273.0,16.0 /273.0,4.0 /273.0,
+        7.0 /273.0,26.0 /273.0,41.0 /273.0,26.0 /273.0,7.0 /273.0,
+        4.0 /273.0,16.0 /273.0,26.0 /273.0,16.0 /273.0,4.0 /273.0,
+        1.0 /273.0,4.0 /273.0,7.0 /273.0,4.0 /273.0,1.0 /273
+    };
+    convoluion2D<float,float>((float*)img_inten2, width, height, Gauss_kernel, 5, img_inten);
 
     /* 2. Get gradients: Sobel filter */
     float Gy_kernel[9] = {
@@ -36,8 +45,8 @@ void canny(char * ptr, int width, int height, float uthreshold, float lthreshold
         2,0,-2,
         1,0,-1
     };
-    convoluion2D((unsigned char*)img_inten, width, height, Gy_kernel, 3, Gy);
-    convoluion2D((unsigned char*)img_inten, width, height, Gx_kernel, 3, Gx);
+    convoluion2D<float, float>(img_inten, width, height, Gy_kernel, 3, Gy);
+    convoluion2D<float, float>(img_inten, width, height, Gx_kernel, 3, Gx);
     // Obtain gradient module and (quantized) orientation
     // Arrays are overwritten to save memory
     for (int i = 0; i < height*width; i++) {
@@ -140,6 +149,7 @@ void canny(char * ptr, int width, int height, float uthreshold, float lthreshold
     }
 
     free(img_inten);
+    free(img_inten2);
     free(Gm);
     free(Go);
 

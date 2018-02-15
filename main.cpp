@@ -2,6 +2,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
 #include "canny/canny.h"
+#include <string>
 
 using namespace cv;
 using namespace std;
@@ -10,33 +11,40 @@ using namespace std;
 int width, height;
 Mat cameraFrame;
 
-/// Canny variables
+// Canny variables
 int hthreshold = 100;
 int lthreshold = 40;
 
 void on_mouse(int event, int x, int y, int flags, void* userdata);
-
 void on_trackbar( int, void* ){}
+void get_flags(int argc, char** argv);
 
-int main() {
+// Flags
+struct flags_t{
+    bool file_input = false;
+    string file_path;
+};
+flags_t flags;
+
+int main(int argc, char** argv) {
     VideoCapture stream;
 
-    /* open webcam */
-    stream = VideoCapture(0);   // video device number 0
-    width = stream.get(CV_CAP_PROP_FRAME_WIDTH);
-    height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
+    get_flags(argc, argv);
 
-    /* open video */
-    /*
-    stream = VideoCapture("people.mp4");
-    stream.set(CV_CAP_PROP_FRAME_WIDTH, 640);
-    stream.set(CV_CAP_PROP_FRAME_HEIGHT, 360);
-    width = 640;
-    height = 360;
-    */
+    if (flags.file_input) {
+        /* open video file */
+        stream = VideoCapture(flags.file_path);
+        width = stream.get(CV_CAP_PROP_FRAME_WIDTH);
+        height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
+    }else{
+        /* open webcam */
+        stream = VideoCapture(0); // video device number 0
+        width = stream.get(CV_CAP_PROP_FRAME_WIDTH);
+        height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
+    }
 
     if (!stream.isOpened()) {
-        cout << "Failed to open stream.";
+        cerr << "Failed to open stream." << endl;
         exit(1);
     }
 
@@ -86,5 +94,25 @@ void on_mouse(int event, int x, int y, int flags, void* userdata){
         break;
         case EVENT_MOUSEMOVE:
         break;
+    }
+}
+
+void get_flags(int argc, char** argv){
+    string param;
+    for (int i = 0; i < argc; i++) {
+        param = argv[i];
+        if (param == "-i") {
+            /* input file path */
+            flags.file_input = true;
+            if (i+1 == argc){
+                cerr << "File path missing after '-i'." << endl;
+                exit(1);
+            }
+            flags.file_path = argv[i+1];
+        }else if(param == " "){
+        }else if(param == " "){
+        }else if(param == " "){
+
+        }
     }
 }
