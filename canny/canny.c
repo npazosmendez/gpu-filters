@@ -8,14 +8,23 @@
 NOTE: might be a good idea to let aux arrays be global, as they are being used
 constantly. Malloc es very caro.
 */
-void canny(char * ptr, int width, int height, float uthreshold, float lthreshold){
+void canny(char * src, int width, int height, float uthreshold, float lthreshold){
+    /*
+    Edge detection using Canny's method. Source image is overwritten with
+    a binary one, representing detected edges.
+    - src: pointer to matrix of char[3], representing an RGB image.
+    - width: width of the image (in pixels)
+    - height: height of the image (in pixels)
+    - uthreshold: upper-threshold for Canny's method
+    - lthreshold: lower-threshhold for Canny's method
+    */
     float (*img_inten2)[width] = (float (*)[width])malloc(width*height*sizeof(float));
     float * img_inten = (float*)malloc(width*height*sizeof(float));
     float * Gx = (float *)malloc(width*height*sizeof(float));
     float * Gy = (float *)malloc(width*height*sizeof(float));
 
     // Intensity channel only (color average)
-    unsigned char (*imgRGB)[width][3] = (unsigned char (*)[width][3])ptr;
+    unsigned char (*imgRGB)[width][3] = (unsigned char (*)[width][3])src;
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             unsigned int temp = imgRGB[i][j][0]+imgRGB[i][j][2]+imgRGB[i][j][2];

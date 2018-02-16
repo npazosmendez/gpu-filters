@@ -2,6 +2,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
 #include "canny/canny.h"
+#include "hough/hough.h"
 #include <string>
 
 using namespace cv;
@@ -15,6 +16,7 @@ Mat cameraFrame;
 int hthreshold = 100;
 int lthreshold = 40;
 
+// UI misc
 void on_mouse(int event, int x, int y, int flags, void* userdata);
 void on_trackbar( int, void* ){}
 void get_flags(int argc, char** argv);
@@ -65,7 +67,8 @@ int main(int argc, char** argv) {
         // resize(cameraFrame, cameraFrame, Size(640, 360), 0, 0, INTER_CUBIC); // uncomment to force 640x360 resolution
 
         char *ptr = (char*)cameraFrame.ptr();
-        canny(ptr, width, height, hthreshold, lthreshold);
+        hough(ptr, width, height);
+        // canny(ptr, width, height, hthreshold, lthreshold);
         // Canny(cameraFrame, cameraFrame, hthreshold, lthreshold);
 
         imshow("gpu-filters", cameraFrame); // show frame
