@@ -3,8 +3,8 @@ FLAGS = -Wall -O3
 
 all: clean hough.o
 
-hough.o: hough.c hough.h
-	$(CC) -c hough.c -o hough.o $(FLAGS)
+hough.o: hough.cpp hough.hpp
+	$(CC) -c hough.cpp -o hough.o $(FLAGS)
 
 clean:
 	rm -f *.o

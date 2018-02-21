@@ -1,5 +1,8 @@
-#include "hough.h"
-#include "../canny/canny.h"
+#include "hough.hpp"
+#include "../canny/canny.hpp"
+#include "../libs/libs.hpp"
+#include <stdlib.h>
+
 
 void hough(char * src, int width, int height){
     /*
@@ -9,8 +12,9 @@ void hough(char * src, int width, int height){
     - width: width of the image (in pixels)
     - height: height of the image (in pixels)
     */
-    
+
     // TODO
-    canny(src, width, height, 100, 50);
+    // canny(src, width, height, 100, 50);
+
 
 }

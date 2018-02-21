@@ -2,6 +2,8 @@
 #define LIBS_H
 #include <cassert>
 
+void CL_convoluion2D(float* src, int width, int height, float * kernel, int ksize, float* dst);
+
 template <typename T1, typename T2>
 void convoluion2D(T1* src, int width, int height, float * kernel, int ksize, T2 * dst){
     /*

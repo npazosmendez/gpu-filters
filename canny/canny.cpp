@@ -1,13 +1,17 @@
-#include "canny.h"
-#include "../libs/libs.h"
+#include "canny.hpp"
+#include "../libs/libs.hpp"
 #include <stdlib.h>
 #include <stdio.h>
+#include <iostream>
 #include <cassert>
 #include <cmath>
+#include <CL/cl.hpp>
+
 /*
 NOTE: might be a good idea to let aux arrays be global, as they are being used
 constantly. Malloc es very caro.
 */
+
 void canny(char * src, int width, int height, float uthreshold, float lthreshold){
     /*
     Edge detection using Canny's method. Source image is overwritten with
@@ -90,13 +94,13 @@ void canny(char * src, int width, int height, float uthreshold, float lthreshold
             // Only looking for a local max in edge direction
             float temp;
             if(Go[i][j] == -45)
-                temp = (Gm[i][j] > Gm[i+1][j-1] && Gm[i][j] > Gm[i-1][j+1] ? Gm[i][j] : 0);
+            temp = (Gm[i][j] > Gm[i+1][j-1] && Gm[i][j] > Gm[i-1][j+1] ? Gm[i][j] : 0);
             else if(Go[i][j] == 90)
-                temp = (Gm[i][j] > Gm[i+1][j] && Gm[i][j] > Gm[i-1][j] ? Gm[i][j] : 0);
+            temp = (Gm[i][j] > Gm[i+1][j] && Gm[i][j] > Gm[i-1][j] ? Gm[i][j] : 0);
             else if(Go[i][j] == 45)
-                temp = (Gm[i][j] > Gm[i+1][j+1] && Gm[i][j] > Gm[i-1][j-1] ? Gm[i][j] : 0);
+            temp = (Gm[i][j] > Gm[i+1][j+1] && Gm[i][j] > Gm[i-1][j-1] ? Gm[i][j] : 0);
             else if(Go[i][j] == 0)
-                temp = (Gm[i][j] > Gm[i][j+1] && Gm[i][j] > Gm[i][j-1] ? Gm[i][j] : 0);
+            temp = (Gm[i][j] > Gm[i][j+1] && Gm[i][j] > Gm[i][j-1] ? Gm[i][j] : 0);
             else{
                 // Quantization failed?
                 fprintf(stderr, "Failed to get angle at %d %d. Got %f\n",i,j,Go[i][j]);
@@ -162,4 +166,47 @@ void canny(char * src, int width, int height, float uthreshold, float lthreshold
     free(Gm);
     free(Go);
 
+}
+
+
+void CL_canny(char * src, int width, int height, float uthreshold, float lthresholdCL_){
+
+    float (*img_inten)[width] = (float (*)[width])malloc(width*height*sizeof(float));
+    float (*dst)[width] = (float (*)[width])malloc(width*height*sizeof(float));
+
+
+    // Intensity channel only (color average)
+    unsigned char (*imgRGB)[width][3] = (unsigned char (*)[width][3])src;
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            unsigned int temp = imgRGB[i][j][0]+imgRGB[i][j][2]+imgRGB[i][j][2];
+            img_inten[i][j] = temp/3;
+        }
+    }
+
+    float Gy_kernel[9] = {
+        1,2,1,
+        0,0,0,
+        -1,-2,-1
+    };
+    float Gx_kernel[9] = {
+        1,0,-1,
+        2,0,-2,
+        1,0,-1
+    };
+
+    CL_convoluion2D((float*)img_inten, width, height, Gy_kernel, 3, (float*)dst);
+
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            float pixel = (dst[i][j] > 255) ? 255 : dst[i][j];
+            pixel =  (dst[i][j] < 0) ? 0 : dst[i][j];
+            imgRGB[i][j][0] = pixel;
+            imgRGB[i][j][1] = pixel;
+            imgRGB[i][j][2] = pixel;
+        }
+    }
+
+    free(img_inten);
+    free(dst);
 }

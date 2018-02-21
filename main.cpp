@@ -1,8 +1,9 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
-#include "canny/canny.h"
-#include "hough/hough.h"
+#include "canny/canny.hpp"
+#include "hough/hough.hpp"
+#include "libs/clhelper.hpp"
 #include <string>
 
 using namespace cv;
@@ -13,8 +14,8 @@ int width, height;
 Mat cameraFrame;
 
 // Canny variables
-int hthreshold = 100;
-int lthreshold = 40;
+int hthreshold = 50;
+int lthreshold = 25;
 
 // UI misc
 void on_mouse(int event, int x, int y, int flags, void* userdata);
@@ -30,6 +31,7 @@ flags_t flags;
 
 int main(int argc, char** argv) {
     VideoCapture stream;
+
 
     get_flags(argc, argv);
 
@@ -59,6 +61,9 @@ int main(int argc, char** argv) {
     createTrackbar( "Higher Thresh", "Canny Parameters", &hthreshold, 400, on_trackbar);
     createTrackbar( "Lower Thresh", "Canny Parameters", &lthreshold, 400, on_trackbar);
 
+    /* Init OpenCL */
+    initCL();
+
     while (true) {
         if(!stream.read(cameraFrame)){ // get camera frame
             stream.set(CV_CAP_PROP_POS_MSEC,0); // reset if ended (for file streams)
@@ -67,8 +72,8 @@ int main(int argc, char** argv) {
         // resize(cameraFrame, cameraFrame, Size(640, 360), 0, 0, INTER_CUBIC); // uncomment to force 640x360 resolution
 
         char *ptr = (char*)cameraFrame.ptr();
-        hough(ptr, width, height);
-        // canny(ptr, width, height, hthreshold, lthreshold);
+        // hough(ptr, width, height);
+        CL_canny(ptr, width, height, hthreshold, lthreshold);
         // Canny(cameraFrame, cameraFrame, hthreshold, lthreshold);
 
         imshow("gpu-filters", cameraFrame); // show frame
