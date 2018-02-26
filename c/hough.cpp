@@ -1,8 +1,4 @@
-#include "hough.hpp"
-#include "../canny/canny.hpp"
-#include "../libs/libs.hpp"
-#include <stdlib.h>
-
+#include "c-filters.hpp"
 
 void hough(char * src, int width, int height){
     /*
@@ -15,6 +11,5 @@ void hough(char * src, int width, int height){
 
     // TODO
     // canny(src, width, height, 100, 50);
-
 
 }

@@ -1,4 +1,4 @@
-#include "clhelper.hpp"
+#include "opencl-filters.hpp"
 #include <CL/cl.hpp>
 #include <iostream>
 
@@ -19,7 +19,7 @@ void initCL(){
     cl::Platform::get(&platforms);
     cout << "Available platforms:" << endl;
     for (unsigned int i = 0; i < platforms.size(); i++)
-        cout << "\t* " << platforms[i].getInfo<CL_PLATFORM_NAME>() << ", " << platforms[i].getInfo<CL_PLATFORM_VENDOR>() << endl;
+    cout << "\t* " << platforms[i].getInfo<CL_PLATFORM_NAME>() << ", " << platforms[i].getInfo<CL_PLATFORM_VENDOR>() << endl;
     platform = platforms[0]; // la primera platform
 
     /* Find available DEVICES */
@@ -27,7 +27,7 @@ void initCL(){
     platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
     cout << "Available devices:" << endl;
     for (unsigned int i = 0; i < devices.size(); i++)
-        cout << "\t* " << devices[i].getInfo<CL_DEVICE_NAME>() << ", " << devices[i].getInfo<CL_DEVICE_VENDOR>() << endl;
+    cout << "\t* " << devices[i].getInfo<CL_DEVICE_NAME>() << ", " << devices[i].getInfo<CL_DEVICE_VENDOR>() << endl;
     device = devices[0]; // el primer device
 
     /* Create CONTEXT on that platform */
@@ -40,8 +40,54 @@ void initCL(){
     cout << "Using platform: " << platform.getInfo<CL_PLATFORM_NAME>() << endl;
     cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << endl;
     openCL_initialized = true;
+
 }
 
+void printImageFormat(ImageFormat format){
+    #define CASE(order) case order: cout << #order; break;
+    switch (format.image_channel_order){
+        CASE(CL_R);
+        CASE(CL_A);
+        CASE(CL_RG);
+        CASE(CL_RA);
+        CASE(CL_RGB);
+        CASE(CL_RGBA);
+        CASE(CL_BGRA);
+        CASE(CL_ARGB);
+        CASE(CL_INTENSITY);
+        CASE(CL_LUMINANCE);
+        CASE(CL_Rx);
+        CASE(CL_RGx);
+        CASE(CL_RGBx);
+        CASE(CL_DEPTH);
+        CASE(CL_DEPTH_STENCIL);
+    }
+    #undef CASE
+
+    cout << " - ";
+
+    #define CASE(type) case type: cout << #type; break;
+    switch (format.image_channel_data_type){
+        CASE(CL_SNORM_INT8);
+        CASE(CL_SNORM_INT16);
+        CASE(CL_UNORM_INT8);
+        CASE(CL_UNORM_INT16);
+        CASE(CL_UNORM_SHORT_565);
+        CASE(CL_UNORM_SHORT_555);
+        CASE(CL_UNORM_INT_101010);
+        CASE(CL_SIGNED_INT8);
+        CASE(CL_SIGNED_INT16);
+        CASE(CL_SIGNED_INT32);
+        CASE(CL_UNSIGNED_INT8);
+        CASE(CL_UNSIGNED_INT16);
+        CASE(CL_UNSIGNED_INT32);
+        CASE(CL_HALF_FLOAT);
+        CASE(CL_FLOAT);
+        CASE(CL_UNORM_INT24);
+    }
+    #undef CASE
+    cout << endl;
+}
 
 char *getCLErrorString(cl_int err) {
     switch (err) {

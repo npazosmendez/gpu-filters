@@ -1,5 +1,4 @@
-#include "libs.hpp"
-#include "clhelper.hpp"
+#include "opencl-filters.hpp"
 #include <stdlib.h>
 #include <stdio.h>
 #include <cassert>

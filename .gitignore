@@ -1,4 +1,5 @@
 *.o
 *.mp4
 main
+gpu-filters
 docs/

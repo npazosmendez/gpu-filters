@@ -1,13 +1,19 @@
+# Variables
 CC = g++ -std=c++11
-FLAGS = -O3 -Wall `pkg-config --cflags --libs opencv` -lOpenCL
+FLAGS = -O3 -Wall
+LIBS = `pkg-config --cflags --libs opencv` -lOpenCL
 
-all: clean main
+EXEC = gpu-filters
+SOURCES = $(wildcard *.cpp) $(wildcard */*.cpp) # look for all .cpp files
+OBJECTS = $(SOURCES:.cpp=.o) # list objects
 
-main:
-	make -C canny
-	make -C hough
-	make -C libs
-	$(CC) main.cpp canny/canny.o hough/hough.o libs/libs.o libs/clhelper.o -o main $(FLAGS)
+# Main target
+$(EXEC): $(OBJECTS)
+	$(CC) $(OBJECTS) $(LIBS) -o $(EXEC)
+
+# Object files
+%.o: %.cpp
+	$(CC) -c $(FLAGS) $< -o $@
 
 clean:
-	rm -f main
+	rm -f $(EXEC) $(OBJECTS)

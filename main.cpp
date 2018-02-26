@@ -1,10 +1,9 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
-#include "canny/canny.hpp"
-#include "hough/hough.hpp"
-#include "libs/clhelper.hpp"
 #include <string>
+#include "c/c-filters.hpp"
+#include "opencl/opencl-filters.hpp"
 
 using namespace cv;
 using namespace std;
@@ -73,8 +72,8 @@ int main(int argc, char** argv) {
 
         char *ptr = (char*)cameraFrame.ptr();
         // hough(ptr, width, height);
-        CL_canny(ptr, width, height, hthreshold, lthreshold);
-        // Canny(cameraFrame, cameraFrame, hthreshold, lthreshold);
+        // CL_canny(ptr, width, height, hthreshold, lthreshold);
+        canny(ptr,width,height,hthreshold,lthreshold);
 
         imshow("gpu-filters", cameraFrame); // show frame
 
