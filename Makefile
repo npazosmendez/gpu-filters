@@ -9,7 +9,14 @@ CXXSOURCES = $(wildcard *.cpp) $(wildcard */*.cpp)
 
 EXEC = gpu-filters
 OBJECTS = $(CSOURCES:.c=.o) $(CXXSOURCES:.cpp=.o)
-LIBS = `pkg-config --cflags --libs opencv` -framework OpenCL
+LIBS = `pkg-config --cflags --libs opencv` 
+ifeq ($(shell uname -s),Darwin)
+	LIBS += -framework OpenCL
+endif
+ifeq ($(shell uname -s),Linux)
+	LIBS += -lOpenCL
+endif
+
 
 # Main target
 $(EXEC): $(OBJECTS)
