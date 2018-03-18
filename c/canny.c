@@ -1,7 +1,9 @@
-#include "c-filters.hpp"
-#include "convolution.hpp"
-#include <iostream>
-#include <cmath>
+#include "c-filters.h"
+#include "convolution.h"
+#include "math.h"
+#include "stdbool.h"
+#include "stdio.h"
+#include "stdlib.h"
 
 /*
 NOTE: might be a good idea to let aux arrays be global, as they are being used
@@ -41,7 +43,7 @@ void canny(char * src, int width, int height, float uthreshold, float lthreshold
         4.0 /273.0,16.0 /273.0,26.0 /273.0,16.0 /273.0,4.0 /273.0,
         1.0 /273.0,4.0 /273.0,7.0 /273.0,4.0 /273.0,1.0 /273
     };
-    convoluion2D<float,float>((float*)img_inten2, width, height, Gauss_kernel, 5, img_inten);
+    convoluion2D((float*)img_inten2, width, height, Gauss_kernel, 5, img_inten);
 
     /* 2. Get gradients: Sobel filter */
     float Gy_kernel[9] = {
@@ -54,8 +56,8 @@ void canny(char * src, int width, int height, float uthreshold, float lthreshold
         2,0,-2,
         1,0,-1
     };
-    convoluion2D<float, float>(img_inten, width, height, Gy_kernel, 3, Gy);
-    convoluion2D<float, float>(img_inten, width, height, Gx_kernel, 3, Gx);
+    convoluion2D(img_inten, width, height, Gy_kernel, 3, Gy);
+    convoluion2D(img_inten, width, height, Gx_kernel, 3, Gx);
     // Obtain gradient module and (quantized) orientation
     // Arrays are overwritten to save memory
     for (int i = 0; i < height*width; i++) {
@@ -79,7 +81,7 @@ void canny(char * src, int width, int height, float uthreshold, float lthreshold
     }
     float (*Gm)[width] = (float (*)[width])Gx; // Gradient module
     float (*Go)[width] = (float (*)[width])Gy; // Gradient orientation
-    Gx = NULL; Gy = NULL;
+    Gx = 0; Gy = 0;
 
     /* 3. Discard below-thresh and double edges (Non-maximum supression) */
     for (int i = 1; i < height-1; i++) {

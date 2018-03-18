@@ -1,4 +1,4 @@
-#include "c-filters.hpp"
+#include "c-filters.h"
 
 void hough(char * src, int width, int height){
     /*

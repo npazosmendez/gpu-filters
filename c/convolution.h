@@ -1,9 +1,7 @@
 #ifndef CONVOLUTION_H
 #define CONVOLUTION_H
-#include <cassert>
 
-template <typename T1, typename T2>
-void convoluion2D(T1* src, int width, int height, float * kernel, int ksize, T2 * dst){
+void convoluion2D(float * src, int width, int height, float * kernel, int ksize, float * dst){
     /*
     Computes 2d convolution between the image stored in 'src' and 'kernel'.
     Result is stored in 'dst', that should be a buffer of as many elements
@@ -15,10 +13,11 @@ void convoluion2D(T1* src, int width, int height, float * kernel, int ksize, T2 
     -ksize: width and height of the kernel (must be an odd number)
     -dst: pointer to matrix of floats, where to store result
     */
-    assert(ksize % 2 == 1);
+    // Rewrite assert in C
+    // assert(ksize % 2 == 1);
 
-    T1 (*src_img)[width] = (T1 (*)[width])src; // no sabía que esto compilaba jojo
-    T2 (*dst_img)[width] = (T2 (*)[width])dst;
+    float  (*src_img)[width] = (float  (*)[width])src; // no sabía que esto compilaba jojo
+    float (*dst_img)[width] = (float (*)[width])dst;
     float (*kern_img)[ksize] = (float (*)[ksize])kernel;
 
     /* image loop*/
@@ -27,7 +26,7 @@ void convoluion2D(T1* src, int width, int height, float * kernel, int ksize, T2 
         for (int j = 0; j < width; j++) {
             if ((j - ksize/2 ) < 0 || (j + ksize/2) > (width-1)) continue; // TODO: handle boundaries
             /* kernel loop */
-            T2 temp = 0;
+            float temp = 0;
             for (int ik = 0; ik < ksize; ik++) {
                 for (int jk = 0; jk < ksize; jk++) {
                     temp += src_img[i+ik-ksize/2][j+jk-ksize/2]*kern_img[ik][jk];

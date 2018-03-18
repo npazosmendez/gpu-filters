@@ -1,19 +1,26 @@
 # Variables
-CC = g++ -std=c++11
-FLAGS = -O3 -Wall
-LIBS = `pkg-config --cflags --libs opencv` -lOpenCL
+CC = gcc
+CXX = g++
+CFLAGS = -std=c99
+CXXFLAGS = -std=c++11
+CPPFLAGS = -O3 -Wall $(CPPLIBS)
+CSOURCES = $(wildcard */*.c)
+CXXSOURCES = $(wildcard *.cpp) $(wildcard */*.cpp)
 
 EXEC = gpu-filters
-SOURCES = $(wildcard *.cpp) $(wildcard */*.cpp) # look for all .cpp files
-OBJECTS = $(SOURCES:.cpp=.o) # list objects
+OBJECTS = $(CSOURCES:.c=.o) $(CXXSOURCES:.cpp=.o)
+LIBS = `pkg-config --cflags --libs opencv` 
+ifeq ($(shell uname -s),Darwin)
+	LIBS += -framework OpenCL
+endif
+ifeq ($(shell uname -s),Linux)
+	LIBS += -lOpenCL
+endif
+
 
 # Main target
 $(EXEC): $(OBJECTS)
-	$(CC) $(OBJECTS) $(LIBS) -o $(EXEC)
-
-# Object files
-%.o: %.cpp
-	$(CC) -c $(FLAGS) $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OBJECTS) $(LIBS) -o $(EXEC)
 
 clean:
 	rm -f $(EXEC) $(OBJECTS)

@@ -10,7 +10,11 @@ void CL_canny(char * src, int width, int height, float uthreshold, float lthresh
 
 /* OpenCL setup and config */
 
+#ifdef __APPLE__
+#include <OpenCL/cl.hpp>
+#else
 #include <CL/cl.hpp>
+#endif
 extern cl::Platform platform;
 extern cl::Device device;
 extern cl::Context context;

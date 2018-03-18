@@ -2,7 +2,9 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
 #include <string>
-#include "c/c-filters.hpp"
+extern "C" {
+    #include "c/c-filters.h"
+}
 #include "opencl/opencl-filters.hpp"
 
 using namespace cv;
@@ -83,15 +85,16 @@ int main(int argc, char** argv) {
 }
 
 void on_mouse(int event, int x, int y, int flags, void* userdata){
-    /* handle mouse event */
+    // handle mouse event
     // will probably use for debugging
-    unsigned char (*img)[width][3] = (unsigned char (*)[width][3])cameraFrame.ptr();
+    unsigned char * img = (unsigned char*)cameraFrame.ptr();
     switch (event) {
         case EVENT_LBUTTONDOWN:
         cout << "i: " << y << ", j:" << x << endl;
-        img[y][x][0] = 0;
-        img[y][x][1] = 0;
-        img[y][x][2] = 255;
+        // Puede fallar
+        img[3 * width * y + 3 * x + 0] = 0;
+        img[3 * width * y + 3 * x + 1] = 0;
+        img[3 * width * y + 3 * x + 2] = 0;
         imshow("gpu-filters", cameraFrame); // show frame
         waitKey(1000);
         break;
