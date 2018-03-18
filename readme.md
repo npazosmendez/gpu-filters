@@ -1,5 +1,3 @@
-# This is un título
-
 # Filters
 
 **Edge Detection** with Canny's algorithm
