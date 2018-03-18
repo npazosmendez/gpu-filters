@@ -9,7 +9,11 @@ void CL_convoluion2D(float* src, int width, int height, float * kernel_img, int 
 
 /* OpenCL setup and config */
 
+#ifdef __APPLE__
+#include <OpenCL/cl.hpp>
+#else
 #include <CL/cl.hpp>
+#endif
 extern cl::Platform platform;
 extern cl::Device device;
 extern cl::Context context;
