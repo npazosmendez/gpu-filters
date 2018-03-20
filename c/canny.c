@@ -33,7 +33,7 @@ void canny(char * src, int width, int height, float uthreshold, float lthreshold
     unsigned char (*imgRGB)[width][3] = (unsigned char (*)[width][3])src;
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            unsigned int temp = imgRGB[i][j][0]+imgRGB[i][j][2]+imgRGB[i][j][2];
+            unsigned int temp = imgRGB[i][j][0]+imgRGB[i][j][1]+imgRGB[i][j][2];
             img_inten2[i][j] = temp/3;
         }
     }
