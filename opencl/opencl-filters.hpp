@@ -24,5 +24,6 @@ extern bool openCL_initialized;
 void initCL();
 char *getCLErrorString(cl_int err);
 void printImageFormat(cl::ImageFormat format);
+void clHandleError(cl_int err);
 
 #endif

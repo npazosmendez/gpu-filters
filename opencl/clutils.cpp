@@ -144,3 +144,10 @@ char *getCLErrorString(cl_int err) {
         default:                                  return (char *) "Unknown";
     }
 }
+
+void clHandleError(cl_int err){
+    if (err) {
+        cerr << "ERROR: " << getCLErrorString(err) << endl;
+        exit(1);
+    }
+}
