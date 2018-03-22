@@ -15,8 +15,8 @@ int width, height;
 Mat cameraFrame;
 
 // Canny variables
-int hthreshold = 50;
-int lthreshold = 25;
+int uthreshold = 20;
+int lthreshold = 10;
 
 // UI misc
 void on_mouse(int event, int x, int y, int flags, void* userdata);
@@ -63,8 +63,8 @@ int main(int argc, char** argv) {
 
     /* Canny parameters trackbar */
     namedWindow("Canny Parameters", WINDOW_NORMAL);
-    createTrackbar( "Higher Thresh", "Canny Parameters", &hthreshold, 400, on_trackbar);
-    createTrackbar( "Lower Thresh", "Canny Parameters", &lthreshold, 400, on_trackbar);
+    createTrackbar( "Higher Thresh", "Canny Parameters", &uthreshold, 100, on_trackbar);
+    createTrackbar( "Lower Thresh", "Canny Parameters", &lthreshold, 100, on_trackbar);
 
     /* Init OpenCL */
     initCL();
@@ -79,10 +79,10 @@ int main(int argc, char** argv) {
 
         switch (flags.filter) {
             case C_CANNY:
-            canny(ptr,width,height,hthreshold,lthreshold);
+            canny(ptr,width,height,uthreshold,lthreshold);
             break;
             case OCL_CANNY:
-            CL_canny(ptr, width, height, hthreshold, lthreshold);
+            CL_canny(ptr, width, height, uthreshold, lthreshold);
             break;
             case C_HOUGH:
             hough(ptr, width, height);
@@ -157,6 +157,9 @@ void get_flags(int argc, char** argv){
                 flags.filter = OCL_INPAINTING;
             }else if(filter == "cl-lucas-kanade"){
                 flags.filter = OCL_LUCASKANADE;
+            }else{
+                cout << "Unknown filter '" << filter << "'" << endl;
+                exit(1);
             }
 
         }else if(param == " "){
