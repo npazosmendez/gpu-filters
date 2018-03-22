@@ -12,24 +12,24 @@
 using namespace std;
 using namespace cl;
 
-void CL_canny(char * src_c, int width, int height, float uthreshold, float lthreshold){
+Program program;
+bool canny_initialized = false;
 
-    assert(openCL_initialized);
+Image2D clImage;
+Buffer clResult_float;
+Buffer cl_charImage;
+int intbool;
+Buffer cl_intbool;
 
-    float * src = (float*)malloc(width*height*sizeof(float));
+Kernel k_intensity_gauss;
+Kernel k_max_edges;
+Kernel k_hysteresis;
+Kernel k_torgb;
 
-    // Intensity channel only (color average)
-    unsigned char (*imgRGB)[3] = (unsigned char (*)[3])src_c;
-    for (int i = 0; i < height*width; i++) {
-        float temp = imgRGB[i][0]+imgRGB[i][1]+imgRGB[i][2];
-        src[i] = temp/3;
-    }
-
-    /* Build PROGRAM from source, for specific context */
-    cl::Program program;
+void initCLCanny(int width, int height){
+    /* 1. Build PROGRAM from source, for specific context */
     ifstream sourceFile("opencl/canny.cl");
     /* NOTE: reading the source code from another file
-
     during runtime makes the binary's location important.
     Not good. */
     if (!sourceFile.is_open()) {
@@ -37,41 +37,105 @@ void CL_canny(char * src_c, int width, int height, float uthreshold, float lthre
         exit(1);
     }
     string sourceCode(istreambuf_iterator<char>(sourceFile), (istreambuf_iterator<char>()));
-    cl::Program::Sources sources(1, make_pair(sourceCode.c_str(), sourceCode.length()+1));
-    program = cl::Program(context, sources);
+    Program::Sources sources(1, make_pair(sourceCode.c_str(), sourceCode.length()+1));
+    program = Program(context, sources);
     program.build(context.getInfo<CL_CONTEXT_DEVICES>());
 
-    // Create an OpenCL Image / texture and transfer data to the device
+    /*2. Create kernels */
+    k_intensity_gauss = Kernel(program, "intensity_gauss_filter");
+    k_max_edges = Kernel(program, "max_edges");
+    k_torgb = Kernel(program, "intensityFloat_to_rgbChar");
+    k_hysteresis = Kernel(program, "hysteresis");
+
+    /* 3. Buffers setup */
+    // OpenCL Image / texture to store image intensity
     cl_int err = 0;
-    Image2D clImage = Image2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, ImageFormat(CL_INTENSITY, CL_FLOAT), width, height, 0, (void*)src, &err);
+    clImage = Image2D(context, CL_MEM_READ_WRITE, ImageFormat(CL_INTENSITY, CL_FLOAT), width, height, 0, NULL, &err);
+    clHandleError(__FILE__,__LINE__,err);
 
-    // Create a buffer for the result
-    Buffer clResult = Buffer(context, CL_MEM_WRITE_ONLY, sizeof(float)*width*height);
+    // Buffer for the temp float result
+    clResult_float = Buffer(context, CL_MEM_READ_WRITE, sizeof(float)*width*height, NULL &err);
+    clHandleError(__FILE__,__LINE__,err);
 
-    // Create and run kernel
-    Kernel kernel = Kernel(program, "canny");
-    kernel.setArg(0, clImage);
-    kernel.setArg(1, clResult);
+    // Buffer for input/output image in rgb (uchar3)
+    cl_charImage = Buffer(context, CL_MEM_READ_WRITE, width*height*3, NULL, &err);
+    clHandleError(__FILE__,__LINE__,err);
 
-    if (cl_int err = queue.enqueueNDRangeKernel(
-        kernel,
+    // Int (Bool) for hysteresis iteration
+    cl_intbool = Buffer(context, CL_MEM_USE_HOST_PTR, sizeof(int), &intbool, &err);
+    clHandleError(__FILE__,__LINE__,err);
+
+
+    canny_initialized = true;
+    return;
+}
+
+void CL_canny(char * src_c, int width, int height, float uthreshold, float lthreshold){
+
+    if(!openCL_initialized) initCL();
+    if(!canny_initialized) initCLCanny(width, height);
+
+    // 1. Transfer image to GPU
+    clHandleError(__FILE__,__LINE__,queue.enqueueWriteBuffer(cl_charImage, CL_TRUE, 0, 3*height*width, src_c));
+
+    // 2. Run kernels
+
+    // Compute intensity as rgb average and smooth with gaussian kernel
+    k_intensity_gauss.setArg(0, cl_charImage);
+    k_intensity_gauss.setArg(1, clImage);
+    clHandleError(__FILE__,__LINE__,queue.enqueueNDRangeKernel(
+        k_intensity_gauss,
         NullRange,
         NDRange(width, height),
         NullRange // default
-    )){
-        cerr << "ERROR: " << getCLErrorString(err) << endl;
-        exit(1);
+    ));
+
+    // Compute gradient intensity and discard below-thresh and non-max edges
+    k_max_edges.setArg(0, clImage);
+    k_max_edges.setArg(1, clResult_float);
+    k_max_edges.setArg(2, (cl_float)uthreshold);
+    k_max_edges.setArg(3, (cl_float)lthreshold);
+    clHandleError(__FILE__,__LINE__,queue.enqueueNDRangeKernel(
+        k_max_edges,
+        NullRange,
+        NDRange(width, height),
+        NullRange // default
+    ));
+
+    // TODO: hysteresis
+    k_hysteresis.setArg(0, cl_intbool);
+    k_hysteresis.setArg(1, clResult_float);
+    int iterations = 0;
+    int changes = 1;
+    while (changes) {
+        changes = 0;
+        queue.enqueueWriteBuffer(cl_intbool, CL_TRUE, 0, sizeof(int), &changes);
+        clHandleError(__FILE__,__LINE__,queue.enqueueNDRangeKernel(
+            k_hysteresis,
+            NullRange,
+            NDRange(width, height),
+            NullRange // default
+        ));
+        queue.enqueueReadBuffer(cl_intbool, CL_TRUE, 0, sizeof(int), &changes);
+        queue.finish();
+        iterations++;
     }
+    cout << iterations << endl;
 
-    // Transfer img back to host
-    queue.enqueueReadBuffer(clResult, CL_TRUE, 0, sizeof(float)*height*width, src);
+    // Convert float-intensity image to uchar3-rgb image
+    k_torgb.setArg(0, clResult_float);
+    k_torgb.setArg(1, cl_charImage);
+    clHandleError(__FILE__,__LINE__,queue.enqueueNDRangeKernel(
+        k_torgb,
+        NullRange,
+        NDRange(width, height),
+        NullRange // default
+    ));
 
+    // 3. Transfer img back to host
+    queue.enqueueReadBuffer(cl_charImage, CL_TRUE, 0, 3*height*width, src_c);
 
-    for (int i = 0; i < height*width; i++) {
-        imgRGB[i][0] = src[i];
-        imgRGB[i][1] = src[i];
-        imgRGB[i][2] = src[i];
-    }
+    queue.finish();
 
     return;
 }

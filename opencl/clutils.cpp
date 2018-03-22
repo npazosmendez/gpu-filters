@@ -145,9 +145,13 @@ char *getCLErrorString(cl_int err) {
     }
 }
 
-void clHandleError(cl_int err){
+void clHandleError(std::string file, int line, cl_int err){
     if (err) {
-        cerr << "ERROR: " << getCLErrorString(err) << endl;
+        cerr << "ERROR @ " << file << "::" << line << ": " << getCLErrorString(err) << endl;
         exit(1);
     }
+}
+
+void clHandleError(cl_int err){
+    clHandleError("",-1,err);
 }

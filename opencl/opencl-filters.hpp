@@ -1,6 +1,7 @@
 #ifndef OPENCLFILTERS_H
 #define OPENCLFILTERS_H
 
+#include <string>
 
 /* Image filters */
 
@@ -24,6 +25,7 @@ extern bool openCL_initialized;
 void initCL();
 char *getCLErrorString(cl_int err);
 void printImageFormat(cl::ImageFormat format);
+void clHandleError(std::string file, int line, cl_int err);
 void clHandleError(cl_int err);
 
 #endif
