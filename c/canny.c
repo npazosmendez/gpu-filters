@@ -43,7 +43,11 @@ inline int roundDirection(float x, float y){
     float degrees = arctan * 180.0 / M_PI;
     int res = (int)round(degrees / 360 * 8) * 360 / 8;
     res = (res + 360) % 180;
-
+    /* NOTE: (!!!) as the +x axis goes to the right and +y goes down (because of
+    how an image is stored), angles must be interpreted in clockwise direction.
+    For instance, 45° would be what we normally refer as -45°. This could be
+    changed by inverting the values in the sobel filters, but I prefer to make
+    indexes match the axes. */
     return res;
 
 }
@@ -60,13 +64,13 @@ inline bool isLocalmax(float* data, int width, int height, int y, int x, int dir
         case 0:
         res = (pixel >= data[LINEAR(y,x+1)] && pixel >= data[LINEAR(y,x-1)]);
         break;
-        case 45:
+        case 45: // remember this can be seen as -45°
         res = (pixel >= data[LINEAR(y+1,x+1)] && pixel >= data[LINEAR(y-1,x-1)]);
         break;
         case 90:
         res = (pixel >= data[LINEAR(y+1,x)] && pixel >= data[LINEAR(y-1,x)]);
         break;
-        case 135:
+        case 135: // and this as 225 /-135
         res = (pixel >= data[LINEAR(y+1,x-1)] && pixel >= data[LINEAR(y-1,x+1)]);
         break;
         default:
