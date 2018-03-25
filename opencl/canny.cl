@@ -1,5 +1,9 @@
 
-#define LINEAR(i,j) (i)+(j)*get_global_size(0)
+#define LINEAR(x,y) (x)+(y)*get_global_size(0)
+
+#define EDGE 255
+#define CANDIDATE 100
+#define NOT_EDGE 0
 
 __constant sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
 
@@ -30,95 +34,107 @@ inline float norm2(float x, float y){
     return native_sqrt(pow(x,2) + pow(y,2));
 }
 
-inline float x_gradient(__read_only image2d_t image, int i, int j){
-    // Returns the horizontal gradient of 'image' at (i,j) (Sobel filter)
+inline float x_gradient(__read_only image2d_t image, int x, int y){
+    // Returns the horizontal gradient of 'image' at (x,y) (Sobel filter)
     // NOTE: too many reads. Consider using shared memory in caller function.
     float Gx = 0;
-    Gx -= 2*read_imagef(image, sampler, (int2){i-1,j}).x;
-    Gx -= 1*read_imagef(image, sampler, (int2){i-1,j+1}).x;
-    Gx -= 1*read_imagef(image, sampler, (int2){i-1,j-1}).x;
+    Gx -= 2*read_imagef(image, sampler, (int2){x-1,y}).x;
+    Gx -= 1*read_imagef(image, sampler, (int2){x-1,y+1}).x;
+    Gx -= 1*read_imagef(image, sampler, (int2){x-1,y-1}).x;
 
-    Gx += 2*read_imagef(image, sampler, (int2){i+1,j}).x;
-    Gx += 1*read_imagef(image, sampler, (int2){i+1,j+1}).x;
-    Gx += 1*read_imagef(image, sampler, (int2){i+1,j-1}).x;
+    Gx += 2*read_imagef(image, sampler, (int2){x+1,y}).x;
+    Gx += 1*read_imagef(image, sampler, (int2){x+1,y+1}).x;
+    Gx += 1*read_imagef(image, sampler, (int2){x+1,y-1}).x;
 
     return Gx;
 }
 
-inline float y_gradient(__read_only image2d_t image, int i, int j){
-    // Returns the vertical gradient of 'image' at (i,j) (Sobel filter)
+inline float y_gradient(__read_only image2d_t image, int x, int y){
+    // Returns the vertical gradient of 'image' at (x,y) (Sobel filter)
     // NOTE: too many reads. Consider using shared memory in caller function.
     float Gy = 0;
-    Gy -= 2*read_imagef(image, sampler, (int2){i,j-1}).x;
-    Gy -= 1*read_imagef(image, sampler, (int2){i-1,j-1}).x;
-    Gy -= 1*read_imagef(image, sampler, (int2){i+1,j-1}).x;
+    Gy -= 2*read_imagef(image, sampler, (int2){x,y-1}).x;
+    Gy -= 1*read_imagef(image, sampler, (int2){x-1,y-1}).x;
+    Gy -= 1*read_imagef(image, sampler, (int2){x+1,y-1}).x;
 
-    Gy += 2*read_imagef(image, sampler, (int2){i,j+1}).x;
-    Gy += 1*read_imagef(image, sampler, (int2){i-1,j+1}).x;
-    Gy += 1*read_imagef(image, sampler, (int2){i+1,j+1}).x;
+    Gy += 2*read_imagef(image, sampler, (int2){x,y+1}).x;
+    Gy += 1*read_imagef(image, sampler, (int2){x-1,y+1}).x;
+    Gy += 1*read_imagef(image, sampler, (int2){x+1,y+1}).x;
 
     return Gy;
 }
 
-inline int2 gradient_neighbour1(int i, int j, int angle){
-    // Returns (i,j)'s neighbour1's coordinate in 'angle' direction
-    // NOTE 1: angle is codificated as follows: 0=-90°, 1=-45°, 2=0°, 3=45°
+inline int2 gradient_neighbour1(int x, int y, int angle){
+    // Returns (x,y)'s neighbour1's coordinate in 'angle' direction
     // NOTE 2: neighbours are divided in two groups. This function aims to group 1
     // 2  2  1
     // 2 (X) 1
     // 2  1  1
     // NOTE 3: Yes, this is horrible. Will probably fix in the future. For now,
     // at least the caller function stays cleaner.
-    int res_i, res_j;
+    int res_x, res_y;
     switch(angle){
         case 0:
-        res_i = i;
-        res_j = j+1;
+        res_x = x+1;
+        res_y = y;
         break;
-        case 1:
-        res_i = i+1;
-        res_j = j+1;
+        case 45:
+        res_x = x+1;
+        res_y = y+1;
         break;
-        case 2:
-        res_i = i+1;
-        res_j = j;
+        case 90:
+        res_x = x;
+        res_y = y+1;
         break;
-        case 3:
-        res_i = i+1;
-        res_j = j-1;
+        case 135:
+        res_x = x+1;
+        res_y = y-1;
         break;
         default:
+        printf("ERROR!");
         break;
     }
-    return (int2){res_i,res_j};
+    return (int2){res_x,res_y};
 }
 
-inline int2 gradient_neighbour2(int i, int j, int angle){
-    // Returns (i,j)'s neighbour2's coordinate in 'angle' direction
-    int res_i, res_j;
+inline int2 gradient_neighbour2(int x, int y, int angle){
+    // Returns (x,y)'s neighbour2's coordinate in 'angle' direction
+    int res_x, res_y;
     switch(angle){
         case 0:
-        res_i = i;
-        res_j = j-1;
+        res_x = x-1;
+        res_y = y;
         break;
-        case 1:
-        res_i = i-1;
-        res_j = j-1;
+        case 45:
+        res_x = x-1;
+        res_y = y-1;
         break;
-        case 2:
-        res_i = i-1;
-        res_j = j;
+        case 90:
+        res_x = x;
+        res_y = y-1;
         break;
-        case 3:
-        res_i = i-1;
-        res_j = j+1;
+        case 135:
+        res_x = x-1;
+        res_y = y+1;
         break;
         default:
+        printf("ERROR!");
         break;
     }
-    return (int2){res_i,res_j};
+    return (int2){res_x,res_y};
 }
 
+
+inline int roundDirection(float x, float y){
+    // Gets direction of vector (x,y) rounded to 0/45/90/135
+    float arctan = atan2(y,x);
+    float degrees = arctan * 180.0 / M_PI;
+    int res = (int)round(degrees / 360 * 8) * 360 / 8;
+    res = (res + 360) % 180;
+
+    return res;
+
+}
 
 /***********************************************************/
 /******************** Kernel functions  ********************/
@@ -207,46 +223,35 @@ __kernel void max_edges(
             * Compute Sobel gradient
             * Supress non-max and below thresh pixels
         */
-        int i = get_global_id(0);
-        int j = get_global_id(1);
+        int x = get_global_id(0);
+        int y = get_global_id(1);
 
-        float Gx = x_gradient(image,i,j);
-        float Gy = y_gradient(image,i,j);
+        float Gx = x_gradient(image,x,y);
+        float Gy = y_gradient(image,x,y);
 
         float Gm = norm2(Gx,Gy);
-        float Go_f = (atanpi(Gy/Gx)+0.5)*4.0; // [-PI/2 ; PI/2] normalized to [0 ; 4]
-        //
-        int Go = (int)round(Go_f) %4; // 0 / 1 / 2 / 3 = -90° / -45° / 0° / 45°
+        int Go = roundDirection(Gx,Gy);
 
         // Non-max supression
         float Gm1, Gm2;
-        int2 n1 = gradient_neighbour1(i,j,Go);
-        int2 n2 = gradient_neighbour2(i,j,Go);
+        int2 n1 = gradient_neighbour1(x,y,Go);
+        int2 n2 = gradient_neighbour2(x,y,Go);
         Gm1 = norm2(x_gradient(image,n1.x,n1.y),y_gradient(image,n1.x,n1.y));
         Gm2 = norm2(x_gradient(image,n2.x,n2.y),y_gradient(image,n2.x,n2.y));
 
-        if((Gm1 > Gm) | (Gm2 > Gm)| (Gm < lthreshold)){
-            Gm = 0; // definitely no
-        }else if((Gm >= lthreshold) & (Gm < uthreshold)){
-            Gm = 50; // maybe
-        }else{
-            Gm = 255; // definitely yes
+        float temp = NOT_EDGE;
+        if(Gm >= Gm1 && Gm >= Gm2){
+            /* Is local max */
+            if(Gm >= uthreshold){
+                // An edge for sure
+                temp = EDGE;
+            }else if(Gm > lthreshold){
+                // May be an edge
+                temp = CANDIDATE;
+            }
         }
-        dst[LINEAR(i,j)] = Gm;
 
-        // TODO
-        /*
-        Brainstorming:
-        Maybe a global float buffer is not needed. This kernel could directly write on the uchar3 buffer directly 3
-        possible values: not-an-edge, candidate-edge, edge.
-        With that information only, the hysterysis can be done.
-        A final kernel could swipe candidate-edges after the
-        hysteresis.
-        Possible downside: working with triple-integers instead
-        of a single float.
-
-        */
-
+        dst[LINEAR(x,y)] = temp;
 }
 
 
@@ -278,14 +283,13 @@ __kernel void hysteresis(
 
 
 
-__kernel void intensityFloat_to_rgbChar(
+__kernel void floatEdges_to_RGBChar(
         __global const float * src,
         __global uchar * dst
     ) {
         const int i = get_global_id(0);
         const int j = get_global_id(1);
-        uchar intensity = src[LINEAR(i,j)];
-        // uchar intensity = src[LINEAR(i,j)]==255 ? 255 : 0;
+        uchar intensity = src[LINEAR(i,j)]== EDGE ? 255 : 0;
         uchar3 rgb = {intensity,intensity,intensity};
         vstore3(rgb,LINEAR(i,j),dst);
 }

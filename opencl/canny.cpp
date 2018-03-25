@@ -44,8 +44,8 @@ void initCLCanny(int width, int height){
     /*2. Create kernels */
     k_intensity_gauss = Kernel(program, "intensity_gauss_filter");
     k_max_edges = Kernel(program, "max_edges");
-    k_torgb = Kernel(program, "intensityFloat_to_rgbChar");
     k_hysteresis = Kernel(program, "hysteresis");
+    k_torgb = Kernel(program, "floatEdges_to_RGBChar");
 
     /* 3. Buffers setup */
     // OpenCL Image / texture to store image intensity
@@ -54,11 +54,11 @@ void initCLCanny(int width, int height){
     clHandleError(__FILE__,__LINE__,err);
 
     // Buffer for the temp float result
-    clResult_float = Buffer(context, CL_MEM_READ_WRITE, sizeof(float)*width*height, NULL &err);
+    clResult_float = Buffer(context, CL_MEM_READ_WRITE, sizeof(float)*width*height, NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 
     // Buffer for input/output image in rgb (uchar3)
-    cl_charImage = Buffer(context, CL_MEM_READ_WRITE, width*height*3, NULL, &err);
+    cl_charImage = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 
     // Int (Bool) for hysteresis iteration
@@ -120,7 +120,7 @@ void CL_canny(char * src_c, int width, int height, float uthreshold, float lthre
         queue.finish();
         iterations++;
     }
-    cout << iterations << endl;
+    // cout << iterations << endl;
 
     // Convert float-intensity image to uchar3-rgb image
     k_torgb.setArg(0, clResult_float);
