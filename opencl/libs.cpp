@@ -14,7 +14,6 @@
 using namespace cl;
 using namespace std;
 
-bool listo = false;
 
 void CL_convoluion2D(float* src, int width, int height, float * kernel_img, int ksize, float* dst){
 
