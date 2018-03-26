@@ -75,7 +75,10 @@ int main(int argc, char** argv) {
         char *ptr = (char*)cameraFrame.ptr();
         // hough(ptr, width, height);
         // CL_canny(ptr, width, height, hthreshold, lthreshold);
-        canny(ptr,width,height,hthreshold,lthreshold);
+        //canny(ptr,width,height,hthreshold,lthreshold);
+        bool* mask = (bool*) malloc(width * height * sizeof(bool));
+        generate_arbitrary_mask(mask, width, height);
+        inpainting(ptr, width, height, mask);
 
         imshow("gpu-filters", cameraFrame); // show frame
 

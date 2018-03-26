@@ -3,7 +3,7 @@ CC = gcc
 CXX = g++
 CFLAGS = -std=c99
 CXXFLAGS = -std=c++11
-CPPFLAGS = -O3 -Wall $(CPPLIBS)
+CPPFLAGS = -O3 -Wall
 CSOURCES = $(wildcard */*.c)
 CXXSOURCES = $(wildcard *.cpp) $(wildcard */*.cpp)
 
