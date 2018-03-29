@@ -113,6 +113,10 @@ int main(int argc, char** argv) {
             case C_HOUGH:
             hough(ptr, width, height);
             break;
+            case C_INPAINTING:
+            bool* mask = (bool*) malloc(width * height * sizeof(bool));
+            generate_arbitrary_mask(mask, width, height);
+            inpainting(ptr, width, height, mask);
             default:
             break;
         }
