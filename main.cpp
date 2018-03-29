@@ -18,6 +18,9 @@ Mat cameraFrame;
 int uthreshold = 20;
 int lthreshold = 10;
 
+// Inpainting variables
+bool* mask;
+
 // UI misc
 void on_mouse(int event, int x, int y, int flags, void* userdata);
 void on_trackbar( int, void* ){}
@@ -66,6 +69,9 @@ int main(int argc, char** argv) {
     createTrackbar( "Higher Thresh", "Canny Parameters", &uthreshold, 100, on_trackbar);
     createTrackbar( "Lower Thresh", "Canny Parameters", &lthreshold, 100, on_trackbar);
 
+    /* Inpainting parameters arbitrary set */
+    mask = (bool*) malloc(width * height * sizeof(bool));
+
     /* Init OpenCL */
     initCL();
 
@@ -88,9 +94,9 @@ int main(int argc, char** argv) {
             hough(ptr, width, height);
             break;
             case C_INPAINTING:
-            bool* mask = (bool*) malloc(width * height * sizeof(bool));
             generate_arbitrary_mask(mask, width, height);
             inpainting(ptr, width, height, mask);
+            break;
             default:
             break;
         }

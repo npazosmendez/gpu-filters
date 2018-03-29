@@ -37,7 +37,7 @@ void initCannyC(int width, int height){
     C_canny_initialized = true;
 }
 
-inline int roundDirection(float x, float y){
+int roundDirection(float x, float y){
     // Gets direction of vector (x,y) rounded to 0/45/90/135
     float arctan = atan2(y,x);
     float degrees = arctan * 180.0 / M_PI;
@@ -52,7 +52,7 @@ inline int roundDirection(float x, float y){
 
 }
 
-inline bool isLocalmax(float* data, int width, int height, int y, int x, int direction){
+bool isLocalmax(float* data, int width, int height, int y, int x, int direction){
     // Returns 'true' iff data at (x,y) reaches a local max in 'direction' direction
     /* Pre-condition:
     y+-1, x+-1 are in 'data' range
@@ -81,7 +81,7 @@ inline bool isLocalmax(float* data, int width, int height, int y, int x, int dir
 
 }
 
-inline bool isConnected(unsigned char* data, int width, int height, int y, int x, int direction){
+bool isConnected(unsigned char* data, int width, int height, int y, int x, int direction){
     // Returns true iff 'data' at (x,y) has an EDGE neighbour in 'direction' direction
     /* Pre-condition:
     y+-1, x+-1 are in 'data' range
