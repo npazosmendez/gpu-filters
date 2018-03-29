@@ -19,7 +19,7 @@ sudo apt install opencl-headers
 sudo apt install clinfo
 ```
 
-We've also used the C++ bindings, which are contained in a single header file that can be found [here](http://github.khronos.org/OpenCL-CLHPP/).
+We've also used the C++ bindings, which are included in the repo.
 
 A device that supports OpenCL is needed to run the program. Drivers installation varies. These are some devices in which the program ran and how to install their drivers:
 
