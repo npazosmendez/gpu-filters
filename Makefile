@@ -3,7 +3,7 @@ CC = gcc
 CXX = g++
 CFLAGS = -std=c99
 CXXFLAGS = -std=c++11
-CPPFLAGS = -g -O3 -Wall -I opencl/headers
+CPPFLAGS = -Wall -I opencl/headers
 CSOURCES = $(wildcard */*.c)
 CXXSOURCES = $(wildcard *.cpp) $(wildcard */*.cpp)
 
@@ -17,10 +17,18 @@ ifeq ($(shell uname -s),Linux)
 	LIBS += -lOpenCL
 endif
 
+# Rules
+main: CPPFLAGS += -O3
+main: $(EXEC)
 
-# Main target
+debug: CPPFLAGS += -g
+debug: $(EXEC)
+	
 $(EXEC): $(OBJECTS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OBJECTS) $(LIBS) -o $(EXEC)
 
 clean:
 	rm -f $(EXEC) $(OBJECTS)
+
+.PHONY: main debug clean
+
