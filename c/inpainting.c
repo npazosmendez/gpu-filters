@@ -9,9 +9,9 @@
 int PATCH_RADIUS = 4;
 float ALPHA = 255;
 
-// Checks if value is inside the range [minimum, maximum]
+// Checks if value is inside the range [minimum, maximum)
 int within(int value, int minimum, int maximum) {
-    return value >= minimum && value <= maximum;
+    return value >= minimum && value < maximum;
 }
 
 int max(int a, int b) {
