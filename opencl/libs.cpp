@@ -5,11 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-#ifdef __APPLE__
-#include <OpenCL/cl.hpp>
-#else
-#include <CL/cl.hpp>
-#endif
+#include <cl.hpp>
 
 using namespace cl;
 using namespace std;
