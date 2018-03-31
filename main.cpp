@@ -2,6 +2,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
 #include <string>
+#include <iomanip>
 extern "C" {
     #include "c/c-filters.h"
 }
@@ -9,10 +10,17 @@ extern "C" {
 
 using namespace cv;
 using namespace std;
+using namespace std::chrono;
 
 // Main variables
 int width, height;
 Mat cameraFrame;
+
+// Benchmarking variables
+double time_total = 0;
+double time_max = 0;
+double time_min = DBL_MAX;
+int frames = 0;
 
 // Canny variables
 int uthreshold = 20;
@@ -28,12 +36,12 @@ void get_flags(int argc, char** argv);
 
 // Flags
 enum filter_t   {C_CANNY,C_HOUGH,C_INPAINTING,C_LUCASKANADE,
-    OCL_CANNY,OCL_HOUGH,OCL_INPAINTING,OCL_LUCASKANADE};
+    OCL_CANNY,OCL_HOUGH,OCL_INPAINTING,OCL_LUCASKANADE,DEFAULT};
 
 struct flags_t{
     bool file_input = false;
     string file_path;
-    filter_t filter = C_CANNY;
+    filter_t filter = DEFAULT;
 };
 flags_t flags;
 
@@ -83,6 +91,8 @@ int main(int argc, char** argv) {
 
         char *ptr = (char*)cameraFrame.ptr();
 
+        steady_clock::time_point t1 = steady_clock::now();
+
         switch (flags.filter) {
             case C_CANNY:
             canny(ptr,width,height,uthreshold,lthreshold);
@@ -101,10 +111,30 @@ int main(int argc, char** argv) {
             break;
         }
 
+        steady_clock::time_point t2 = steady_clock::now();
+        // A duration object also has another template parameter that defines
+        // what unit to use, it it's ommited, it's in seconds
+        duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+        double milliseconds = time_span.count() * 1000.0;
+
+        frames++;
+        time_min = min(time_min, milliseconds);
+        time_max = max(time_max, milliseconds);
+        time_total = time_total + milliseconds;
+
         imshow("gpu-filters", cameraFrame); // show frame
 
-        waitKey(5);
+        if ((char)cv::waitKey(5) == 'q') break;
     }
+
+    cout << "\n"                                                 \
+         << "Metrics (" << frames << " samples)\n"               \
+         << setprecision(8) << fixed                             \
+         << " AVG = " << time_total / double(frames) << " ms\n"  \
+         << " MAX = " << time_max << " ms\n"                     \
+         << " MIN = " << time_min << " ms\n"                     \
+         << "\n";
+
     return 0;
 }
 
