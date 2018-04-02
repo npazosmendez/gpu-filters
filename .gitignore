@@ -1,5 +1,7 @@
 *.o
 *.mp4
+*.jpeg
+*.png
 main
 gpu-filters
 picture

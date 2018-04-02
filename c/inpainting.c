@@ -4,6 +4,7 @@
 #include "string.h"
 #include "math.h"
 #include "time.h"
+#include "float.h"
 
 #define PI 3.14159265358979323846
 
@@ -120,8 +121,8 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
 
     float confidence[height][width];
     memset(confidence, 0, height*width*sizeof(float));
-    bool border_mask[height][width];
-    memset(border_mask, 0, height*width*sizeof(bool));
+    bool contour_mask[height][width];
+    memset(contour_mask, 0, height*width*sizeof(bool));
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
@@ -134,14 +135,15 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
         // 1. Calculate contour
         start = clock();
 
+        memset(contour_mask, 0, height*width*sizeof(bool));
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
                 if (mask[i][j]) {
                     for (int di = -1; di <= 1; di++) {
                         for (int dj = -1; dj <= 1; dj++) {
-                            if (0 >= i + di && i + di < height && 0 >= j + dj && j + dj < width) {
+                            if (within(i + di, 0, height) && within(j + dj, 0, width)) {
                                 if (!mask[i + di][j + dj]) {
-                                    border_mask[i][j] = true;
+                                    contour_mask[i][j] = true;
                                 }
                             }
                         }
@@ -149,9 +151,20 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
                 }
             }
         }
+
+        int contour_size = 0;
+        for (int i = 0; i < height; i++) for (int j = 0; j < width; j++) {
+            if (contour_mask[i][j] == true) contour_size++;
+        }
+
+        if (contour_size == 0) {
+            break;
+        }
+
         end = clock();
         count = (float)(end - start) / CLOCKS_PER_SEC;
-        printf("Contour: %f\n", count);
+        printf("Contour (size = %d): %f\n", contour_size, count);
+
 
         // 2. Find target patch 
         start = clock();
@@ -163,7 +176,7 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
 
-                if (!border_mask[i][j]) {
+                if (!contour_mask[i][j]) {
                     continue;
                 }
 
@@ -273,33 +286,19 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
 
         end = clock();
         count = (float)(end - start) / CLOCKS_PER_SEC;
-        printf("Target patch: %f\n", count);
+        printf("Target patch (%d, %d): %f\n", max_i, max_j, count);
 
         // 3. Find source patch
         start = clock();
 
         // (max_i, max_j) is the target patch
-        float min_squared_diff = -1;
-        int max_target_i = -1; // TODO: THIS IS THE SOURCE NOT THE TARGET YOU DUMBDUMB
-        int max_target_j = -1;
+        float min_squared_diff = FLT_MAX;
+        int max_source_i = -1;
+        int max_source_j = -1;
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
 
-                // Is valid source patch
                 bool valid = true;
-                for (int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++) {
-                    for (int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++) {
-                        int source_i = i + ki;
-                        int source_j = j + kj;
-                        if (!within(source_i, 0, height) ||  \
-                            !within(source_j, 0, width) ||   \
-                            mask[source_i][source_j]) {
-                            valid = false;
-                            goto out;
-                        }
-                    }
-                }
-                out: if (!valid) continue;
 
                 // Sum
                 float squared_diff = 0;
@@ -310,6 +309,13 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
                         int source_i = i + ki;
                         int source_j = j + kj;
 
+                        if (!within(source_i, 0, height) ||  \
+                            !within(source_j, 0, width) ||   \
+                            mask[source_i][source_j]) {
+                            valid = false;
+                            goto out;
+                        }
+
                         if (within(target_i, 0, height) &&  \
                             within(target_j, 0, width) &&   \
                             !mask[target_i][target_j]) {
@@ -317,19 +323,20 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
                         }
                     }
                 }
+                out: if (!valid) continue;
 
                 // Update
                 if (squared_diff < min_squared_diff) {
                     min_squared_diff = squared_diff;
-                    max_target_i = i;
-                    max_target_j = j;
+                    max_source_i = i;
+                    max_source_j = j;
                 }
             }
         }
 
         end = clock();
         count = (float)(end - start) / CLOCKS_PER_SEC;
-        printf("Source patch: %f\n", count);
+        printf("Source patch(%d, %d): %f\n", max_source_i, max_source_j, count);
 
         // 4. Copy
         start = clock();
@@ -342,8 +349,8 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
             for (int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++) {
                 int target_i = max_i + ki;
                 int target_j = max_j + kj;
-                int source_i = max_target_i + ki;
-                int source_j = max_target_j + kj;
+                int source_i = max_source_i + ki;
+                int source_j = max_source_j + kj;
 
                 if (within(target_i, 0, height) &&  \
                     within(target_j, 0, width) &&   \
@@ -360,7 +367,6 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
         count = (float)(end - start) / CLOCKS_PER_SEC;
         printf("Copy: %f\n", count);
 
-        break; // TODO: Remove when things are... Sort of working
     }
 }
 
@@ -370,8 +376,8 @@ void generate_arbitrary_mask(bool * dst, int width, int height) {
     bool (*mask)[width] = (bool (*)[width]) dst;
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            if (i >= height * 4.0/10.0 && i < height * 5.0/10.0) {
-                if (j >= width * 4.0/10.0 && j < width * 5.0/10.0) {
+            if (i >= height * 5.0/11.0 && i < height * 6.0/11.0) {
+                if (j >= width * 5.0/11.0 && j < width * 6.0/11.0) {
                     mask[i][j] = true;
                 }
             }
