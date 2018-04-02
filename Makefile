@@ -31,8 +31,11 @@ $(EXEC): $(OBJECTS) main.o
 # Apps
 APPS := picture
 
-apps: CPPFLAGS += -g
+apps: CPPFLAGS += -O3
 apps: $(APPS)
+
+dapps: CPPFLAGS += -g
+dapps: $(APPS)
 
 $(APPS): % : $(OBJECTS) $(addprefix apps/, %.o)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LIBS) -o $@
