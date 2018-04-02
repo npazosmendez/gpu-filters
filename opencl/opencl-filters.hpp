@@ -16,6 +16,7 @@ extern cl::Platform platform;
 extern cl::Device device;
 extern cl::Context context;
 extern cl::CommandQueue queue;
+extern cl::Program program;
 extern bool openCL_initialized;
 
 void initCL();

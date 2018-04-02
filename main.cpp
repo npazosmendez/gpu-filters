@@ -2,6 +2,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
 #include <string>
+#include <chrono>
 #include <iomanip>
 extern "C" {
     #include "c/c-filters.h"

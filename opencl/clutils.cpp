@@ -10,6 +10,7 @@ cl::Platform platform;
 cl::Device device;
 cl::Context context;
 cl::CommandQueue queue;
+cl::Program program;
 
 bool openCL_initialized = false;
 
@@ -144,7 +145,12 @@ char *getCLErrorString(cl_int err) {
 void clHandleError(std::string file, int line, cl_int err){
     if (err) {
         cerr << "ERROR @ " << file << "::" << line << ": " << getCLErrorString(err) << endl;
-        exit(1);
+        if(err == CL_INVALID_KERNEL || err == CL_INVALID_PROGRAM_EXECUTABLE){
+		// Probably a build error. Show log
+		string log = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device,NULL);
+		cerr << log << endl;
+	}
+	exit(1);
     }
 }
 
