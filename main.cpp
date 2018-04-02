@@ -2,6 +2,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
 #include <string>
+#include <chrono>
 #include <iomanip>
 extern "C" {
     #include "c/c-filters.h"
@@ -14,7 +15,7 @@ using namespace std::chrono;
 
 // Main variables
 int width, height;
-Mat frame;
+Mat cameraFrame;
 
 // Benchmarking variables
 double time_total = 0;
@@ -23,8 +24,8 @@ double time_min = DBL_MAX;
 int frames = 0;
 
 // Canny variables
-int uthreshold = 50;
-int lthreshold = 20;
+int uthreshold = 20;
+int lthreshold = 10;
 
 // Inpainting variables
 bool* mask;
@@ -39,7 +40,7 @@ enum filter_t   {C_CANNY,C_HOUGH,C_INPAINTING,C_LUCASKANADE,
     OCL_CANNY,OCL_HOUGH,OCL_INPAINTING,OCL_LUCASKANADE,DEFAULT};
 
 struct flags_t{
-   bool file_input = false;
+    bool file_input = false;
     string file_path;
     filter_t filter = DEFAULT;
 };
@@ -51,15 +52,11 @@ int main(int argc, char** argv) {
 
     get_flags(argc, argv);
 
-    if (flags.video_input) {
+    if (flags.file_input) {
         /* open video file */
-        stream = VideoCapture(flags.video_path);
+        stream = VideoCapture(flags.file_path);
         width = stream.get(CV_CAP_PROP_FRAME_WIDTH);
         height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
-    }else if(flags.image_input){
-        frame = imread(flags.image_path, 1);
-        height = frame.rows;
-        width = frame.cols;
     }else{
         /* open webcam */
         stream = VideoCapture(0); // video device number 0
@@ -67,30 +64,10 @@ int main(int argc, char** argv) {
         height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
     }
 
-    if (flags.image_input) {
-        char *ptr = (char*)frame.ptr();
-        switch (flags.filter) {
-            case C_CANNY:
-            canny(ptr,width,height,uthreshold,lthreshold);
-            break;
-            case OCL_CANNY:
-            CL_canny(ptr, width, height, uthreshold, lthreshold);
-            break;
-            case C_HOUGH:
-            hough(ptr, width, height);
-            break;
-            default:
-            break;
-        }
-        imwrite("output.bmp",frame);
-        return 0;
-    }
-
     if (!stream.isOpened()) {
         cerr << "Failed to open stream." << endl;
         exit(1);
     }
-
 
     /* Main window */
     namedWindow("gpu-filters", 1);
@@ -108,12 +85,12 @@ int main(int argc, char** argv) {
     initCL();
 
     while (true) {
-        if(!stream.read(frame)){ // get camera frame
+        if(!stream.read(cameraFrame)){ // get camera frame
             stream.set(CV_CAP_PROP_POS_MSEC,0); // reset if ended (for file streams)
             continue;
         }
 
-        char *ptr = (char*)frame.ptr();
+        char *ptr = (char*)cameraFrame.ptr();
 
         steady_clock::time_point t1 = steady_clock::now();
 
@@ -165,7 +142,7 @@ int main(int argc, char** argv) {
 void on_mouse(int event, int x, int y, int flags, void* userdata){
     // handle mouse event
     // will probably use for debugging
-    unsigned char * img = (unsigned char*)frame.ptr();
+    unsigned char * img = (unsigned char*)cameraFrame.ptr();
     switch (event) {
         case EVENT_LBUTTONDOWN:
         cout << "i: " << y << ", j:" << x << endl;
@@ -173,7 +150,7 @@ void on_mouse(int event, int x, int y, int flags, void* userdata){
         img[3 * width * y + 3 * x + 0] = 0;
         img[3 * width * y + 3 * x + 1] = 0;
         img[3 * width * y + 3 * x + 2] = 0;
-        imshow("gpu-filters", frame); // show frame
+        imshow("gpu-filters", cameraFrame); // show frame
         waitKey(1000);
         break;
         case EVENT_RBUTTONDOWN:
@@ -190,14 +167,14 @@ void get_flags(int argc, char** argv){
     string param;
     for (int i = 0; i < argc; i++) {
         param = argv[i];
-        if (param == "-iv") {
-            /* input video file path */
-            flags.video_input = true;
+        if (param == "-i") {
+            /* input file path */
+            flags.file_input = true;
             if (i+1 == argc){
-                cerr << "File path missing after '-iv'." << endl;
+                cerr << "File path missing after '-i'." << endl;
                 exit(1);
             }
-            flags.video_path = argv[i+1];
+            flags.file_path = argv[i+1];
         }else if(param == "-f"){
             /* filter selection */
             if (i+1 == argc){
@@ -226,14 +203,7 @@ void get_flags(int argc, char** argv){
                 exit(1);
             }
 
-        }else if(param == "-ii"){
-            /* input image file path */
-            flags.image_input = true;
-            if (i+1 == argc){
-                cerr << "File path missing after '-ii'." << endl;
-                exit(1);
-            }
-            flags.image_path = argv[i+1];
+        }else if(param == " "){
         }else if(param == " "){
 
         }
