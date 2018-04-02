@@ -3,6 +3,7 @@
 #include "stdbool.h"
 #include "string.h"
 #include "math.h"
+#include "time.h"
 
 #define PI 3.14159265358979323846
 
@@ -109,6 +110,8 @@ float masked_convolute(int width, int height, char (*img)[width][3], int i, int 
         Then we find the minimum iterating through all the image ( =( ).
         We copy the patch and start over.
     */
+clock_t start, end;
+float count;
 
 void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
 
@@ -129,6 +132,8 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
     while (true) {
 
         // 1. Calculate contour
+        start = clock();
+
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
                 if (mask[i][j]) {
@@ -144,8 +149,13 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
                 }
             }
         }
+        end = clock();
+        count = (float)(end - start) / CLOCKS_PER_SEC;
+        printf("Contour: %f\n", count);
 
         // 2. Find target patch 
+        start = clock();
+
         int max_i = -1;
         int max_j = -1;
         float max_priority = -1.0;
@@ -261,7 +271,13 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
             }
         }
 
+        end = clock();
+        count = (float)(end - start) / CLOCKS_PER_SEC;
+        printf("Target patch: %f\n", count);
+
         // 3. Find source patch
+        start = clock();
+
         // (max_i, max_j) is the target patch
         float min_squared_diff = -1;
         int max_target_i = -1; // TODO: THIS IS THE SOURCE NOT THE TARGET YOU DUMBDUMB
@@ -311,7 +327,13 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
             }
         }
 
+        end = clock();
+        count = (float)(end - start) / CLOCKS_PER_SEC;
+        printf("Source patch: %f\n", count);
+
         // 4. Copy
+        start = clock();
+
         if (min_squared_diff == -1) {
             break; // Abort mission
         }
@@ -333,6 +355,10 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
                 }
             }
         }
+
+        end = clock();
+        count = (float)(end - start) / CLOCKS_PER_SEC;
+        printf("Copy: %f\n", count);
 
         break; // TODO: Remove when things are... Sort of working
     }
