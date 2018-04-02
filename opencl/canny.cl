@@ -1,6 +1,8 @@
 
 #define LINEAR(x,y) (x)+(y)*get_global_size(0)
 
+#define PI 3.14159265358979323846
+
 #define EDGE 255
 #define CANDIDATE 100
 #define NOT_EDGE 0
@@ -128,7 +130,7 @@ inline int2 gradient_neighbour2(int x, int y, int angle){
 inline int roundDirection(float x, float y){
     // Gets direction of vector (x,y) rounded to 0/45/90/135
     float arctan = atan2(y,x);
-    float degrees = arctan * 180.0 / M_PI;
+    float degrees = arctan * 180.0 / PI;
     int res = (int)round(degrees / 360 * 8) * 360 / 8;
     res = (res + 360) % 180;
 
