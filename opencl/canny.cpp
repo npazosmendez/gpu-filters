@@ -8,7 +8,6 @@
 using namespace std;
 using namespace cl;
 
-Program program;
 bool canny_initialized = false;
 
 Image2D clImage;
