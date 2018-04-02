@@ -3,11 +3,10 @@ CC = gcc
 CXX = g++
 CFLAGS = -std=c99
 CXXFLAGS = -std=c++11
-CPPFLAGS = -O3 -Wall
-CSOURCES = $(wildcard */*.c)
-CXXSOURCES = $(wildcard *.cpp) $(wildcard */*.cpp)
+CPPFLAGS = -Wall -I . -I opencl/headers
+CSOURCES = $(wildcard c/*.c)
+CXXSOURCES = $(wildcard opencl/*.cpp)
 
-EXEC = gpu-filters
 OBJECTS = $(CSOURCES:.c=.o) $(CXXSOURCES:.cpp=.o)
 LIBS = `pkg-config --cflags --libs opencv` 
 ifeq ($(shell uname -s),Darwin)
@@ -17,10 +16,29 @@ ifeq ($(shell uname -s),Linux)
 	LIBS += -lOpenCL
 endif
 
+# Main
+EXEC=gpu-filters
 
-# Main target
-$(EXEC): $(OBJECTS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OBJECTS) $(LIBS) -o $(EXEC)
+main: CPPFLAGS += -O3
+main: $(EXEC)
+
+debug: CPPFLAGS += -g
+debug: $(EXEC)
+
+$(EXEC): $(OBJECTS) main.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LIBS) -o $@
+
+# Apps
+APPS := picture
+
+apps: CPPFLAGS += -g
+apps: $(APPS)
+
+$(APPS): % : $(OBJECTS) $(addprefix apps/, %.o)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LIBS) -o $@
 
 clean:
-	rm -f $(EXEC) $(OBJECTS)
+	rm -f $(OBJECTS) $(EXEC) main.o $(APPS) $(addprefix apps/, $(APPS:=.o))
+
+.PHONY: main debug apps clean
+
