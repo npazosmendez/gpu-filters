@@ -1,5 +1,5 @@
 #include "opencl-filters.hpp"
-#include <cl.hpp>
+#include <cl2.hpp>
 #include <iostream>
 
 using namespace std;
@@ -16,7 +16,7 @@ bool openCL_initialized = false;
 
 void initCL(){
     /* Find PLATFORM */
-    VECTOR_CLASS<cl::Platform> platforms;
+    cl::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
     cout << "Available platforms:" << endl;
     for (unsigned int i = 0; i < platforms.size(); i++)
@@ -24,7 +24,7 @@ void initCL(){
     platform = platforms[0]; // la primera platform
 
     /* Find available DEVICES */
-    VECTOR_CLASS<Device> devices;
+    cl::vector<Device> devices;
     platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
     cout << "Available devices:" << endl;
     for (unsigned int i = 0; i < devices.size(); i++)

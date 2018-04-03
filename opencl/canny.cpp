@@ -1,4 +1,4 @@
-#include <cl.hpp>
+#include <cl2.hpp>
 #include "opencl-filters.hpp"
 #include <cassert>
 #include <iostream>
@@ -32,7 +32,7 @@ void initCLCanny(int width, int height){
         exit(1);
     }
     string sourceCode(istreambuf_iterator<char>(sourceFile), (istreambuf_iterator<char>()));
-    Program::Sources sources(1, make_pair(sourceCode.c_str(), sourceCode.length()+1));
+    Program::Sources sources(1, sourceCode);
     program = Program(context, sources);
     program.build(context.getInfo<CL_CONTEXT_DEVICES>());
 

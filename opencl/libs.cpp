@@ -26,7 +26,7 @@ void CL_convoluion2D(float* src, int width, int height, float * kernel_img, int 
         exit(1);
     }
     string sourceCode(istreambuf_iterator<char>(sourceFile), (istreambuf_iterator<char>()));
-    cl::Program::Sources sources(1, make_pair(sourceCode.c_str(), sourceCode.length()+1));
+    cl::Program::Sources sources(1, sourceCode);
     program = cl::Program(context, sources);
     program.build(context.getInfo<CL_CONTEXT_DEVICES>());
 

@@ -11,7 +11,7 @@ void CL_canny(char * src, int width, int height, float uthreshold, float lthresh
 
 /* OpenCL setup and config */
 
-#include <cl.hpp>
+#include <cl2.hpp>
 extern cl::Platform platform;
 extern cl::Device device;
 extern cl::Context context;
