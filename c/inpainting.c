@@ -5,112 +5,26 @@
 #include "math.h"
 #include "time.h"
 #include "float.h"
-
-#define PI 3.14159265358979323846
+#include "cutils.h"
 
 int PATCH_RADIUS = 4;
 float ALPHA = 255;
 
-// Checks if value is inside the range [minimum, maximum)
-int within(int value, int minimum, int maximum) {
-    return value >= minimum && value < maximum;
-}
-
-int max(int a, int b) {
-    return a > b ? a : b;
-}
-
-int min(int a, int b) {
-    return a < b ? a : b;
-}
-
-// Returns value restricted to range [minimum, maximum]
-int clamp(int value, int minimum, int maximum) {
-    return value < minimum ? minimum : value > maximum ? maximum : value;
-}
-
-typedef struct point {
-    float x;
-    float y;
-} point;
-
-// Calculates angle of vectors between vectors (ax, ay) and (bx, by)
-point vector_bisector(float ax, float ay, float bx, float by) {
-    float b_angle = atan2f(ay, ax);
-    float a_angle = atan2f(by, bx);
-    if (b_angle < a_angle) b_angle += 2 * PI;
-    float diff_angle = b_angle - a_angle;
-    float mid_angle = (diff_angle / 2) + a_angle;
-    return (point) { cos(mid_angle), sin(mid_angle) };
-}
-
-// Calculates norm of vector
-float norm(float x, float y) {
-    return sqrt(x * x + y * y);
-}
-
-// Calculates squared distance of two vectors in three dimensions
-float squared_distance3(char p[3], char q[3]) {
-    return (p[0] - q[0]) * (p[0] - q[0]) +  \
-           (p[1] - q[1]) * (p[1] - q[1]) +  \
-           (p[2] - q[2]) * (p[2] - q[2]);
-}
-
-// Convolution with a 3x3 kernel that handles edges via mirroring (ignores mask)
-// TODO: Mask ignore
-// TODO: Linus is a meanie: https://lkml.org/lkml/2015/9/3/428
-float masked_convolute(int width, int height, char (*img)[width][3], int i, int j, float kernel[3][3], bool (*mask)[width]) {
-    float acc = 0;
-
-    int kernel_radius = 1;
-    int kernel_diameter = kernel_radius * 2 + 1;
-    for (int ki = 0; ki < kernel_diameter; ki++) {
-        for (int kj = 0; kj < kernel_diameter; kj++) {
-            int inner_i = clamp(i + ki - kernel_radius, 0, height);
-            int inner_j = clamp(j + kj - kernel_radius, 0, width);
-            float avg = 0;
-            for (int ci = 0; ci < 3; ci++) {
-                avg += img[inner_i][inner_j][ci];
-            }
-            avg /= 3;
-            acc += avg * kernel[ki][kj];
-        }
-    }
-
-    return acc;
-}
+point vector_bisector(float ax, float ay, float bx, float by);
+float masked_convolute(int width, int height, char (*img)[width][3], int i, int j, float kernel[3][3], bool (*mask)[width]);
 
 
-    /*
-        Outline:
-        - Calculate border
-        - Calculate priority for all pixels in the border
-        - Find pixel with most priority
-        - Find patch most similar with the patch of the previous pixel
-        - Copy patchs
-        - Loop (until no border)
+/*
+    Outline:
+    - Calculate border
+    - Calculate priority for all pixels in the border
+    - Find pixel with most priority
+    - Find patch most similar with the patch of the previous pixel
+    - Copy patches
+    - Loop until image is filled
+*/
 
-        Dummy Algorithm:
-        Make all steps iterating through all the image/arrays
 
-        GPU Version:
-        Border calculation can distribute over pixels
-        Pixel with most priority is a reduce operation
-        Find most similar patch is a reduce operation
-        Patch copy can distribute over pixels (although its cost is negligent)
-
-        OP Algorithm:
-        Maintain a Heap linked with the mask Matrix (heap is a max heap on priority over pixel borders).
-        Take advantange of the fact that at the end of the loop, most info is the same.
-        When we copy a patch, we look for the pixels the change affected.
-        For filled pixels, we use the matrix values to remove said pixels from the heap.
-        For the new border pixels, we insert them into the heap.
-        In every heap operation we update the matrix so that each element in the border points to the index of said pixel in the heap.
-        We recalculate priorities in a similar fashion (around the patch).
-        Once we're done, we pop from the heap and find our pixel with most priority.
-        Then we find the minimum iterating through all the image ( =( ).
-        We copy the patch and start over.
-    */
 clock_t start, end;
 float count;
 
@@ -383,4 +297,41 @@ void generate_arbitrary_mask(bool * dst, int width, int height) {
             }
         }
     }
+}
+
+
+// Calculates angle of vectors between vectors (ax, ay) and (bx, by)
+point vector_bisector(float ax, float ay, float bx, float by) {
+    float b_angle = atan2f(ay, ax);
+    float a_angle = atan2f(by, bx);
+    if (b_angle < a_angle) b_angle += 2 * PI;
+    float diff_angle = b_angle - a_angle;
+    float mid_angle = (diff_angle / 2) + a_angle;
+    return (point) { cos(mid_angle), sin(mid_angle) };
+}
+
+
+
+// Convolution with a 3x3 kernel that handles edges via mirroring (ignores mask)
+// TODO: Mask ignore
+// TODO: Linus is a meanie: https://lkml.org/lkml/2015/9/3/428
+float masked_convolute(int width, int height, char (*img)[width][3], int i, int j, float kernel[3][3], bool (*mask)[width]) {
+    float acc = 0;
+
+    int kernel_radius = 1;
+    int kernel_diameter = kernel_radius * 2 + 1;
+    for (int ki = 0; ki < kernel_diameter; ki++) {
+        for (int kj = 0; kj < kernel_diameter; kj++) {
+            int inner_i = clamp(i + ki - kernel_radius, 0, height);
+            int inner_j = clamp(j + kj - kernel_radius, 0, width);
+            float avg = 0;
+            for (int ci = 0; ci < 3; ci++) {
+                avg += img[inner_i][inner_j][ci];
+            }
+            avg /= 3;
+            acc += avg * kernel[ki][kj];
+        }
+    }
+
+    return acc;
 }
