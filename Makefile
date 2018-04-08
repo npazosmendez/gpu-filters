@@ -29,7 +29,7 @@ $(EXEC): $(OBJECTS) main.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LIBS) -o $@
 
 # Apps
-APPS := picture
+APPS := inpainter
 
 apps: CPPFLAGS += -O3
 apps: $(APPS)

@@ -9,7 +9,7 @@
 # Bins
 main
 gpu-filters
-picture
+inpainter
 
 # Directories
 docs/
