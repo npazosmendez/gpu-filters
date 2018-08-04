@@ -23,22 +23,19 @@ void initHoughC(int width, int height, int a_ammount, int p_ammount){
     float a_min = 0;
     float a_step = (a_max-a_min)/a_ammount;
 
-    int alto = p_ammount;
-    int ancho = a_ammount;
-
-    alfas = malloc(ancho * sizeof(int));
+    alfas = malloc(a_ammount * sizeof(int));
     /* NOTE: second optimization that made a really big difference,
     having cos a sin precomputed
     */
-    cos_alfas = malloc(ancho * sizeof(int));
-    sin_alfas =  malloc(ancho * sizeof(int));
-    for (int i = 0; i < ancho; ++i){
+    cos_alfas = malloc(a_ammount * sizeof(int));
+    sin_alfas =  malloc(a_ammount * sizeof(int));
+    for (int i = 0; i < a_ammount; ++i){
         alfas[i] = a_min+a_step*i;
         cos_alfas[i] = cos(alfas[i]);
         sin_alfas[i] = sin(alfas[i]);
     }    
-    pp = malloc(alto* sizeof(int));
-    for (int i = 0; i < alto; ++i){
+    pp = malloc(p_ammount* sizeof(int));
+    for (int i = 0; i < p_ammount; ++i){
         pp[i] = p_min+p_step*i;
     }
     
@@ -52,6 +49,9 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
     - src: pointer to matrix of char[3], representing an RGB image.
     - width: width of the image (in pixels)
     - height: height of the image (in pixels)
+    - a_ammount: line angle granularity, quantity considered in [0, PI]
+    - p_ammount: line position granularity, quantity considered along image diagonal
+    - counter: pointer to matrix of char[3], to output hough transform of edge pixels
     */
     if(!C_hough_initialized) initHoughC(width, height, a_ammount, p_ammount);
 
@@ -60,19 +60,15 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
     src = 0;
     counter = 0;
 
-    memcpy (edgesRGB, imgRGB, width*height*3 );
+    memcpy(edgesRGB, imgRGB, width*height*3 );
 
-    canny((char*)edgesRGB, width, height, 70, 30);
-    canny((char*)imgRGB, width, height, 70, 30);
+    canny((char*)edgesRGB, width, height, 60, 30);
     
     int contador[a_ammount][p_ammount];
-    for (int y = 0; y < p_ammount; ++y){
-        for (int x = 0; x < a_ammount; ++x){
-           contador[y][x] = 0;
-        }
-    }
+    memset(contador, 0, a_ammount*p_ammount*sizeof(int));
+
     int max = 1;
-    // the canny algorithm is not yet considering bounds,
+    // TODO: the canny algorithm is not yet considering bounds,
     // so we ignore them. should be fixed in the future 
     for (int y = 10; y < height-10; ++y){
         for (int x = 10; x < width-10; ++x){
@@ -110,7 +106,7 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
         }
     }
 
-    
+    /* draw counter in buffer */
     for (int y = 0; y < p_ammount; ++y){
         for (int x = 0; x < a_ammount; ++x){
             int val = contador[y][x];
@@ -120,54 +116,48 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
         }
     }
     
+    /* find peaks in counter */
+    int window = 10;
     int threshold = max/2;
-    for (int y = 5; y < p_ammount-5; ++y){
-        for (int x = 5; x < a_ammount-5; ++x){
+    for (int y = 1; y < p_ammount-1; ++y){
+        for (int x = 1; x < a_ammount-1; ++x){
             int val = contador[y][x];
             if (val > threshold){
-                if(contador[y-1][x] > val) continue;
-                if(contador[y+1][x] > val) continue;
-                if(contador[y][x-1] > val) continue;
-                if(contador[y][x+1] > val) continue;
-                if(contador[y+1][x+1] > val) continue;
-                if(contador[y-1][x+1] > val) continue;
-                if(contador[y+1][x-1] > val) continue;
-                if(contador[y-1][x-1] > val) continue;
-
+                for(int dy = y-window/2; dy < y+window/2; dy++){
+                    for(int dx = x-window/2; dx < x+window/2; dx++){
+                        if(dy > 0 && dx > 0 
+                            && dy < p_ammount 
+                            && dx < a_ammount 
+                            && contador[dy][dx] > val){
+                            // forgive me, lord
+                            goto not_local_max;
+                        }
+                    }
+                }
+                /* mark it on counter */
                 counterRGB[(y)*a_ammount+(x)][0] = 0;
                 counterRGB[(y)*a_ammount+(x)][1] = 0;
                 counterRGB[(y)*a_ammount+(x)][2] = 255;
+                
+                /* overlay line in image */
                 int ai = x;
                 int pi = y;
-                float alpha = alfas[ai];
                 float p = pp[pi];
-                float m2 = sin(alpha)/(cos(alpha)+0.00001);
+                float m2 = sin_alfas[ai]/(cos_alfas[ai]+0.00001);
                 float m1 = -1.0 / (m2 + 0.00001);
-                float b = p / (sin(alpha) + 0.00001);
-                for (int xx = 0; xx < width; ++xx)
-                {
+                float b = p / (sin_alfas[ai] + 0.00001);
+                for (int xx = 0; xx < width; ++xx){
                     int yy = b+xx*m1;
                     if (yy < height && yy >= 0)
-                    {
-                    imgRGB[LINEAR(yy,xx)][0] = 255;
-                    }
+                        imgRGB[LINEAR(yy,xx)][2] = 255;
                 }
             }
+            not_local_max:
+            continue;
         }
     }
 
-    counterRGB[0*a_ammount][0] = 255;
-    counterRGB[10*a_ammount][0] = 255;
-    counterRGB[20*a_ammount][0] = 255;
-    counterRGB[30*a_ammount][0] = 255;
-    counterRGB[40*a_ammount][0] = 255;
-    counterRGB[50*a_ammount][0] = 255;
-    counterRGB[60*a_ammount][0] = 255;
-    counterRGB[70*a_ammount][0] = 255;
-    counterRGB[80*a_ammount][0] = 255;
-    /*
-    
-    */
+    //canny((char*)imgRGB, width, height, 60, 30);
 
 }
 
