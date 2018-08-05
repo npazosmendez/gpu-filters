@@ -77,30 +77,38 @@ int main(int argc, char** argv) {
     p_ammount = 150;
     Mat counter(Size(a_ammount, p_ammount), CV_8UC3);
     pthread_t thread;
-    int ret = pthread_create(&thread, NULL, &flush_stream, NULL);
-    if (ret != 0){
-        exit(1);
-    }
-    /*
-    */
-    while (true) {
-        frame_requested = true;
-        unique_lock<std::mutex> lck(mtx);
-        condition_var.wait(lck);
-        stream.read(frame1);
-        frame_requested = false;
- 
+    if (!image){
+        int ret = pthread_create(&thread, NULL, &flush_stream, NULL);
+        if (ret != 0){
+            exit(1);
+        }
+        while (true) {
+            frame_requested = true;
+            unique_lock<std::mutex> lck(mtx);
+            condition_var.wait(lck);
+            stream.read(frame1);
+            frame_requested = false;
+
+            char *ptr = (char*)frame1.ptr();
+            char *ptrc = (char*)counter.ptr();
+            CL_hough(ptr, width, height, a_ammount, p_ammount,ptrc);
+            imshow("counter", counter); // show frame
+            imshow("video", frame1); // show frame
+            int time = 5;
+            if ((char)cv::waitKey(time) == 'q') break;
+        }
+    }else{
         char *ptr = (char*)frame1.ptr();
         char *ptrc = (char*)counter.ptr();
-        hough(ptr, width, height, a_ammount, p_ammount,ptrc);
+        CL_hough(ptr, width, height, a_ammount, p_ammount,ptrc);
+        //hough(ptr, width, height, a_ammount, p_ammount,ptrc);
         imshow("counter", counter); // show frame
         imshow("video", frame1); // show frame
-        int time = 5;
-         if (image){
-            time = 100000;
-        }
-        if ((char)cv::waitKey(time) == 'q') break;
+        int time = 1000000;
+        (char)cv::waitKey(time);
+
     }
+    
 
     pthread_join(thread, NULL);
     return 0;
