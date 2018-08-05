@@ -14,17 +14,11 @@ bool CL_hough_initialized = false;
 
 Buffer cl_hough_counter;
 Buffer cl_image_counter;
-Buffer clResult_float_;
 Buffer cl_charImage_;
-int intbool_;
-Buffer cl_intbool_;
 
 Kernel k_count_edges;
 Kernel k_draw_counter;
 Kernel k_find_peaks;
-Kernel k_max_edges_;
-Kernel k_hysteresis_;
-Kernel k_torgb_;
 
 void initCLHough(int width, int height, int a_ammount, int p_ammount){
     /* 1. Build PROGRAM from source, for specific context */
@@ -64,7 +58,7 @@ void initCLHough(int width, int height, int a_ammount, int p_ammount){
 void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, char* counter){
 
     float uthreshold = 70;
-    float lthreshold = 30;
+    float lthreshold = 20;
     CL_canny(src, width, height, uthreshold, lthreshold);
 
     if(!openCL_initialized) initCL();
