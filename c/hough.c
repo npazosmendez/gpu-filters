@@ -23,12 +23,12 @@ void initHoughC(int width, int height, int a_ammount, int p_ammount){
     float a_min = 0;
     float a_step = (a_max-a_min)/a_ammount;
 
-    alfas = malloc(a_ammount * sizeof(int));
+    alfas = malloc(a_ammount * sizeof(float));
     /* NOTE: second optimization that made a really big difference,
     having cos a sin precomputed
     */
-    cos_alfas = malloc(a_ammount * sizeof(int));
-    sin_alfas =  malloc(a_ammount * sizeof(int));
+    cos_alfas = malloc(a_ammount * sizeof(float));
+    sin_alfas =  malloc(a_ammount * sizeof(float));
     for (int i = 0; i < a_ammount; ++i){
         alfas[i] = a_min+a_step*i;
         cos_alfas[i] = cos(alfas[i]);
@@ -37,6 +37,7 @@ void initHoughC(int width, int height, int a_ammount, int p_ammount){
     pp = malloc(p_ammount* sizeof(int));
     for (int i = 0; i < p_ammount; ++i){
         pp[i] = p_min+p_step*i;
+
     }
     
     C_hough_initialized = true;
@@ -54,6 +55,10 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
     - counter: pointer to matrix of char[3], to output hough transform of edge pixels
     */
     if(!C_hough_initialized) initHoughC(width, height, a_ammount, p_ammount);
+
+    float p_max = sqrt(width*width + height*height);
+    float p_min = -p_max;
+    float p_step = (p_max-p_min)/p_ammount;
 
     unsigned char (*imgRGB)[3] = (unsigned char (*)[3])src;
     unsigned char (*counterRGB)[3] = (unsigned char (*)[3])counter;
@@ -75,31 +80,10 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
             if (edgesRGB[LINEAR(y,x)][0] > 100){
                 for (int ai = 0; ai < a_ammount; ++ai){
                     float p = x*cos_alfas[ai]+y*sin_alfas[ai];
-                    /*
-                    int p_index = 0;
-                    while(p_index < alto-1 && pp[p_index] <= p) p_index++;
+                    int p_index = round((p-p_min)/p_step);
                     contador[p_index][ai]++;
                     if (contador[p_index][ai] > max){
                         max = contador[p_index][ai];
-                    }
-                    */
-                    /*
-                    NOTE: first optimizacion that made a big difference,
-                    finding p_index with a binary search.
-                    */
-                    int l_index = 0;
-                    int h_index = p_ammount;
-                    while(l_index+1 < h_index){
-                        int p_index = (l_index+h_index)/2;
-                        if (pp[p_index] <= p){
-                            l_index = p_index;
-                        }else{
-                            h_index = p_index;
-                        }
-                    }
-                    contador[l_index][ai]++;
-                    if (contador[l_index][ai] > max){
-                        max = contador[l_index][ai];
                     }
                 }
             }
