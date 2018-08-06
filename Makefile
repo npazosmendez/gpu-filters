@@ -8,12 +8,20 @@ CSOURCES = $(wildcard c/*.c)
 CXXSOURCES = $(wildcard opencl/*.cpp ui/*.cpp)
 
 OBJECTS = $(CSOURCES:.c=.o) $(CXXSOURCES:.cpp=.o)
+
+ifeq ($(shell uname -s),Darwin)
+LIBS = `pkg-config --cflags --libs opencv` \
+	-lpthread
+endif
+ifeq ($(shell uname -s),Linux)
 LIBS = -I /usr/include/opencv2 \
     -L /usr/lib \
     -lopencv_video \
     -lopencv_core -lopencv_highgui \
     -lpthread
-#LIBS = `pkg-config --cflags --libs opencv` 
+endif
+
+
 ifeq ($(shell uname -s),Darwin)
 	LIBS += -framework OpenCL
 endif
@@ -34,7 +42,7 @@ $(EXEC): $(OBJECTS) main.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LIBS) -o $@
 
 # Apps
-APPS := inpainter flowdetector linedetector
+APPS := inpainter linedetector
 
 apps: CPPFLAGS += -O3
 apps: $(APPS)
