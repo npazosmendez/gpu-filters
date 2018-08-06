@@ -249,7 +249,7 @@ __kernel void max_edges(
                 temp = EDGE;
             }else if(Gm > lthreshold){
                 // May be an edge
-                temp = CANDIDATE;
+				temp = CANDIDATE;
             }
         }
 
@@ -264,7 +264,7 @@ __kernel void hysteresis(
     ) {
         int i = get_global_id(0);
         int j = get_global_id(1);
-        if(src[LINEAR(i,j)] == 50){
+        if(src[LINEAR(i,j)] == CANDIDATE){
             bool expand = false;
             // NOTE: should I only check the gradient direction?
             // There are different versions
@@ -277,7 +277,7 @@ __kernel void hysteresis(
             expand |= (src[LINEAR(i,j-1)]==255);
             expand |= (src[LINEAR(i,j+1)]==255);
             if(expand){
-                src[LINEAR(i,j)] = 255;
+                src[LINEAR(i,j)] = EDGE;
                 if (*intbool == 0) atomic_cmpxchg (intbool, 0, 1);
             }
         }

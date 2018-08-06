@@ -1,13 +1,11 @@
 #include "c-filters.h"
-#include "convolution.h"
 #include "math.h"
 #include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
+#include "cutils.h"
 
-#ifndef M_PI
 #define M_PI 3.14159265358979323846
-#endif
 
 #define EDGE 255
 #define CANDIDATE 100

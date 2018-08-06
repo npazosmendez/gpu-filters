@@ -41,3 +41,14 @@ To get eveything needed to compile run:
 ```shell
 sudo apt-get install libopencv-dev
 ```
+
+# What is left
+- Better line drawing algorithm
+- Lucas-Kanade C version
+- Lucas-Kanade OpenCL version
+- Hough line-detection OpenCL version
+- Inpainting OpenCL version
+- Handle boundaries (image borders) in all algorithms
+- Optimize all OpenCL code
+- Test / validate current implementations
+- Create a friendly UI
