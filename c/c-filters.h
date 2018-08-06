@@ -9,4 +9,8 @@ void inpainting(char * ptr, int width, int height, bool * mask);
 
 void generate_arbitrary_mask(bool * dst, int width, int height);
 
+void init(int width, int height, char * ptr, bool * mask_ptr);
+
+bool step(int width, int height, char * ptr, bool * mask_ptr);
+
 #endif

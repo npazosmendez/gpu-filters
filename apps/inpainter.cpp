@@ -1,6 +1,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <stdlib.h>
 #include <iostream>
 #include <string>
 extern "C" {
@@ -11,20 +12,30 @@ extern "C" {
 using namespace cv;
 using namespace std;
 
+// TODO
+// 1. 'I' should do nothing if there's no mask
+// 2. Image should be zoomed to see better
+// 3. Start designing how the debug info will be plotted
+
 // I fucking love macros
 #define LINEAR(y,x) (y)*width+(x)
 
+void edit_iteration();
+void inpaint_iteration();
+void paint_mask(Mat img);
 void overlay(Mat image, string text);
 void on_mouse(int event, int x, int y, int flags, void* userdata);
 
 int width;
 int height;
 
-Mat img_original;
-Mat img_inpainted;
-Mat img_masked;
+Mat img_original; // original image
+Mat img_inpainted; // latest inpainted image (mutated by algorithm)
+Mat img_masked; // image with black mask showed in fill mode
+Mat img_step; // image shown when stepping through the algorithm
 bool* mask_ptr;
 
+bool inpaint_mode;
 bool fill_mode;
 int cursor_radius;
 
@@ -33,13 +44,17 @@ int cursor_radius;
     - Original
     - Filled
 
-    You change between these two modes with 'C'
+    You Change between these two modes with 'C'
 
     In Original mode you can't do anything.
     In Filled mode you can draw a mask with the mouse,
     which will be shown above the image transparently.
 
-    With 'I', we attempt to inpaint with the mask.
+    With 'I', we attempt to Inpaint with the mask.
+    Inpainting is done in steps. Every time we press
+    'I' again, we do a single step of the algorithm.
+    Pressing 'T' will Terminate the inpaint mode by
+    running the algorithm until the end.
    */
 
 
@@ -63,11 +78,10 @@ int main( int argc, char** argv ) {
 
     // Setup
     img_inpainted = img_original.clone();
+    img_masked = img_original.clone();
 
     overlay(img_original, "Raw");
-    overlay(img_inpainted, "Filled");
-
-    img_masked = img_inpainted.clone();
+    overlay(img_masked, "Filled");
 
     fill_mode = true;
     cursor_radius = min(width, height) / 20;
@@ -80,38 +94,84 @@ int main( int argc, char** argv ) {
     setMouseCallback("picture", on_mouse, NULL);
 
     while (true) {
-        if (fill_mode) {
-            imshow("picture", img_masked);
+        if (inpaint_mode) {
+            inpaint_iteration();
         } else {
-            imshow("picture", img_original);
-        }
-
-        switch ((char) cv::waitKey(5)) {
-            case 'c':
-                fill_mode = !fill_mode;
-                break;
-            case 'i':
-                if (fill_mode) {
-                    inpainting((char*) img_inpainted.ptr(), width, height, mask_ptr);
-                    memset(mask_ptr, 0, height * width * sizeof(bool));
-                    img_masked = img_inpainted.clone();
-                }
-                break;
-            case 'q':
-                return 0;
+            edit_iteration();
         }
     }
-
 
     return 0;
 }
 
-bool dragging = false;
+void edit_iteration() {
+    if (fill_mode) {
+        imshow("picture", img_masked);
+    } else {
+        imshow("picture", img_original);
+    }
+
+    switch ((char) cv::waitKey(5)) {
+        case 'c':
+            fill_mode = !fill_mode;
+            break;
+        case 'i':
+            if (fill_mode) inpaint_mode = true;
+            break;
+        case 'q':
+            exit(EXIT_SUCCESS);
+    }
+}
+
+bool first_inpaint_iteration = true;
+bool last_inpaint_iteration = false;
+bool is_more;
+
+void inpaint_iteration() {
+    if (first_inpaint_iteration) {
+        init(width, height, (char*) img_inpainted.ptr(), mask_ptr);
+        first_inpaint_iteration = false;
+    }
+
+    img_step = img_inpainted.clone();
+    paint_mask(img_step);
+    imshow("picture", img_step);
+
+    switch ((char) cv::waitKey(5)) {
+        case 'i':
+            is_more = step(width, height, (char*) img_inpainted.ptr(), mask_ptr);
+            last_inpaint_iteration = !is_more;
+            break;
+        case 't':
+            while (true) {
+                is_more = step(width, height, (char*) img_inpainted.ptr(), mask_ptr);
+                if (!is_more) {
+                    last_inpaint_iteration = true;
+                    break;
+                }
+            }
+            break;
+        case 'q':
+            exit(EXIT_SUCCESS);
+    }
+
+    if (last_inpaint_iteration) {
+        memset(mask_ptr, 0, height * width * sizeof(bool));
+        img_masked = img_inpainted.clone();
+        overlay(img_masked, "Filled");
+        first_inpaint_iteration = true;
+        last_inpaint_iteration = false;
+        inpaint_mode = false;
+    }
+}
+
 
 // Returns value restricted to range [minimum, maximum]
 int clamp(int value, int minimum, int maximum) {
     return value < minimum ? minimum : value > maximum ? maximum : value;
 }
+
+bool dragging = false;
 
 void on_mouse(int event, int x, int y, int flags, void* userdata){
     if (fill_mode) {
@@ -130,6 +190,16 @@ void on_mouse(int event, int x, int y, int flags, void* userdata){
                     mask_ptr[LINEAR(yi, xj)] = true;
                     img_masked.at<Vec3b>(Point(xj, yi)) = Vec3b(0, 0, 0);
                 }
+            }
+        }
+    }
+}
+
+void paint_mask(Mat img) {
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            if (mask_ptr[LINEAR(i, j)]) {
+                img.at<Vec3b>(Point(j, i)) = Vec3b(0, 0, 0);
             }
         }
     }
