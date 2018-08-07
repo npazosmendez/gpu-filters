@@ -10,14 +10,17 @@
 int PATCH_RADIUS = 4;
 float ALPHA = 255;
 
+#define LINEAR3(y,x,z) 3*((y)*width+(x))+(z)
+#define LINEAR(y,x) (y)*width+(x)
+
 point vector_bisector(float ax, float ay, float bx, float by);
-float masked_convolute(int width, int height, char (*img)[width][3], int i, int j, float kernel[3][3], bool (*mask)[width]);
+float masked_convolute(int width, int height, char * img, int i, int j, float kernel[3][3], bool * mask);
 
 #define MAX_LEN 2000
-bool contour_mask[MAX_LEN][MAX_LEN];
-float confidence[MAX_LEN][MAX_LEN];
-point gradient_t[MAX_LEN][MAX_LEN];
-point n_t[MAX_LEN][MAX_LEN];
+bool contour_mask[MAX_LEN*MAX_LEN];
+float confidence[MAX_LEN*MAX_LEN];
+point gradient_t[MAX_LEN*MAX_LEN];
+point n_t[MAX_LEN*MAX_LEN];
 
 /*
     Outline:
@@ -32,25 +35,19 @@ point n_t[MAX_LEN][MAX_LEN];
 clock_t start, end;
 float count;
 
-void inpaint_init(int width, int height, char * ptr, bool * mask_ptr) {
-
-    char (*img)[width][3] = (char (*)[width][3]) ptr;
-    bool (*mask)[width] = (bool (*)[width]) mask_ptr;
+void inpaint_init(int width, int height, char * img, bool * mask) {
 
     memset(confidence, 0, MAX_LEN*MAX_LEN*sizeof(float));
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            confidence[i][j] = mask[i][j] ? 0.0 : 1.0;
+            confidence[LINEAR(i,j)] = mask[LINEAR(i,j)] ? 0.0 : 1.0;
         }
     }
 }
 
-bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
-
-    char (*img)[width][3] = (char (*)[width][3]) ptr;
-    bool (*mask)[width] = (bool (*)[width]) mask_ptr;
+bool inpaint_step(int width, int height, char * img, bool * mask) {
 
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
     memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
@@ -62,12 +59,12 @@ bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            if (mask[i][j]) {
+            if (mask[LINEAR(i,j)]) {
                 for (int di = -1; di <= 1; di++) {
                     for (int dj = -1; dj <= 1; dj++) {
                         if (within(i + di, 0, height) && within(j + dj, 0, width)) {
-                            if (!mask[i + di][j + dj]) {
-                                contour_mask[i][j] = true;
+                            if (!mask[LINEAR(i + di, j + dj)]) {
+                                contour_mask[LINEAR(i,j)] = true;
                             }
                         }
                     }
@@ -78,7 +75,7 @@ bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
 
     int contour_size = 0;
     for (int i = 0; i < height; i++) for (int j = 0; j < width; j++) {
-        if (contour_mask[i][j] == true) contour_size++;
+        if (contour_mask[LINEAR(i,j)] == true) contour_size++;
     }
 
     if (contour_size == 0) {
@@ -100,7 +97,7 @@ bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
 
-            if (!contour_mask[i][j]) {
+            if (!contour_mask[LINEAR(i,j)]) {
                 continue;
             }
 
@@ -112,11 +109,11 @@ bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
             int top_l = min(j + PATCH_RADIUS + 1, width);
             for (int k = bot_k; k < top_k; k++) {
                 for (int l = bot_l; l < top_l; l++) {
-                    sum += confidence[k][l];
+                    sum += confidence[LINEAR(k,l)];
                 }
             }
 
-            confidence[i][j] = sum / (2 * PATCH_RADIUS + 1) * (2 * PATCH_RADIUS + 1);
+            confidence[LINEAR(i,j)] = sum / (2 * PATCH_RADIUS + 1) * (2 * PATCH_RADIUS + 1);
 
 
             // Gradient:
@@ -138,7 +135,7 @@ bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
             float gx_t = -gy;
             float gy_t = gx;
 
-            gradient_t[i][j] = (point) { .x = gx_t, .y = gy_t }; // TODO: Debug
+            gradient_t[LINEAR(i,j)] = (point) { .x = gx_t, .y = gy_t }; // TODO: Debug
             
             
             // Normal:
@@ -151,7 +148,7 @@ bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
             for (int k = 0; k < 8; k++) {
                 if (!within(i + di[k], 0, height) || \
                     !within(j + dj[k], 0, width) ||  \
-                    mask[i + di[k]][j + dj[k]]) {
+                    mask[LINEAR(i + di[k], j + dj[k])]) {
                     k_border = k;
                     break;
                 }
@@ -169,7 +166,7 @@ bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
                     int k = ((k_border + 1) + l) % 8;
                     bool is_out = !within(i + di[k], 0, height) ||  \
                                   !within(j + dj[k], 0, width);
-                    if ((is_out && !is_out_prev) || (mask[i + di[k]][j + dj[k]])){
+                    if ((is_out && !is_out_prev) || (mask[LINEAR(i + di[k], j + dj[k])])){
                         int ax = di[k_prev];
                         int ay = dj[k_prev];
                         int bx = di[k];
@@ -195,13 +192,13 @@ bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
                 ny_max= gy_t / g_norm;
             }
 
-            n_t[i][j] = (point) { .x = nx_max, .y = ny_max }; // TODO: Debug
+            n_t[LINEAR(i,j)] = (point) { .x = nx_max, .y = ny_max }; // TODO: Debug
 
             // Data
             float data = fabsf(gx_t * nx_max + gy_t * ny_max) / ALPHA;
 
             // Priority
-            float priority = confidence[i][j] * data;
+            float priority = confidence[LINEAR(i,j)] * data;
 
             // Update max
             if (priority > max_priority) {
@@ -241,15 +238,15 @@ bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
 
                     if (!within(source_i, 0, height) ||  \
                         !within(source_j, 0, width) ||   \
-                        mask[source_i][source_j]) {
+                        mask[LINEAR(source_i, source_j)]) {
                         valid = false;
                         goto out;
                     }
 
                     if (within(target_i, 0, height) &&  \
                         within(target_j, 0, width) &&   \
-                        !mask[target_i][target_j]) {
-                        squared_diff += squared_distance3(img[target_i][target_j], img[source_i][source_j]);
+                        !mask[LINEAR(target_i, target_j)]) {
+                        squared_diff += squared_distance3(img + LINEAR(target_i, target_j), img + LINEAR(source_i, source_j));
                     }
                 }
             }
@@ -285,11 +282,11 @@ bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
 
             if (within(target_i, 0, height) &&  \
                 within(target_j, 0, width) &&   \
-                mask[target_i][target_j]) {
-                img[target_i][target_j][0] = img[source_i][source_j][0];
-                img[target_i][target_j][1] = img[source_i][source_j][1];
-                img[target_i][target_j][2] = img[source_i][source_j][2];
-                mask[target_i][target_j] = false;
+                mask[LINEAR(target_i, target_j)]) {
+                img[LINEAR3(target_i, target_j, 0)] = img[LINEAR3(source_i, source_j, 0)];
+                img[LINEAR3(target_i, target_j, 1)] = img[LINEAR3(source_i, source_j, 1)];
+                img[LINEAR3(target_i, target_j, 2)] = img[LINEAR3(source_i, source_j, 2)];
+                mask[LINEAR(target_i, target_j)] = false;
             }
         }
     }
@@ -313,15 +310,14 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
 
 
 
-void inpaint_generate_arbitrary_mask(bool * dst, int width, int height) {
-    memset(dst, 0, width * height * sizeof(bool));
+void inpaint_generate_arbitrary_mask(bool * mask, int width, int height) {
+    memset(mask, 0, width * height * sizeof(bool));
 
-    bool (*mask)[width] = (bool (*)[width]) dst;
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             if (i >= height * 5.0/11.0 && i < height * 6.0/11.0) {
                 if (j >= width * 5.0/11.0 && j < width * 6.0/11.0) {
-                    mask[i][j] = true;
+                    mask[LINEAR(i, j)] = true;
                 }
             }
         }
@@ -341,7 +337,7 @@ point vector_bisector(float ax, float ay, float bx, float by) {
 // Convolution with a 3x3 kernel that handles edges via mirroring (ignores mask)
 // TODO: Mask ignore
 // TODO: Linus is a meanie: https://lkml.org/lkml/2015/9/3/428
-float masked_convolute(int width, int height, char (*img)[width][3], int i, int j, float kernel[3][3], bool (*mask)[width]) {
+float masked_convolute(int width, int height, char * img, int i, int j, float kernel[3][3], bool * mask) {
     float acc = 0;
 
     int kernel_radius = 1;
@@ -352,7 +348,7 @@ float masked_convolute(int width, int height, char (*img)[width][3], int i, int 
             int inner_j = clamp(j + kj - kernel_radius, 0, width);
             float avg = 0;
             for (int ci = 0; ci < 3; ci++) {
-                avg += img[inner_i][inner_j][ci];
+                avg += img[LINEAR3(inner_i, inner_j, ci)];
             }
             avg /= 3;
             acc += avg * kernel[ki][kj];
