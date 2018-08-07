@@ -7,8 +7,8 @@
 #include "float.h"
 #include "cutils.h"
 
-int PATCH_RADIUS = 4;
-float ALPHA = 255;
+static int PATCH_RADIUS = 4;
+static float ALPHA = 255;
 
 #define LINEAR3(y,x,z) 3*((y)*width+(x))+(z)
 #define LINEAR(y,x) (y)*width+(x)
