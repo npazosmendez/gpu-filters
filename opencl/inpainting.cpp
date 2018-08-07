@@ -1,39 +1,34 @@
-#include "c-filters.h"
 #include "stdio.h"
 #include "stdbool.h"
 #include "string.h"
 #include "math.h"
 #include "time.h"
 #include "float.h"
-#include "cutils.h"
+#include "../c/cutils.h"
+extern "C" {
+    #include "../c/c-filters.h"
+}
+#include "opencl-filters.hpp"
 
+/*
 int PATCH_RADIUS = 4;
 float ALPHA = 255;
-
-point vector_bisector(float ax, float ay, float bx, float by);
-float masked_convolute(int width, int height, char (*img)[width][3], int i, int j, float kernel[3][3], bool (*mask)[width]);
 
 #define MAX_LEN 2000
 bool contour_mask[MAX_LEN][MAX_LEN];
 float confidence[MAX_LEN][MAX_LEN];
 point gradient_t[MAX_LEN][MAX_LEN];
 point n_t[MAX_LEN][MAX_LEN];
-
-/*
-    Outline:
-    - Calculate border
-    - Calculate priority for all pixels in the border
-    - Find pixel with most priority
-    - Find patch most similar with the patch of the previous pixel
-    - Copy patches
-    - Loop until image is filled
 */
 
 clock_t start, end;
 float count;
 
-void inpaint_init(int width, int height, char * ptr, bool * mask_ptr) {
+void inpaint_ocl_init(int width, int height, char * ptr, bool * mask_ptr) {
 
+    return inpaint_init(width, height, ptr, mask_ptr);
+
+    /*
     char (*img)[width][3] = (char (*)[width][3]) ptr;
     bool (*mask)[width] = (bool (*)[width]) mask_ptr;
 
@@ -45,9 +40,14 @@ void inpaint_init(int width, int height, char * ptr, bool * mask_ptr) {
             confidence[i][j] = mask[i][j] ? 0.0 : 1.0;
         }
     }
+    */
 }
 
-bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
+bool inpaint_ocl_step(int width, int height, char * ptr, bool * mask_ptr) {
+
+    return inpaint_step(width, height, ptr, mask_ptr);
+
+    /*
 
     char (*img)[width][3] = (char (*)[width][3]) ptr;
     bool (*mask)[width] = (bool (*)[width]) mask_ptr;
@@ -299,65 +299,6 @@ bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr) {
     printf("Copy: %f\n", count);
 
     return 1;
+    */
 }
 
-
-void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
-    inpaint_init(width, height, ptr, mask_ptr);
-
-    while (true) {
-        bool is_more = inpaint_step(width, height, ptr, mask_ptr);
-        if (!is_more) break;
-    }
-}
-
-
-
-void inpaint_generate_arbitrary_mask(bool * dst, int width, int height) {
-    memset(dst, 0, width * height * sizeof(bool));
-
-    bool (*mask)[width] = (bool (*)[width]) dst;
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            if (i >= height * 5.0/11.0 && i < height * 6.0/11.0) {
-                if (j >= width * 5.0/11.0 && j < width * 6.0/11.0) {
-                    mask[i][j] = true;
-                }
-            }
-        }
-    }
-}
-
-// Calculates angle of vectors between vectors (ax, ay) and (bx, by)
-point vector_bisector(float ax, float ay, float bx, float by) {
-    float b_angle = atan2f(ay, ax);
-    float a_angle = atan2f(by, bx);
-    if (b_angle < a_angle) b_angle += 2 * PI;
-    float diff_angle = b_angle - a_angle;
-    float mid_angle = (diff_angle / 2) + a_angle;
-    return (point) { cos(mid_angle), sin(mid_angle) };
-}
-
-// Convolution with a 3x3 kernel that handles edges via mirroring (ignores mask)
-// TODO: Mask ignore
-// TODO: Linus is a meanie: https://lkml.org/lkml/2015/9/3/428
-float masked_convolute(int width, int height, char (*img)[width][3], int i, int j, float kernel[3][3], bool (*mask)[width]) {
-    float acc = 0;
-
-    int kernel_radius = 1;
-    int kernel_diameter = kernel_radius * 2 + 1;
-    for (int ki = 0; ki < kernel_diameter; ki++) {
-        for (int kj = 0; kj < kernel_diameter; kj++) {
-            int inner_i = clamp(i + ki - kernel_radius, 0, height);
-            int inner_j = clamp(j + kj - kernel_radius, 0, width);
-            float avg = 0;
-            for (int ci = 0; ci < 3; ci++) {
-                avg += img[inner_i][inner_j][ci];
-            }
-            avg /= 3;
-            acc += avg * kernel[ki][kj];
-        }
-    }
-
-    return acc;
-}

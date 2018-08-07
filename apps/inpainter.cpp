@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <string>
+#include <stdio.h>
 extern "C" {
     #include "c/c-filters.h"
 }
@@ -39,6 +40,9 @@ bool inpaint_mode;
 bool fill_mode;
 int cursor_radius;
 
+void (*picked_init)(int, int, char*, bool*);
+bool (*picked_step)(int, int, char*, bool*);
+
 /*
    Two modes:
     - Original
@@ -62,15 +66,30 @@ int cursor_radius;
 int main( int argc, char** argv ) {
 
     // Read Images
-    if (argc != 2) {
+    if (argc == 1) {
         cout << "Requires image path as parameter" << endl;
+        cout << "Usage: inpainter image_path [-cl]" << endl;
         return -1;
     }
 
     img_original = imread(argv[1], CV_LOAD_IMAGE_COLOR);
     if(!img_original.data) {
-        cout <<  "Could not open or find the image" << std::endl ;
+        cout <<  "Could not open or find the image" << endl;
         return -1;
+    }
+
+    picked_init = inpaint_init;
+    picked_step = inpaint_step;
+    if (argc > 2) {
+        if (string(argv[2]) == "-cl") {
+            cout << "Using OpenCL implementation..." << endl;
+            picked_init = inpaint_ocl_init;
+            picked_step = inpaint_ocl_step;
+        } else {
+            cout << "Unknown flag, aborting" << endl;
+            cout << "Did you mean '-cl'?" << endl;
+            return -1;
+        }
     }
 
     height = img_original.rows;
@@ -129,7 +148,7 @@ bool is_more;
 
 void inpaint_iteration() {
     if (first_inpaint_iteration) {
-        init(width, height, (char*) img_inpainted.ptr(), mask_ptr);
+        inpaint_init(width, height, (char*) img_inpainted.ptr(), mask_ptr);
         first_inpaint_iteration = false;
     }
 
@@ -139,12 +158,12 @@ void inpaint_iteration() {
 
     switch ((char) cv::waitKey(5)) {
         case 'i':
-            is_more = step(width, height, (char*) img_inpainted.ptr(), mask_ptr);
+            is_more = inpaint_step(width, height, (char*) img_inpainted.ptr(), mask_ptr);
             last_inpaint_iteration = !is_more;
             break;
         case 't':
             while (true) {
-                is_more = step(width, height, (char*) img_inpainted.ptr(), mask_ptr);
+                is_more = inpaint_step(width, height, (char*) img_inpainted.ptr(), mask_ptr);
                 if (!is_more) {
                     last_inpaint_iteration = true;
                     break;

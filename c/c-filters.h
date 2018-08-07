@@ -8,10 +8,8 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
 void inpainting(char * ptr, int width, int height, bool * mask);
 void opticalflow(char * ptr, char * ptr2, int width, int height);
 
-void generate_arbitrary_mask(bool * dst, int width, int height);
-
-void init(int width, int height, char * ptr, bool * mask_ptr);
-
-bool step(int width, int height, char * ptr, bool * mask_ptr);
+void inpaint_generate_arbitrary_mask(bool * dst, int width, int height);
+void inpaint_init(int width, int height, char * ptr, bool * mask_ptr);
+bool inpaint_step(int width, int height, char * ptr, bool * mask_ptr);
 
 #endif
