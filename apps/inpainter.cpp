@@ -83,8 +83,8 @@ int main( int argc, char** argv ) {
     if (argc > 2) {
         if (string(argv[2]) == "-cl") {
             cout << "Using OpenCL implementation..." << endl;
-            picked_init = inpaint_ocl_init;
-            picked_step = inpaint_ocl_step;
+            picked_init = CL_inpaint_init;
+            picked_step = CL_inpaint_step;
         } else {
             cout << "Unknown flag, aborting" << endl;
             cout << "Did you mean '-cl'?" << endl;
@@ -148,7 +148,7 @@ bool is_more;
 
 void inpaint_iteration() {
     if (first_inpaint_iteration) {
-        inpaint_init(width, height, (char*) img_inpainted.ptr(), mask_ptr);
+        picked_init(width, height, (char*) img_inpainted.ptr(), mask_ptr);
         first_inpaint_iteration = false;
     }
 
@@ -158,12 +158,12 @@ void inpaint_iteration() {
 
     switch ((char) cv::waitKey(5)) {
         case 'i':
-            is_more = inpaint_step(width, height, (char*) img_inpainted.ptr(), mask_ptr);
+            is_more = picked_step(width, height, (char*) img_inpainted.ptr(), mask_ptr);
             last_inpaint_iteration = !is_more;
             break;
         case 't':
             while (true) {
-                is_more = inpaint_step(width, height, (char*) img_inpainted.ptr(), mask_ptr);
+                is_more = picked_step(width, height, (char*) img_inpainted.ptr(), mask_ptr);
                 if (!is_more) {
                     last_inpaint_iteration = true;
                     break;

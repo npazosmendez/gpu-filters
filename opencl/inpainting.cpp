@@ -1,3 +1,5 @@
+#include <cl2.hpp>
+#include <iostream>
 #include "stdio.h"
 #include "stdbool.h"
 #include "string.h"
@@ -9,6 +11,9 @@ extern "C" {
     #include "../c/c-filters.h"
 }
 #include "opencl-filters.hpp"
+
+using namespace std;
+using namespace cl;
 
 static int PATCH_RADIUS = 4;
 static float ALPHA = 255;
@@ -25,6 +30,22 @@ float confidence[MAX_LEN*MAX_LEN];
 point gradient_t[MAX_LEN*MAX_LEN];
 point n_t[MAX_LEN*MAX_LEN];
 
+
+// OPENCL SHIT
+// +++++++++++
+
+Kernel k_find_source;
+
+void initCLInpainting(int width, int height){
+    cout << "Initializing OpenCL model for Inpainting\n";
+
+    /* 1. Build PROGRAM from source, for specific context */
+    //createProgram("inpainting.cl");
+
+    /*2. Create kernels */
+    //k_find_source = Kernel(program, "find_source");
+}
+
 /*
     Outline:
     - Calculate border
@@ -35,10 +56,17 @@ point n_t[MAX_LEN*MAX_LEN];
     - Loop until image is filled
 */
 
-clock_t start, end;
-float count;
+clock_t tstart, tend;
+float tcount;
 
-void inpaint_ocl_init(int width, int height, char * img, bool * mask) {
+void CL_inpaint_init(int width, int height, char * img, bool * mask) {
+
+    cout << "HOLAAAAAAAAAA\n";
+    cout << "HOLAAAAAAAAAA\n";
+    cout << "HOLAAAAAAAAAA\n";
+
+    if(!openCL_initialized) initCL();
+    initCLInpainting(width, height);
 
     memset(confidence, 0, MAX_LEN*MAX_LEN*sizeof(float));
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
@@ -50,7 +78,7 @@ void inpaint_ocl_init(int width, int height, char * img, bool * mask) {
     }
 }
 
-bool inpaint_ocl_step(int width, int height, char * img, bool * mask) {
+bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
 
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
     memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
@@ -58,7 +86,7 @@ bool inpaint_ocl_step(int width, int height, char * img, bool * mask) {
 
     // 1. CALCULATE CONTOUR
     // ++++++++++++++++++++
-    start = clock();
+    tstart = clock();
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
@@ -85,13 +113,13 @@ bool inpaint_ocl_step(int width, int height, char * img, bool * mask) {
         return 0;
     }
 
-    end = clock();
-    count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Contour (size = %d): %f\n", contour_size, count);
+    tend = clock();
+    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
+    printf("Contour (size = %d): %f\n", contour_size, tcount);
 
     // 2. FIND TARGET PATCH
     // ++++++++++++++++++++
-    start = clock();
+    tstart = clock();
 
     int max_i = -1;
     int max_j = -1;
@@ -213,13 +241,13 @@ bool inpaint_ocl_step(int width, int height, char * img, bool * mask) {
         }
     }
 
-    end = clock();
-    count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Target patch (%d, %d): %f\n", max_i, max_j, count);
+    tend = clock();
+    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
+    printf("Target patch (%d, %d): %f\n", max_i, max_j, tcount);
 
     // 3. FIND SOURCE PATCH
     // ++++++++++++++++++++
-    start = clock();
+    tstart = clock();
 
     // (max_i, max_j) is the target patch
     float min_squared_diff = FLT_MAX;
@@ -264,13 +292,13 @@ bool inpaint_ocl_step(int width, int height, char * img, bool * mask) {
         }
     }
 
-    end = clock();
-    count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Source patch(%d, %d): %f\n", max_source_i, max_source_j, count);
+    tend = clock();
+    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
+    printf("Source patch(%d, %d): %f\n", max_source_i, max_source_j, tcount);
 
     // 4. COPY
     // +++++++
-    start = clock();
+    tstart = clock();
 
     if (min_squared_diff == -1) {
         return 0; // Abort mission
@@ -294,9 +322,9 @@ bool inpaint_ocl_step(int width, int height, char * img, bool * mask) {
         }
     }
 
-    end = clock();
-    count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Copy: %f\n", count);
+    tend = clock();
+    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
+    printf("Copy: %f\n", tcount);
 
     return 1;
 }

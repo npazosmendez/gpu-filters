@@ -10,8 +10,8 @@ void CL_convoluion2D(float* src, int width, int height, float * kernel_img, int 
 void CL_canny(char * src, int width, int height, float uthreshold, float lthreshold);
 void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, char* counter);
 
-void inpaint_ocl_init(int width, int height, char * ptr, bool * mask_ptr);
-bool inpaint_ocl_step(int width, int height, char * ptr, bool * mask_ptr);
+void CL_inpaint_init(int width, int height, char * ptr, bool * mask_ptr);
+bool CL_inpaint_step(int width, int height, char * ptr, bool * mask_ptr);
 
 /* OpenCL setup and config */
 
@@ -28,5 +28,7 @@ char *getCLErrorString(cl_int err);
 void printImageFormat(cl::ImageFormat format);
 void clHandleError(std::string file, int line, cl_int err);
 void clHandleError(cl_int err);
+
+void createProgram(std::string filename);
 
 #endif

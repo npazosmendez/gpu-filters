@@ -1,6 +1,7 @@
 #include "opencl-filters.hpp"
 #include <cl2.hpp>
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 using namespace cl;
@@ -43,6 +44,23 @@ void initCL(){
     openCL_initialized = true;
 
 }
+
+void createProgram(string filename) {
+    ifstream sourceFile(std::string("opencl/") + filename);
+    /* NOTE: reading the source code from another file
+    during runtime makes the binary's location important.
+    Not good. */
+    if (!sourceFile.is_open()) {
+        cerr << "Can't open CL kernel source." << endl;
+        exit(1);
+    }
+    string sourceCode(istreambuf_iterator<char>(sourceFile), (istreambuf_iterator<char>()));
+    Program::Sources sources(1, sourceCode);
+    program = Program(context, sources);
+    program.build(context.getInfo<CL_CONTEXT_DEVICES>());
+}
+
+
 
 void printImageFormat(ImageFormat format){
     #define CASE(order) case order: cout << #order; break;

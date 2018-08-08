@@ -23,18 +23,7 @@ Kernel k_torgb;
 
 void initCLCanny(int width, int height){
     /* 1. Build PROGRAM from source, for specific context */
-    ifstream sourceFile("opencl/canny.cl");
-    /* NOTE: reading the source code from another file
-    during runtime makes the binary's location important.
-    Not good. */
-    if (!sourceFile.is_open()) {
-        cerr << "Can't open CL kernel source." << endl;
-        exit(1);
-    }
-    string sourceCode(istreambuf_iterator<char>(sourceFile), (istreambuf_iterator<char>()));
-    Program::Sources sources(1, sourceCode);
-    program = Program(context, sources);
-    program.build(context.getInfo<CL_CONTEXT_DEVICES>());
+    createProgram("canny.cl");
 
     /*2. Create kernels */
     k_intensity_gauss = Kernel(program, "intensity_gauss_filter");
