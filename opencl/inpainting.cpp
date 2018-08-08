@@ -253,10 +253,8 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     float min_squared_diff = FLT_MAX;
     int max_source_i = -1;
     int max_source_j = -1;
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-
-            bool valid = true;
+    for (int i = PATCH_RADIUS; i < height - PATCH_RADIUS; i++) {
+        for (int j = PATCH_RADIUS; j < width - PATCH_RADIUS; j++) {
 
             // Sum
             float squared_diff = 0;
@@ -267,11 +265,10 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
                     int source_i = i + ki;
                     int source_j = j + kj;
 
-                    if (!within(source_i, 0, height) ||  \
-                        !within(source_j, 0, width) ||   \
-                        mask[LINEAR(source_i, source_j)]) {
-                        valid = false;
-                        goto out;
+                    assert(within(LINEAR(source_i, source_j), 0, width*height));
+
+                    if (mask[LINEAR(source_i, source_j)]) {
+                        goto next_patch;
                     }
 
                     if (within(target_i, 0, height) &&  \
@@ -281,7 +278,6 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
                     }
                 }
             }
-            out: if (!valid) continue;
 
             // Update
             if (squared_diff < min_squared_diff) {
@@ -289,6 +285,8 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
                 max_source_i = i;
                 max_source_j = j;
             }
+
+            next_patch: ;
         }
     }
 
