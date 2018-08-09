@@ -34,16 +34,29 @@ point n_t[MAX_LEN*MAX_LEN];
 // OPENCL SHIT
 // +++++++++++
 
-Kernel k_find_source;
+Kernel k_target_diffs;
+
+Buffer b_img;
+Buffer b_mask;
 
 void initCLInpainting(int width, int height){
     cout << "Initializing OpenCL model for Inpainting\n";
 
     /* 1. Build PROGRAM from source, for specific context */
-    //createProgram("inpainting.cl");
+    createProgram("inpainting.cl");
 
     /*2. Create kernels */
-    //k_find_source = Kernel(program, "find_source");
+    k_target_diffs = Kernel(program, "target_diffs");
+
+    /* 3. Buffers setup */
+    cl_int err = 0;
+
+    // Buffer for storing the image in rgb (uchar3)
+    b_img = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
+    clHandleError(__FILE__,__LINE__,err);
+
+    b_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
+    clHandleError(__FILE__,__LINE__,err);
 }
 
 /*
@@ -60,10 +73,6 @@ clock_t tstart, tend;
 float tcount;
 
 void CL_inpaint_init(int width, int height, char * img, bool * mask) {
-
-    cout << "HOLAAAAAAAAAA\n";
-    cout << "HOLAAAAAAAAAA\n";
-    cout << "HOLAAAAAAAAAA\n";
 
     if(!openCL_initialized) initCL();
     initCLInpainting(width, height);
@@ -248,6 +257,40 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     // 3. FIND SOURCE PATCH
     // ++++++++++++++++++++
     tstart = clock();
+
+    // ++++++++++++++
+    // OPENCL TESTING
+
+    // Memory Object Creation
+    //cl::Buffer buffer_A(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * n, NULL, &err);
+    //cl::Buffer buffer_A(context, CL_MEM_READ_WRITE, sizeof(int) * n, NULL, &err);
+    //clHandleError(__FILE__, __LINE__, err);
+
+    //cl::Buffer buffer_result(context, CL_MEM_READ_WRITE, sizeof(int) * n, NULL, &err);
+    //clHandleError(__FILE__, __LINE__, err);
+
+    // Write to Device
+	//err = queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int) * n, A);
+	//clHandleError(__FILE__,__LINE__,err);
+
+    // Kernel Execute
+    cl_int err = 0;
+    err = queue.enqueueNDRangeKernel(
+        k_target_diffs,
+        NullRange,
+        NDRange(width, height),
+        NullRange // default
+    );
+	clHandleError(__FILE__,__LINE__,err);
+
+    //queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int)*n, A);
+	//clHandleError(__FILE__,__LINE__,err);
+
+    // OPENCL TESTING
+    // ++++++++++++++
+
+
+
 
     // (max_i, max_j) is the target patch
     float min_squared_diff = FLT_MAX;
