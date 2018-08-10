@@ -38,6 +38,9 @@ Kernel k_target_diffs;
 
 Buffer b_img;
 Buffer b_mask;
+Buffer b_best_source;
+
+cl_int best_source[2];
 
 void initCLInpainting(int width, int height){
     cout << "Initializing OpenCL model for Inpainting\n";
@@ -55,7 +58,12 @@ void initCLInpainting(int width, int height){
     b_img = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 
+    // Buffer for storing the mask
     b_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
+    clHandleError(__FILE__,__LINE__,err);
+
+    // Buffer for storing the optimum source (as a (x,y) coordinate)
+    b_best_source = Buffer(context, CL_MEM_USE_HOST_PTR, sizeof(cl_int)*2, best_source, &err);
     clHandleError(__FILE__,__LINE__,err);
 }
 
@@ -261,20 +269,24 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     // ++++++++++++++
     // OPENCL TESTING
 
-    // Memory Object Creation
-    //cl::Buffer buffer_A(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * n, NULL, &err);
-    //cl::Buffer buffer_A(context, CL_MEM_READ_WRITE, sizeof(int) * n, NULL, &err);
-    //clHandleError(__FILE__, __LINE__, err);
-
-    //cl::Buffer buffer_result(context, CL_MEM_READ_WRITE, sizeof(int) * n, NULL, &err);
-    //clHandleError(__FILE__, __LINE__, err);
+    cl_int err = 0;
 
     // Write to Device
-	//err = queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int) * n, A);
-	//clHandleError(__FILE__,__LINE__,err);
+	err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
+	clHandleError(__FILE__,__LINE__,err);
+
+	err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
+	clHandleError(__FILE__,__LINE__,err);
+
+    cl_int target_i = 5;
+    cl_int target_j = 9;
 
     // Kernel Execute
-    cl_int err = 0;
+    k_target_diffs.setArg(0, b_img);
+    k_target_diffs.setArg(1, b_mask);
+    k_target_diffs.setArg(2, target_i);
+    k_target_diffs.setArg(3, target_j);
+    k_target_diffs.setArg(4, b_best_source);
     err = queue.enqueueNDRangeKernel(
         k_target_diffs,
         NullRange,
@@ -283,13 +295,13 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     );
 	clHandleError(__FILE__,__LINE__,err);
 
+    printf("Source: %i, %i\n\n", best_source[0], best_source[1]);
+
     //queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int)*n, A);
 	//clHandleError(__FILE__,__LINE__,err);
 
     // OPENCL TESTING
     // ++++++++++++++
-
-
 
 
     // (max_i, max_j) is the target patch
