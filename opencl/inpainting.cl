@@ -35,6 +35,7 @@ __kernel void target_diffs(
     int img_b = img[3*(y*width+x)+2];
 
     // Test input and output
+    /*
     if (x == 10 && y == 10) {
         int img_r = img[3*(y*width+x)+0];
         int img_g = img[3*(y*width+x)+1];
@@ -43,6 +44,7 @@ __kernel void target_diffs(
         printf(" IN KERNEL\n");
         printf(" target:(%i,%i), img:(%i,%i,%i), mask:%i\n", best_target.x, best_target.y, img_r, img_g, img_b, mask_c);
     }
+    */
 
     // Sum
     float squared_diff = 0;
@@ -57,9 +59,9 @@ __kernel void target_diffs(
             if (!within(real_x, 0, width) ||
                 !within(real_y, 0, height) ||
                 mask[LINEAR(real_x, real_y)]) {
-                diffs[LINEAR(x, y)] = 1.0;
-                //printf("Aborting with %f\n", diffs[LINEAR(x, y)]);
-                squared_diff += 10000.0;
+                squared_diff += 100000000.0;
+                // NOT WORKING, WEIRD
+                //diffs[LINEAR(x, y)] = 1.0;
                 //return;
             }
 

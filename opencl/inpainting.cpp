@@ -324,16 +324,24 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
 
     float cl_min_diff = FLT_MAX;
     for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) {
+//        printf("(%i, %i) = %f\n", x, y, diffs[LINEAR(y,x)]);
         if (diffs[LINEAR(y,x)] < 0.001) {
             printf("Diff close to 0 at (%i, %i)\n", x, y);
         }
     }
 
-    for (int i = 0; i < width*height; i++) {
-        cl_min_diff = min(float(diffs[i]), cl_min_diff);
+    int cl_min_source_i = -1;
+    int cl_min_source_j = -1;
+
+    for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) {
+        if (float(diffs[LINEAR(y,x)]) < cl_min_diff) {
+            cl_min_diff = diffs[LINEAR(y,x)];
+            cl_min_source_i = y;
+            cl_min_source_j = x;
+        }
     }
 
-    printf("OCL MIN = %f\n", cl_min_diff);
+    //printf(" OCL MIN = %f\n", cl_min_diff);
 
     /*
     printf("Arbitrary Diff: %f\n", diffs[15]);
@@ -343,6 +351,8 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     */
 
 
+
+
     //queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int)*n, A);
 	//clHandleError(__FILE__,__LINE__,err);
 
@@ -350,14 +360,13 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     // ++++++++++++++
 
 
-
-
+    /*
     // (max_i, max_j) is the target patch
     float min_squared_diff = FLT_MAX;
-    int max_source_i = -1;
-    int max_source_j = -1;
-    for (int i = PATCH_RADIUS; i < height - PATCH_RADIUS; i++) {
-        for (int j = PATCH_RADIUS; j < width - PATCH_RADIUS; j++) {
+    int min_source_i = -1;
+    int min_source_j = -1;
+    for (int j = PATCH_RADIUS; j < width - PATCH_RADIUS; j++) {
+        for (int i = PATCH_RADIUS; i < height - PATCH_RADIUS; i++) {
 
             // Sum
             float squared_diff = 0;
@@ -368,49 +377,53 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
                     int source_i = i + ki;
                     int source_j = j + kj;
 
+                    assert(within(LINEAR(source_i, source_j), 0, width*height));
+
                     if (mask[LINEAR(source_i, source_j)]) {
-                        goto next_patch;
+                        squared_diff += 100000000.0;
                     }
 
                     if (within(target_i, 0, height) &&  \
                         within(target_j, 0, width) &&   \
                         !mask[LINEAR(target_i, target_j)]) {
-                        squared_diff += squared_distance3(img + LINEAR(target_i, target_j), img + LINEAR(source_i, source_j));
+                        squared_diff += squared_distance3(img + 3*LINEAR(target_i, target_j), img + 3*LINEAR(source_i, source_j));
                     }
                 }
             }
 
+
             // Update
             if (squared_diff < min_squared_diff) {
                 min_squared_diff = squared_diff;
-                max_source_i = i;
-                max_source_j = j;
+                min_source_i = i;
+                min_source_j = j;
             }
 
             next_patch: ;
+
+            //printf("(%i, %i) = %f\n", j, i, squared_diff);
         }
     }
 
-    printf("C MIN = %f\n", min_squared_diff);
+    printf(" C MIN = %f\n", min_squared_diff);
 
+    */
     tend = clock();
     tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-    printf("Source patch(%d, %d): %f\n", max_source_i, max_source_j, tcount);
+    printf("Source patch(%d, %d): %f\n", cl_min_source_i, cl_min_source_j, tcount);
 
     // 4. COPY
     // +++++++
     tstart = clock();
 
-    if (min_squared_diff == -1) {
-        return 0; // Abort mission
-    }
-
     for (int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++) {
         for (int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++) {
             int target_i = max_i + ki;
             int target_j = max_j + kj;
-            int source_i = max_source_i + ki;
-            int source_j = max_source_j + kj;
+            //int source_i = min_source_i + ki;
+            //int source_j = min_source_j + kj;
+            int source_i = cl_min_source_i + ki;
+            int source_j = cl_min_source_j + kj;
 
             if (within(target_i, 0, height) &&  \
                 within(target_j, 0, width) &&   \
