@@ -17,6 +17,9 @@ docs/
 imgs/
 vids/
 
-# Ides
+# Ide
 .vscode
+.syntastic_cpp_config
 
+# Misc
+.DS_Store

@@ -6,6 +6,7 @@
 #include "math.h"
 #include "time.h"
 #include "float.h"
+#include <stdint.h>
 extern "C" {
     #include "../c/cutils.h"
     #include "../c/c-filters.h"
@@ -18,8 +19,8 @@ using namespace cl;
 static int PATCH_RADIUS = 4;
 static float ALPHA = 255;
 
-#define LINEAR3(y,x,z) 3*((y)*width+(x))+(z)
-#define LINEAR(y,x) (y)*width+(x)
+#define LINEAR3(y,x,z) (3*((y)*width+(x))+(z))
+#define LINEAR(y,x) ((y)*width+(x))
 
 point vector_bisector(float ax, float ay, float bx, float by);
 float masked_convolute(int width, int height, char * img, int i, int j, float kernel[3][3], bool * mask);
@@ -30,6 +31,8 @@ float confidence[MAX_LEN*MAX_LEN];
 point gradient_t[MAX_LEN*MAX_LEN];
 point n_t[MAX_LEN*MAX_LEN];
 
+cl_float diffs[MAX_LEN*MAX_LEN];
+
 
 // OPENCL SHIT
 // +++++++++++
@@ -38,9 +41,7 @@ Kernel k_target_diffs;
 
 Buffer b_img;
 Buffer b_mask;
-Buffer b_best_source;
-
-cl_int best_source[2];
+Buffer b_diffs;
 
 void initCLInpainting(int width, int height){
     cout << "Initializing OpenCL model for Inpainting\n";
@@ -62,8 +63,8 @@ void initCLInpainting(int width, int height){
     b_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 
-    // Buffer for storing the optimum source (as a (x,y) coordinate)
-    b_best_source = Buffer(context, CL_MEM_USE_HOST_PTR, sizeof(cl_int)*2, best_source, &err);
+    // Buffer for storing the pixel differences between best_target and source patches
+    b_diffs = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 }
 
@@ -266,6 +267,24 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     // ++++++++++++++++++++
     tstart = clock();
 
+
+
+    //printf ("(%i, %i, %i)\n", img[LINEAR3(47, 36, 0)], img[LINEAR3(47, 36, 1)], img[LINEAR3(47, 36, 2)]);
+
+    //printf(" Zero Location = %ld\n", (intptr_t)img);
+    //printf(" First Location = %ld\n", (intptr_t)&img[3]);
+    //printf(" Diff = %ld", (intptr_t)&img[3] - (intptr_t)img);
+    //printf(" First Location = %ld\n", (intptr_t)img + 3);
+    //printf(" Diff = %ld", ((intptr_t)img+3) - (intptr_t)img);
+
+    /*
+    int lin = 
+    printf(" Real R = %ld\n", (intptr_t)&img[LINEAR(70, 35)*3]);
+    printf(" Calculated R = %ld\n", (intptr_t)(img + (3*LINEAR(70, 35))));
+    printf(" Diff = %ld\n", (intptr_t)(img + (3*(LINEAR(70, 35)))) -(intptr_t)&img[LINEAR(70, 35)*3]);
+    */
+
+
     // ++++++++++++++
     // OPENCL TESTING
 
@@ -278,15 +297,15 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
 	err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
 	clHandleError(__FILE__,__LINE__,err);
 
-    cl_int target_i = 5;
-    cl_int target_j = 9;
+    //cl_int best_target[2] = {4, 5};
+    printf("best_target = (%i, %i)\n", max_j, max_i);
+    cl_int2 best_target = { max_j, max_i };
 
     // Kernel Execute
     k_target_diffs.setArg(0, b_img);
     k_target_diffs.setArg(1, b_mask);
-    k_target_diffs.setArg(2, target_i);
-    k_target_diffs.setArg(3, target_j);
-    k_target_diffs.setArg(4, b_best_source);
+    k_target_diffs.setArg(2, best_target);
+    k_target_diffs.setArg(3, b_diffs);
     err = queue.enqueueNDRangeKernel(
         k_target_diffs,
         NullRange,
@@ -295,13 +314,42 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     );
 	clHandleError(__FILE__,__LINE__,err);
 
-    printf("Source: %i, %i\n\n", best_source[0], best_source[1]);
+    queue.finish();
+
+    // Read result
+    err = queue.enqueueReadBuffer(b_diffs, CL_TRUE, 0, sizeof(cl_float)*width*height, diffs);
+	clHandleError(__FILE__,__LINE__,err);
+
+    queue.finish();
+
+    float cl_min_diff = FLT_MAX;
+    for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) {
+        if (diffs[LINEAR(y,x)] < 0.001) {
+            printf("Diff close to 0 at (%i, %i)\n", x, y);
+        }
+    }
+
+    for (int i = 0; i < width*height; i++) {
+        cl_min_diff = min(float(diffs[i]), cl_min_diff);
+    }
+
+    printf("OCL MIN = %f\n", cl_min_diff);
+
+    /*
+    printf("Arbitrary Diff: %f\n", diffs[15]);
+    printf("First Diff: %f\n", diffs[0]);
+    printf("Last Diff: %f\n", diffs[height*width-1]);
+    printf("Invalid Diff: %f\n", diffs[height*width]);
+    */
+
 
     //queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int)*n, A);
 	//clHandleError(__FILE__,__LINE__,err);
 
     // OPENCL TESTING
     // ++++++++++++++
+
+
 
 
     // (max_i, max_j) is the target patch
@@ -319,8 +367,6 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
                     int target_j = max_j + kj;
                     int source_i = i + ki;
                     int source_j = j + kj;
-
-                    assert(within(LINEAR(source_i, source_j), 0, width*height));
 
                     if (mask[LINEAR(source_i, source_j)]) {
                         goto next_patch;
@@ -344,6 +390,8 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
             next_patch: ;
         }
     }
+
+    printf("C MIN = %f\n", min_squared_diff);
 
     tend = clock();
     tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
@@ -378,6 +426,8 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     tend = clock();
     tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
     printf("Copy: %f\n", tcount);
+
+    printf("\n");
 
     return 1;
 }

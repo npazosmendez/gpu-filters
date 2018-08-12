@@ -30,7 +30,7 @@ void initCL(){
     cout << "Available devices:" << endl;
     for (unsigned int i = 0; i < devices.size(); i++)
     cout << "\t* " << devices[i].getInfo<CL_DEVICE_NAME>() << ", " << devices[i].getInfo<CL_DEVICE_VENDOR>() << endl;
-    device = devices[0]; // el primer device
+    device = devices[1]; // el primer device
 
     /* Create CONTEXT on that platform */
     cl_context_properties context_properties[] = {CL_CONTEXT_PLATFORM, (cl_context_properties)(platform)(), 0};
@@ -61,7 +61,9 @@ void createProgram(string filename) {
     cl_int err = 0;
     program = Program(context, sources, &err);
     clHandleError(__FILE__, __LINE__, err);
-    err = program.build(context.getInfo<CL_CONTEXT_DEVICES>());
+    //const char* options = "-Werror";
+    const char* options = "";
+    err = program.build(context.getInfo<CL_CONTEXT_DEVICES>(), options);
     clHandleError(__FILE__, __LINE__, err);
 }
 

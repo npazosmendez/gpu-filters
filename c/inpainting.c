@@ -11,8 +11,8 @@
 static int PATCH_RADIUS = 4;
 static float ALPHA = 255;
 
-#define LINEAR3(y,x,z) 3*((y)*width+(x))+(z)
-#define LINEAR(y,x) (y)*width+(x)
+#define LINEAR3(y,x,z) (3*((y)*width+(x))+(z))
+#define LINEAR(y,x) ((y)*width+(x))
 
 point vector_bisector(float ax, float ay, float bx, float by);
 float masked_convolute(int width, int height, char * img, int i, int j, float kernel[3][3], bool * mask);
@@ -249,7 +249,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask) {
                     if (within(target_i, 0, height) &&  \
                         within(target_j, 0, width) &&   \
                         !mask[LINEAR(target_i, target_j)]) {
-                        squared_diff += squared_distance3(img + LINEAR(target_i, target_j), img + LINEAR(source_i, source_j));
+                        squared_diff += squared_distance3(img + 3*LINEAR(target_i, target_j), img + 3*LINEAR(source_i, source_j));
                     }
                 }
             }
