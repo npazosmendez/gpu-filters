@@ -1,11 +1,13 @@
 #include "camera.hpp"
-#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
+#include <QAtomicInt>
 
-QAtomicInt frameReady = 0; 
 using namespace cv;
 using namespace std;
+
+QAtomicInt frameReady = 0; 
+
 void Camera::run(){
 
 	/* open webcam */
@@ -18,7 +20,6 @@ void Camera::run(){
 	}
 	Mat frames[2];
 	int index = 0;
-	cout << "cam ready" << endl;
 	while(1){
 	    stream.read(frames[index]);
 	    bool is_new_frame = frameReady.testAndSetAcquire(0, 1);

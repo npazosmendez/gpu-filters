@@ -1,22 +1,13 @@
-
 #include <QtGui>
 #include <QLabel>
 #include <QObject>
 #include <iostream>
-#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-using namespace cv;
-using namespace std;
-extern "C" {
-    #include <c/c-filters.h>
-}
-#include <opencl/opencl-filters.hpp>
 #include "filters.hpp"
 #include "camera.hpp"
 #include "window.hpp"
-
-#include <QAtomicInt>
-#include <string>  
+using namespace cv;
+using namespace std;
 
 QImage MainWindow::MatToQImage(const Mat& mat){
     // 8-bits unsigned, NO. OF CHANNELS=1
@@ -54,7 +45,7 @@ inline void MainWindow::overlay_frame_rate(QPixmap* pixmap){
     
 void MainWindow::show_frame(Mat *cameraFrame){
     hitcounter.hit();
-    //currentFilter.process_frame(cameraFrame);
+    //_currentFilter.process_frame(cameraFrame);
     image = MatToQImage(*cameraFrame);
     pixmap.convertFromImage(image);
     overlay_frame_rate(&pixmap);
@@ -69,19 +60,34 @@ void MainWindow::setFilter(QString filterName){
 
 void MainWindow::setFilter(ImageFilter * filter){
     assert(filter != NULL);
-    if (currentFilter != NULL){
-        QObject::disconnect(&cam, SIGNAL(new_frame(Mat*)), currentFilter, SLOT(process_frame(Mat*)) );
-        QObject::disconnect(currentFilter, SIGNAL(frame_ready(Mat*)), this, SLOT(show_frame(Mat*)) );
-        delete currentFilter;
+    if (_currentFilter != NULL){
+        QObject::disconnect(&cam, SIGNAL(new_frame(Mat*)), _currentFilter, SLOT(process_frame(Mat*)) );
+        QObject::disconnect(_currentFilter, SIGNAL(frame_ready(Mat*)), this, SLOT(show_frame(Mat*)) );
+        delete _currentFilter;
     }
-    currentFilter = filter;
-    QObject::connect(&cam, SIGNAL(new_frame(Mat*)), currentFilter, SLOT(process_frame(Mat*)), Qt::QueuedConnection );   
-    QObject::connect(currentFilter, SIGNAL(frame_ready(Mat*)), this, SLOT(show_frame(Mat*)), Qt::QueuedConnection );
+    _currentFilter = filter;
+    QObject::connect(&cam, SIGNAL(new_frame(Mat*)), _currentFilter, SLOT(process_frame(Mat*)), Qt::QueuedConnection );   
+    QObject::connect(_currentFilter, SIGNAL(frame_ready(Mat*)), this, SLOT(show_frame(Mat*)), Qt::QueuedConnection );
+    toggleCL(_cl_status);
 }
 void MainWindow::toggleCL(int status){
     if (status){
-        currentFilter->setCL();
+        _currentFilter->setCL();
     }else{
-        currentFilter->setC();
+        _currentFilter->setC();
     }
+    _cl_status = status;
+}
+
+MainWindow::MainWindow(QString filter, int cl_status) : _label(new QLabel), _currentFilter(NULL), _cl_status(cl_status) {
+    setCentralWidget(_label);
+    setFilter(filter);
+    _currentFilter->start();
+    toggleCL(cl_status);
+    cam.start();
+};
+
+MainWindow::~MainWindow() {
+    delete _label;
+    if (_currentFilter) delete _currentFilter;
 }
