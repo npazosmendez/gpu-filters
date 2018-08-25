@@ -1,6 +1,7 @@
 #include "opencl-filters.hpp"
 #include <cl2.hpp>
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 using namespace cl;
@@ -41,8 +42,30 @@ void initCL(){
     cout << "Using platform: " << platform.getInfo<CL_PLATFORM_NAME>() << endl;
     cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << endl;
     openCL_initialized = true;
-
 }
+
+void createProgram(string filename) {
+    // Read source
+    /* NOTE: reading the source code from another file
+    during runtime makes the binary's location important.
+    Not good. */
+    ifstream sourceFile(std::string("opencl/") + filename);
+    if (!sourceFile.is_open()) {
+        cerr << "Can't open CL kernel source." << endl;
+        exit(1);
+    }
+    string sourceCode(istreambuf_iterator<char>(sourceFile), (istreambuf_iterator<char>()));
+    Program::Sources sources(1, sourceCode);
+
+    // Build program
+    cl_int err = 0;
+    program = Program(context, sources, &err);
+    clHandleError(__FILE__, __LINE__, err);
+    err = program.build(context.getInfo<CL_CONTEXT_DEVICES>());
+    clHandleError(__FILE__, __LINE__, err);
+}
+
+
 
 void printImageFormat(ImageFormat format){
     #define CASE(order) case order: cout << #order; break;
@@ -145,7 +168,7 @@ char *getCLErrorString(cl_int err) {
 void clHandleError(std::string file, int line, cl_int err){
     if (err) {
         cerr << "ERROR @ " << file << "::" << line << ": " << getCLErrorString(err) << endl;
-        if(err == CL_INVALID_KERNEL || err == CL_INVALID_PROGRAM_EXECUTABLE){
+        if(err == CL_INVALID_KERNEL || err == CL_INVALID_PROGRAM_EXECUTABLE || err == CL_BUILD_PROGRAM_FAILURE){
 		// Probably a build error. Show log
 		string log = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device,NULL);
 		cerr << log << endl;

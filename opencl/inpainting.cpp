@@ -1,12 +1,19 @@
-#include "c-filters.h"
+#include <cl2.hpp>
+#include <iostream>
 #include "stdio.h"
 #include "stdbool.h"
 #include "string.h"
 #include "math.h"
 #include "time.h"
 #include "float.h"
-#include "cutils.h"
-#include "assert.h"
+extern "C" {
+    #include "../c/cutils.h"
+    #include "../c/c-filters.h"
+}
+#include "opencl-filters.hpp"
+
+using namespace std;
+using namespace cl;
 
 static int PATCH_RADIUS = 4;
 static float ALPHA = 255;
@@ -23,6 +30,35 @@ float confidence[MAX_LEN*MAX_LEN];
 point gradient_t[MAX_LEN*MAX_LEN];
 point n_t[MAX_LEN*MAX_LEN];
 
+
+// OPENCL SHIT
+// +++++++++++
+
+Kernel k_target_diffs;
+
+Buffer b_img;
+Buffer b_mask;
+
+void initCLInpainting(int width, int height){
+    cout << "Initializing OpenCL model for Inpainting\n";
+
+    /* 1. Build PROGRAM from source, for specific context */
+    createProgram("inpainting.cl");
+
+    /*2. Create kernels */
+    k_target_diffs = Kernel(program, "target_diffs");
+
+    /* 3. Buffers setup */
+    cl_int err = 0;
+
+    // Buffer for storing the image in rgb (uchar3)
+    b_img = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
+    clHandleError(__FILE__,__LINE__,err);
+
+    b_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
+    clHandleError(__FILE__,__LINE__,err);
+}
+
 /*
     Outline:
     - Calculate border
@@ -33,10 +69,13 @@ point n_t[MAX_LEN*MAX_LEN];
     - Loop until image is filled
 */
 
-clock_t start, end;
-float count;
+clock_t tstart, tend;
+float tcount;
 
-void inpaint_init(int width, int height, char * img, bool * mask) {
+void CL_inpaint_init(int width, int height, char * img, bool * mask) {
+
+    if(!openCL_initialized) initCL();
+    initCLInpainting(width, height);
 
     memset(confidence, 0, MAX_LEN*MAX_LEN*sizeof(float));
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
@@ -48,7 +87,7 @@ void inpaint_init(int width, int height, char * img, bool * mask) {
     }
 }
 
-bool inpaint_step(int width, int height, char * img, bool * mask) {
+bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
 
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
     memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
@@ -56,7 +95,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask) {
 
     // 1. CALCULATE CONTOUR
     // ++++++++++++++++++++
-    start = clock();
+    tstart = clock();
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
@@ -83,13 +122,13 @@ bool inpaint_step(int width, int height, char * img, bool * mask) {
         return 0;
     }
 
-    end = clock();
-    count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Contour (size = %d): %f\n", contour_size, count);
+    tend = clock();
+    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
+    printf("Contour (size = %d): %f\n", contour_size, tcount);
 
     // 2. FIND TARGET PATCH
     // ++++++++++++++++++++
-    start = clock();
+    tstart = clock();
 
     int max_i = -1;
     int max_j = -1;
@@ -211,18 +250,47 @@ bool inpaint_step(int width, int height, char * img, bool * mask) {
         }
     }
 
-    end = clock();
-    count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Target patch (%d, %d): %f\n", max_i, max_j, count);
+    tend = clock();
+    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
+    printf("Target patch (%d, %d): %f\n", max_i, max_j, tcount);
 
     // 3. FIND SOURCE PATCH
     // ++++++++++++++++++++
-    /*
-    A valid source patch must be entirely contained in the source region.
-    The difference between a valid source patch and the target patch is the sum of the difference of each pixel that's filled in both.
-    */
+    tstart = clock();
 
-    start = clock();
+    // ++++++++++++++
+    // OPENCL TESTING
+
+    // Memory Object Creation
+    //cl::Buffer buffer_A(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * n, NULL, &err);
+    //cl::Buffer buffer_A(context, CL_MEM_READ_WRITE, sizeof(int) * n, NULL, &err);
+    //clHandleError(__FILE__, __LINE__, err);
+
+    //cl::Buffer buffer_result(context, CL_MEM_READ_WRITE, sizeof(int) * n, NULL, &err);
+    //clHandleError(__FILE__, __LINE__, err);
+
+    // Write to Device
+	//err = queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int) * n, A);
+	//clHandleError(__FILE__,__LINE__,err);
+
+    // Kernel Execute
+    cl_int err = 0;
+    err = queue.enqueueNDRangeKernel(
+        k_target_diffs,
+        NullRange,
+        NDRange(width, height),
+        NullRange // default
+    );
+	clHandleError(__FILE__,__LINE__,err);
+
+    //queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(int)*n, A);
+	//clHandleError(__FILE__,__LINE__,err);
+
+    // OPENCL TESTING
+    // ++++++++++++++
+
+
+
 
     // (max_i, max_j) is the target patch
     float min_squared_diff = FLT_MAX;
@@ -265,13 +333,13 @@ bool inpaint_step(int width, int height, char * img, bool * mask) {
         }
     }
 
-    end = clock();
-    count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Source patch(%d, %d): %f\n", max_source_i, max_source_j, count);
+    tend = clock();
+    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
+    printf("Source patch(%d, %d): %f\n", max_source_i, max_source_j, tcount);
 
     // 4. COPY
     // +++++++
-    start = clock();
+    tstart = clock();
 
     if (min_squared_diff == -1) {
         return 0; // Abort mission
@@ -295,15 +363,15 @@ bool inpaint_step(int width, int height, char * img, bool * mask) {
         }
     }
 
-    end = clock();
-    count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Copy: %f\n", count);
+    tend = clock();
+    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
+    printf("Copy: %f\n", tcount);
 
     return 1;
 }
 
 
-void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
+void CL_inpainting(char * ptr, int width, int height, bool * mask_ptr) {
     inpaint_init(width, height, ptr, mask_ptr);
 
     while (true) {
@@ -312,21 +380,6 @@ void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
     }
 }
 
-
-
-void inpaint_generate_arbitrary_mask(bool * mask, int width, int height) {
-    memset(mask, 0, width * height * sizeof(bool));
-
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            if (i >= height * 5.0/11.0 && i < height * 6.0/11.0) {
-                if (j >= width * 5.0/11.0 && j < width * 6.0/11.0) {
-                    mask[LINEAR(i, j)] = true;
-                }
-            }
-        }
-    }
-}
 
 // Calculates angle of vectors between vectors (ax, ay) and (bx, by)
 point vector_bisector(float ax, float ay, float bx, float by) {
@@ -361,3 +414,4 @@ float masked_convolute(int width, int height, char * img, int i, int j, float ke
 
     return acc;
 }
+

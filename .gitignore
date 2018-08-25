@@ -17,3 +17,6 @@ docs/
 imgs/
 vids/
 
+# Ides
+.vscode
+

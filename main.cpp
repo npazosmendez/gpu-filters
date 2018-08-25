@@ -101,11 +101,8 @@ int main(int argc, char** argv) {
             case OCL_CANNY:
             CL_canny(ptr, width, height, uthreshold, lthreshold);
             break;
-            case C_HOUGH:
-            hough(ptr, width, height);
-            break;
             case C_INPAINTING:
-            generate_arbitrary_mask(mask, width, height);
+            inpaint_generate_arbitrary_mask(mask, width, height);
             inpainting(ptr, width, height, mask);
             break;
             default:
