@@ -21,9 +21,9 @@ __kernel void find_peaks(
     /* TODO: explain kernel functionality */
 
     /* TODO: make these customizable */
-    const int threshold = 200;
-    const int window = 10;
-    
+    const int threshold = 250;
+    const int window = 16;
+
     const int i = get_global_id(0);
     const int j = get_global_id(1);
     int val = counter[LINEAR(i,j)];
@@ -65,6 +65,13 @@ __kernel void find_peaks(
             for (int xx = 0; xx < width; ++xx){
                 int yy = b+xx*m1;
                 if (yy < height && yy >= 0){
+                    uchar3 red = {0,0,255};
+                    vstore3(red, yy*width+xx, img);
+                }
+            }
+            for (int yy = 0; yy < height; ++yy){
+                int xx = (yy-b)/m1;
+                if (xx < width && xx >= 0){
                     uchar3 red = {0,0,255};
                     vstore3(red, yy*width+xx, img);
                 }

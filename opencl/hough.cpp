@@ -1,3 +1,4 @@
+
 #include <cl2.hpp>
 #include "opencl-filters.hpp"
 #include <cassert>
@@ -119,8 +120,10 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
     // 3. Transfer img back to host
     err = queue.enqueueReadBuffer(cl_charImage_, CL_TRUE, 0, 3*height*width, src);
     clHandleError(__FILE__,__LINE__,err);
-    err = queue.enqueueReadBuffer(cl_image_counter, CL_TRUE, 0, 3*p_ammount*a_ammount, counter);
-    clHandleError(__FILE__,__LINE__,err);
+    if (counter != NULL){
+        err = queue.enqueueReadBuffer(cl_image_counter, CL_TRUE, 0, 3*p_ammount*a_ammount, counter);
+        clHandleError(__FILE__,__LINE__,err);
+    }
 
     queue.finish();
 
