@@ -14,9 +14,9 @@ using namespace cv;
 using namespace std;
 
 namespace Ui {
-    class MainWindow;
+    class VideoWindow;
 }
-class MainWindow : public QMainWindow  {
+class VideoWindow : public QMainWindow  {
     Q_OBJECT
 
 	private:
@@ -32,8 +32,8 @@ class MainWindow : public QMainWindow  {
 		void setFilter(ImageFilter * filter);
 
     public:
-    	MainWindow(QString filter, int cl_status);
-    	~MainWindow();
+    	VideoWindow(QString filter, int cl_status);
+    	~VideoWindow();
 
 	public slots:
 		void show_frame(Mat *cameraFrame);

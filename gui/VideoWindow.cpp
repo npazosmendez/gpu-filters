@@ -5,11 +5,11 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include "filters.hpp"
 #include "camera.hpp"
-#include "window.hpp"
+#include "VideoWindow.hpp"
 using namespace cv;
 using namespace std;
 
-QImage MainWindow::MatToQImage(const Mat& mat){
+QImage VideoWindow::MatToQImage(const Mat& mat){
     // 8-bits unsigned, NO. OF CHANNELS=1
     if(mat.type()==CV_8UC1){
         // Set the color table (used to translate colour indexes to qRgb values)
@@ -35,7 +35,7 @@ QImage MainWindow::MatToQImage(const Mat& mat){
     }
 }
 
-inline void MainWindow::overlay_frame_rate(QPixmap* pixmap){
+inline void VideoWindow::overlay_frame_rate(QPixmap* pixmap){
     QPainter painter( pixmap );
     painter.setPen(QColor(255,255,0));
     painter.setFont( QFont("Arial", 20) );
@@ -43,7 +43,7 @@ inline void MainWindow::overlay_frame_rate(QPixmap* pixmap){
     painter.drawText( QPoint(0 + 5, pixmap->height() - 5), QString::number(fps) );
 }
     
-void MainWindow::show_frame(Mat *cameraFrame){
+void VideoWindow::show_frame(Mat *cameraFrame){
     hitcounter.hit();
     //_currentFilter.process_frame(cameraFrame);
     image = MatToQImage(*cameraFrame);
@@ -53,12 +53,12 @@ void MainWindow::show_frame(Mat *cameraFrame){
     _label->show();
     frameReady = 0;
 }
-void MainWindow::setFilter(QString filterName){
+void VideoWindow::setFilter(QString filterName){
     if (filterName == "Canny") setFilter(new CannyFilter);
     if (filterName == "Hough") setFilter(new HoughFilter);
 }
 
-void MainWindow::setFilter(ImageFilter * filter){
+void VideoWindow::setFilter(ImageFilter * filter){
     assert(filter != NULL);
     if (_currentFilter != NULL){
         QObject::disconnect(&cam, SIGNAL(new_frame(Mat*)), _currentFilter, SLOT(process_frame(Mat*)) );
@@ -70,7 +70,7 @@ void MainWindow::setFilter(ImageFilter * filter){
     QObject::connect(_currentFilter, SIGNAL(frame_ready(Mat*)), this, SLOT(show_frame(Mat*)), Qt::QueuedConnection );
     toggleCL(_cl_status);
 }
-void MainWindow::toggleCL(int status){
+void VideoWindow::toggleCL(int status){
     if (status){
         _currentFilter->setCL();
     }else{
@@ -79,7 +79,7 @@ void MainWindow::toggleCL(int status){
     _cl_status = status;
 }
 
-MainWindow::MainWindow(QString filter, int cl_status) : _label(new QLabel), _currentFilter(NULL), _cl_status(cl_status) {
+VideoWindow::VideoWindow(QString filter, int cl_status) : _label(new QLabel), _currentFilter(NULL), _cl_status(cl_status) {
     setCentralWidget(_label);
     setFilter(filter);
     _currentFilter->start();
@@ -87,7 +87,7 @@ MainWindow::MainWindow(QString filter, int cl_status) : _label(new QLabel), _cur
     cam.start();
 };
 
-MainWindow::~MainWindow() {
+VideoWindow::~VideoWindow() {
     delete _label;
     if (_currentFilter) delete _currentFilter;
 }
