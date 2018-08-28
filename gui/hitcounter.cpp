@@ -2,10 +2,8 @@
 // Created by nicolas on 08/07/18.
 //
 
-#include <time.h>
-
-#include "hitcounter.h"
-
+#include "hitcounter.hpp"
+#include <chrono>
 #define NULL 0
 
 HitCounter::HitCounter() : hitsSinceActualSecond(0), actualSecond(time(NULL)), lastHPS(0) {}

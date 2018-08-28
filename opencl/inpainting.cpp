@@ -7,6 +7,7 @@
 #include "time.h"
 #include "float.h"
 #include <stdint.h>
+#include "assert.h"
 extern "C" {
     #include "../c/cutils.h"
     #include "../c/c-filters.h"

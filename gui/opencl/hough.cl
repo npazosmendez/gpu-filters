@@ -68,7 +68,7 @@ __kernel void find_peaks(
                     uchar3 red = {0,0,255};
                     vstore3(red, yy*width+xx, img);
                 }
-            }
+            }            
             for (int yy = 0; yy < height; ++yy){
                 int xx = (yy-b)/m1;
                 if (xx < width && xx >= 0){
