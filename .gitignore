@@ -20,6 +20,8 @@ vids/
 # Ide
 .vscode
 .syntastic_cpp_config
+.idea
+cmake-build-debug
 
 # Misc
 .DS_Store
