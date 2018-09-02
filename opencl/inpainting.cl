@@ -1,14 +1,15 @@
 
-#define LINEAR(x,y) ((x)+(y)*get_global_size(0))
-
 __constant int PATCH_RADIUS = 4;
 
-int within(int value, int minimum, int maximum);
-float squared_distance3(__global uchar * p, __global uchar * q);
+#define LINEAR(position) ((position.x)+(position.y)*get_global_size(0))
 
-// Checks if value is inside the range [minimum, maximum)
-int within(int value, int minimum, int maximum) {
-    return value >= minimum && value < maximum;
+// AUXILIARS
+// +++++++++
+
+// Checks if 'position' is valid inside a matrix of 'size'
+int within(int2 position, int2 size) {
+    int2 is_within = 0 <= position && position < size;
+    return is_within.x && is_within.y;
 }
 
 // Calculates squared distance of two vectors in three dimensions
@@ -18,45 +19,41 @@ float squared_distance3(__global uchar * p, __global uchar * q) {
            (p[2] - q[2]) * (p[2] - q[2]);
 }
 
+// KERNELS
+// +++++++
 
+/*
+ * Sets the output buffer 'diffs' so that 'diffs(x, y)' is equal to the difference
+ * between the patch centered at '(x, y)' and the patch centered at 'target_pos'.
+ * For incomplete patches, it sets FLT_MAX (so that it doesn't affect the minimum
+ * difference).
+ */
 __kernel void target_diffs(
         __global uchar * img,
         __global uchar * mask,
-        int2 best_target,
+        int2 target_pos,
         __global float * diffs) {
 
-    int width = get_global_size(0);
-    int height = get_global_size(1);
-    int x = get_global_id(0);
-    int y = get_global_id(1);
-
-    // Sum
-    bool full_patch = true;
+    int2 size = (int2)(get_global_size(0), get_global_size(1));
+    int2 pos = (int2)(get_global_id(0), get_global_id(1));
 
     float squared_diff = 0;
+    bool full_patch = true;
+
     for (int px = -PATCH_RADIUS; px <= PATCH_RADIUS; px++) {
         for (int py = -PATCH_RADIUS; py <= PATCH_RADIUS; py++) {
 
-            int real_target_x = best_target.x + px;
-            int real_target_y = best_target.y + py;
-            int real_x = x + px;
-            int real_y = y + py;
+            int2 local_pos        = (int2)(pos.x + px       , pos.y + py);
+            int2 target_local_pos = (int2)(target_pos.x + px, target_pos.y + py);
 
-            if (!within(real_x, 0, width) ||
-                !within(real_y, 0, height) ||
-                mask[LINEAR(real_x, real_y)]) {
-                full_patch = false;
-                // diffs[LINEAR(x, y)] = FLT_MAX; return;  This breaks everything
-            }
+            if (!within(local_pos, size) || mask[LINEAR(local_pos)]) full_patch = false;
 
-            if (within(real_target_x, 0, width) &&  \
-                within(real_target_y, 0, height) && \
-                !mask[LINEAR(real_target_x, real_target_y)]) {
-                squared_diff += squared_distance3(img + 3*LINEAR(real_target_x, real_target_y), img + 3*LINEAR(real_x, real_y));
+            if (within(target_local_pos, size) && !mask[LINEAR(target_local_pos)]) {
+                squared_diff += squared_distance3(img + 3*LINEAR(target_local_pos),  \
+                                                  img + 3*LINEAR(local_pos));
             }
         }
     }
 
-    // Output
-    diffs[LINEAR(x, y)] = full_patch ? squared_diff : FLT_MAX;
+    diffs[LINEAR(pos)] = full_patch ? squared_diff : FLT_MAX;
 }

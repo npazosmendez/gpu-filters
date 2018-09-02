@@ -34,6 +34,7 @@ static float ALPHA = 255;
 // Macros
 #define LINEAR3(y,x,z) (3*((y)*width+(x))+(z))
 #define LINEAR(y,x) ((y)*width+(x))
+#define forn(i,n) for(int i=0; i<(n); i++)
 
 // Definitions
 point vector_bisector(float ax, float ay, float bx, float by);
@@ -292,7 +293,7 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     float cl_min_diff = FLT_MAX;
     int cl_min_source_i = -1;
     int cl_min_source_j = -1;
-    for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) {
+    forn(x, width) forn(y, height) {
         if (float(diffs[LINEAR(y,x)]) < cl_min_diff) {
             cl_min_diff = diffs[LINEAR(y,x)];
             cl_min_source_i = y;
