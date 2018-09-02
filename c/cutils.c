@@ -69,5 +69,3 @@ void convoluion2D(float * src, int width, int height, float * kernel, int ksize,
         }
     }
 }
-
-bool MEASURE = 0;

@@ -16,67 +16,65 @@ extern "C" {
 using namespace std;
 using namespace cl;
 
-static int PATCH_RADIUS = 6;
+static int PATCH_RADIUS = 4;
+
+/*
+    Algorithm outline
+     - Calculate image border
+     - Calculate priority for all pixels in the border
+     - Find pixel with most priority
+     - Find patch most similar with the patch of the previous pixel
+     - Copy patches
+     - Loop until image is filled
+*/
+
+// Constants
 static float ALPHA = 255;
 
+// Macros
 #define LINEAR3(y,x,z) (3*((y)*width+(x))+(z))
 #define LINEAR(y,x) ((y)*width+(x))
 
+// Definitions
 point vector_bisector(float ax, float ay, float bx, float by);
 float masked_convolute(int width, int height, char * img, int i, int j, float kernel[3][3], bool * mask);
 
+// Host Buffers
 #define MAX_LEN 2000
-bool contour_mask[MAX_LEN*MAX_LEN];
-float confidence[MAX_LEN*MAX_LEN];
-point gradient_t[MAX_LEN*MAX_LEN];
-point n_t[MAX_LEN*MAX_LEN];
+bool contour_mask[MAX_LEN*MAX_LEN]; // whether a pixel belongs to the border
+float confidence[MAX_LEN*MAX_LEN];  // how trustworthy the info of a pixel is
+point gradient_t[MAX_LEN*MAX_LEN];  // transposed gradient at the pixel
+point n_t[MAX_LEN*MAX_LEN];         // normal of border at pixel
+cl_float diffs[MAX_LEN*MAX_LEN];    // differences of patch to target
 
-cl_float diffs[MAX_LEN*MAX_LEN];
-
-
-// OPENCL SHIT
-// +++++++++++
-
+// Device Memory Objects
 Kernel k_target_diffs;
-
 Buffer b_img;
 Buffer b_mask;
 Buffer b_diffs;
 
+// Misc
+static cl_int err = 0;
+
 void initCLInpainting(int width, int height){
     cout << "Initializing OpenCL model for Inpainting\n";
 
-    /* 1. Build PROGRAM from source, for specific context */
+    // Program
     createProgram("inpainting.cl");
 
-    /*2. Create kernels */
+    // Kernel for calculating the source patch with minimum difference with target
     k_target_diffs = Kernel(program, "target_diffs");
-
-    /* 3. Buffers setup */
-    cl_int err = 0;
 
     // Buffer for storing the image in rgb (uchar3)
     b_img = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
-
+        clHandleError(__FILE__,__LINE__,err);
     // Buffer for storing the mask
     b_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
-
+        clHandleError(__FILE__,__LINE__,err);
     // Buffer for storing the pixel differences between best_target and source patches
     b_diffs = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
+        clHandleError(__FILE__,__LINE__,err);
 }
-
-/*
-    Outline:
-    - Calculate border
-    - Calculate priority for all pixels in the border
-    - Find pixel with most priority
-    - Find patch most similar with the patch of the previous pixel
-    - Copy patches
-    - Loop until image is filled
-*/
 
 void CL_inpaint_init(int width, int height, char * img, bool * mask) {
 
@@ -95,13 +93,11 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask) {
 
 bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
 
-    memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
-    memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
-    memset(n_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
-
     // 1. CALCULATE CONTOUR
     // ++++++++++++++++++++
     tstart = clock();
+
+    memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
@@ -121,22 +117,23 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
 
     int contour_size = 0;
     for (int i = 0; i < height; i++) for (int j = 0; j < width; j++) {
-        if (contour_mask[LINEAR(i,j)] == true) contour_size++;
+        if (contour_mask[LINEAR(i,j)]) contour_size++;
     }
 
     if (contour_size == 0) {
         return 0;
     }
 
-    if (MEASURE) {
-        tend = clock();
-        tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-        printf("Contour (size = %d): %f\n", contour_size, tcount);
-    }
+    tend = clock();
+    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
+    printf("Contour (size = %d): %f\n", contour_size, tcount);
 
     // 2. FIND TARGET PATCH
     // ++++++++++++++++++++
     tstart = clock();
+
+    memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point));
+    memset(n_t, 0, MAX_LEN*MAX_LEN*sizeof(point));
 
     int max_i = -1;
     int max_j = -1;
@@ -258,17 +255,13 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
         }
     }
 
-    if (MEASURE) {
-        tend = clock();
-        tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-        printf("Target patch (%d, %d): %f\n", max_i, max_j, tcount);
-    }
+    tend = clock();
+    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
+    printf("Target patch (%d, %d): %f\n", max_i, max_j, tcount);
 
     // 3. FIND SOURCE PATCH
     // ++++++++++++++++++++
     tstart = clock();
-
-    cl_int err = 0;
 
     // Write to Device
 	err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
@@ -307,11 +300,9 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
         }
     }
 
-    if (MEASURE) {
-        tend = clock();
-        tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-        printf("Source patch(%d, %d): %f\n", cl_min_source_i, cl_min_source_j, tcount);
-    }
+    tend = clock();
+    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
+    printf("Source patch(%d, %d): %f\n", cl_min_source_i, cl_min_source_j, tcount);
 
     // 4. COPY
     // +++++++
@@ -335,15 +326,11 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
         }
     }
 
-    if (MEASURE) {
-        tend = clock();
-        tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-        printf("Copy: %f\n", tcount);
-    }
+    tend = clock();
+    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
+    printf("Copy: %f\n", tcount);
 
-    if (MEASURE) {
-        printf("\n");
-    }
+    printf("\n");
 
     return 1;
 }

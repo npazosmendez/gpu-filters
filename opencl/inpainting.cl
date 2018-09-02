@@ -31,6 +31,8 @@ __kernel void target_diffs(
     int y = get_global_id(1);
 
     // Sum
+    bool full_patch = true;
+
     float squared_diff = 0;
     for (int px = -PATCH_RADIUS; px <= PATCH_RADIUS; px++) {
         for (int py = -PATCH_RADIUS; py <= PATCH_RADIUS; py++) {
@@ -43,13 +45,9 @@ __kernel void target_diffs(
             if (!within(real_x, 0, width) ||
                 !within(real_y, 0, height) ||
                 mask[LINEAR(real_x, real_y)]) {
-                squared_diff += 100000000.0;
-                // NOT WORKING, WEIRD
-                //diffs[LINEAR(x, y)] = 1.0;
-                //return;
+                full_patch = false;
+                // diffs[LINEAR(x, y)] = FLT_MAX; return;  This breaks everything
             }
-
-            //assert()
 
             if (within(real_target_x, 0, width) &&  \
                 within(real_target_y, 0, height) && \
@@ -59,7 +57,6 @@ __kernel void target_diffs(
         }
     }
 
-
     // Output
-    diffs[LINEAR(x, y)] = squared_diff;
+    diffs[LINEAR(x, y)] = full_patch ? squared_diff : FLT_MAX;
 }
