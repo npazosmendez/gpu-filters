@@ -97,12 +97,22 @@ __kernel void patch_priorities(
         is_contour = false; // return?
     }
 
-    // Calculate confidence
+    /*
+     * Every patch has a certain 'priority'. At each step of the algorithm, the patch with
+     * the highest priority of the contour is selected as the next patch to be filled.
+     * The priority is equal to a 'data' coefficient multiplied by a 'confidence' coefficient
+     */
+
+    // Confidence
+    // The confidence is the normalized sum of the confidence of all pixels inside the patch
+    // Masked pixels start with 0 confidence, while the other pixels start with 1 confidence
     float sum = 0;
-    int bot_k = max(i - PATCH_RADIUS, 0);
-    int top_k = min(i + PATCH_RADIUS + 1, height);
+
     int bot_l = max(j - PATCH_RADIUS, 0);
     int top_l = min(j + PATCH_RADIUS + 1, width);
+    int bot_k = max(i - PATCH_RADIUS, 0);
+    int top_k = min(i + PATCH_RADIUS + 1, height);
+
     for (int k = bot_k; k < top_k; k++) {
         for (int l = bot_l; l < top_l; l++) {
             sum += confidence[LINEAR((int2)(l,k))];
@@ -110,10 +120,8 @@ __kernel void patch_priorities(
     }
 
     confidence[LINEAR((int2)(j,i))] = sum / (2 * PATCH_RADIUS + 1) * (2 * PATCH_RADIUS + 1);
-    // TODO: I'm screwing up pretty baddly here dood. When do I need to update confidence...? What I'm doing can't be right.
 
-
-    // Gradient:
+    // Gradient
     // According to impl I should take one gradient, according to paper I should take the max in the patch.
     // Also, according to both I need to look in the whole image, not just in the source. That's weird.
     // Following my gut, I'll calculate only one gradient
@@ -135,7 +143,7 @@ __kernel void patch_priorities(
     //point gradient_t = (point) { .x = gx_t, .y = gy_t }; // TODO: I'm not using this value, lol
 
 
-    // Normal:
+    // Normal
     //  Easy way: Take spaces between edges (take the one who yields higher data)
     int di[8] = {-1, 0, 1, 1, 1, 0, -1, -1};
     int dj[8] = {1, 1, 1, 0, -1, -1, -1, 0};
@@ -221,7 +229,10 @@ __kernel void target_diffs(
             int2 local_pos        = (int2)(pos.x + px       , pos.y + py);
             int2 target_local_pos = (int2)(target_pos.x + px, target_pos.y + py);
 
-            if (!within(local_pos, size) || mask[LINEAR(local_pos)]) full_patch = false;
+            if (!within(local_pos, size) || mask[LINEAR(local_pos)]) {
+                full_patch = false;
+                goto ret;
+            }
 
             if (within(target_local_pos, size) && !mask[LINEAR(target_local_pos)]) {
                 squared_diff += squared_distance3(img + 3*LINEAR(target_local_pos),  \
@@ -230,5 +241,6 @@ __kernel void target_diffs(
         }
     }
 
+ret:
     diffs[LINEAR(pos)] = full_patch ? squared_diff : FLT_MAX;
 }
