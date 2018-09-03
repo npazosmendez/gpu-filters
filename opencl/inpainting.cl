@@ -75,6 +75,30 @@ float masked_convolute(int width, int height, __global uchar * img, int i, int j
 // +++++++
 
 /*
+ * Saves in 'contour_mask' which pixels are part of the contour between the masked
+ * and unmasked pixels, and which aren't. These will be the next pixels who will be
+ * filled.
+ */
+__kernel void contour(
+        __global uchar * mask,
+        __global uchar * contour_mask) {
+
+    int2 size = (int2)(get_global_size(0), get_global_size(1));
+    int2 pos = (int2)(get_global_id(0), get_global_id(1));
+
+    if (mask[LINEAR(pos)]) {
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                int2 local_pos = pos + (int2)(dx, dy);
+                if (within(local_pos, size) && !mask[LINEAR(local_pos)]) {
+                    contour_mask[LINEAR(pos)] = true;
+                }
+            }
+        }
+    }
+}
+
+/*
  * Sets the output buffer 'priorities' with the priority of each patch in the
  * image as potential 'target' patch in a given step of the inpainting algorithm.
  * The patch with the highest priority will be the next patch to be filled.

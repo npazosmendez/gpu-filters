@@ -49,6 +49,7 @@ cl_float priority[MAX_LEN*MAX_LEN];    // patch priority as next target
 cl_float diffs[MAX_LEN*MAX_LEN];    // differences of patch to target
 
 // Device Memory Objects
+Kernel k_contour;
 Kernel k_patch_priorities;
 Kernel k_target_diffs;
 Buffer b_img;
@@ -84,14 +85,13 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask) {
     // Program object
     createProgram("inpainting.cl");
 
-    // Kernel for calculating the patch with the maximum priority for target patch
+    // Kernels
+    k_contour = Kernel(program, "contour");
     k_patch_priorities = Kernel(program, "patch_priorities");
-
-    // Kernel for calculating the source patch with minimum difference with target patch
     k_target_diffs = Kernel(program, "target_diffs");
 
     // Buffer for storing the image in rgb (uchar3)
-    b_img = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
+    b_img = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err); // image in rgb (uchar3)
     clHandleError(__FILE__,__LINE__,err);
 
     // Buffer for storing the mask
@@ -124,8 +124,38 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     tstart = clock();
 #endif
 
+    // Buffer clear
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
 
+    // Write to Device
+    err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
+    clHandleError(__FILE__,__LINE__,err);
+
+    err = queue.enqueueWriteBuffer(b_contour_mask, CL_TRUE, 0, sizeof(char)*width*height, contour_mask);
+    clHandleError(__FILE__,__LINE__,err);
+
+    // Kernel execute
+    k_contour.setArg(0, b_mask);
+    k_contour.setArg(1, b_contour_mask);
+    err = queue.enqueueNDRangeKernel(
+            k_contour,
+            NullRange,
+            NDRange(width, height),
+            NullRange // default
+    );
+    clHandleError(__FILE__,__LINE__,err);
+
+    // Read result
+    err = queue.enqueueReadBuffer(b_contour_mask, CL_TRUE, 0, sizeof(char)*width*height, contour_mask);
+    clHandleError(__FILE__,__LINE__,err);
+
+
+
+
+
+
+
+/*
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             if (mask[LINEAR(i,j)]) {
@@ -141,6 +171,7 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
             }
         }
     }
+    */
 
     int contour_size = 0;
     for (int i = 0; i < height; i++) for (int j = 0; j < width; j++) {
