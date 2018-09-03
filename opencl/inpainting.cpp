@@ -28,6 +28,10 @@ static int PATCH_RADIUS = 4;
      - Loop until image is filled
 */
 
+
+// GLOBALS
+// +++++++
+
 // Constants
 static float ALPHA = 255;
 
@@ -45,6 +49,7 @@ float masked_convolute(int width, int height, char * img, int i, int j, float ke
 bool contour_mask[MAX_LEN*MAX_LEN]; // whether a pixel belongs to the border
 float confidence[MAX_LEN*MAX_LEN];  // how trustworthy the info of a pixel is
 point gradient_t[MAX_LEN*MAX_LEN];  // transposed gradient at the pixel
+float priority[MAX_LEN*MAX_LEN];    // patch priority as next target
 point n_t[MAX_LEN*MAX_LEN];         // normal of border at pixel
 cl_float diffs[MAX_LEN*MAX_LEN];    // differences of patch to target
 
@@ -57,10 +62,27 @@ Buffer b_diffs;
 // Misc
 static cl_int err = 0;
 
-void initCLInpainting(int width, int height){
+
+// ALGORITHM
+// +++++++++
+
+void CL_inpaint_init(int width, int height, char * img, bool * mask) {
+
     cout << "Initializing OpenCL model for Inpainting\n";
 
-    // Program
+    // Buffer Initialization
+    memset(confidence, 0, MAX_LEN*MAX_LEN*sizeof(float));
+    memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            confidence[LINEAR(i,j)] = mask[LINEAR(i,j)] ? 0.0 : 1.0;
+        }
+    }
+
+    // OpenCL initialization
+    if(!openCL_initialized) initCL();
+
+    // Program object
     createProgram("inpainting.cl");
 
     // Kernel for calculating the source patch with minimum difference with target
@@ -68,35 +90,24 @@ void initCLInpainting(int width, int height){
 
     // Buffer for storing the image in rgb (uchar3)
     b_img = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
-        clHandleError(__FILE__,__LINE__,err);
+    clHandleError(__FILE__,__LINE__,err);
+
     // Buffer for storing the mask
     b_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
-        clHandleError(__FILE__,__LINE__,err);
+    clHandleError(__FILE__,__LINE__,err);
+
     // Buffer for storing the pixel differences between best_target and source patches
     b_diffs = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err);
-        clHandleError(__FILE__,__LINE__,err);
-}
-
-void CL_inpaint_init(int width, int height, char * img, bool * mask) {
-
-    if(!openCL_initialized) initCL();
-    initCLInpainting(width, height);
-
-    memset(confidence, 0, MAX_LEN*MAX_LEN*sizeof(float));
-    memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
-
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            confidence[LINEAR(i,j)] = mask[LINEAR(i,j)] ? 0.0 : 1.0;
-        }
-    }
+    clHandleError(__FILE__,__LINE__,err);
 }
 
 bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
 
     // 1. CALCULATE CONTOUR
     // ++++++++++++++++++++
+#ifdef PROFILE
     tstart = clock();
+#endif
 
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
 
@@ -125,20 +136,21 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
         return 0;
     }
 
+#ifdef PROFILE
     tend = clock();
     tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
     printf("Contour (size = %d): %f\n", contour_size, tcount);
+#endif
 
     // 2. FIND TARGET PATCH
     // ++++++++++++++++++++
+#ifdef PROFILE
     tstart = clock();
+#endif
 
     memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point));
     memset(n_t, 0, MAX_LEN*MAX_LEN*sizeof(point));
-
-    int max_i = -1;
-    int max_j = -1;
-    float max_priority = -1.0;
+    memset(priority, -1, MAX_LEN*MAX_LEN*sizeof(float));
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
@@ -244,25 +256,33 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
             float data = fabsf(gx_t * nx_max + gy_t * ny_max) / ALPHA;
 
             // Priority
-            float priority = confidence[LINEAR(i,j)] * data;
+            priority[LINEAR(i,j)] = confidence[LINEAR(i,j)] * data;
+        }
 
-            // Update max
-            if (priority > max_priority) {
+        int max_i = -1;
+        int max_j = -1;
+        float max_priority = -1.0;
+
+        forn(x, width) forn(y, height) {
+            if (priority[LINEAR(y,x)] > max_priority) {
                 max_priority = priority;
-                max_i = i;
-                max_j = j;
+                max_i = y;
+                max_j = x;
             }
-
         }
     }
 
+#ifdef PROFILE
     tend = clock();
     tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
     printf("Target patch (%d, %d): %f\n", max_i, max_j, tcount);
+#endif
 
     // 3. FIND SOURCE PATCH
     // ++++++++++++++++++++
+#ifdef PROFILE
     tstart = clock();
+#endif
 
     // Write to Device
 	err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
@@ -301,13 +321,17 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
         }
     }
 
+#ifdef PROFILE
     tend = clock();
     tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
     printf("Source patch(%d, %d): %f\n", cl_min_source_i, cl_min_source_j, tcount);
+#endif
 
     // 4. COPY
     // +++++++
+#ifdef PROFILE
     tstart = clock();
+#endif
 
     for (int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++) {
         for (int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++) {
@@ -327,11 +351,12 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
         }
     }
 
+#ifdef PROFILE
     tend = clock();
     tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
     printf("Copy: %f\n", tcount);
-
     printf("\n");
+#endif
 
     return 1;
 }
@@ -346,6 +371,9 @@ void CL_inpainting(char * ptr, int width, int height, bool * mask_ptr) {
     }
 }
 
+
+// AUXILIARS
+// +++++++++
 
 // Calculates angle of vectors between vectors (ax, ay) and (bx, by)
 point vector_bisector(float ax, float ay, float bx, float by) {
