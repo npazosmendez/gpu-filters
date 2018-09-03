@@ -1,15 +1,35 @@
 
 __constant int PATCH_RADIUS = 4;
 
+__constant float ALPHA = 255;
+
+#define PI 3.14159265358979323846
+
+#define LINEAR3(position) (3*(((position).y)*get_global_size(0)+((position).x))+((position).z))
 #define LINEAR(position) (((position).x)+((position).y)*get_global_size(0))
 
 // AUXILIARS
 // +++++++++
 
+typedef struct point {
+    float x, y;
+} point;
+
+int within(int2 position, int2 size);
+float squared_distance3(__global uchar * p, __global uchar * q);
+float norm(float x, float y);
+float masked_convolute(int width, int height, __global uchar * img, int i, int j, float kern[], global uchar * mask);
+point vector_bisector(float ax, float ay, float bx, float by);
+
 // Checks if 'position' is valid inside a matrix of 'size'
 int within(int2 position, int2 size) {
     int2 is_within = 0 <= position && position < size;
     return is_within.x && is_within.y;
+}
+
+// Calculates norm of vector
+float norm(float x, float y) {
+    return sqrt(x * x + y * y);
 }
 
 // Calculates squared distance of two vectors in three dimensions
@@ -18,6 +38,38 @@ float squared_distance3(__global uchar * p, __global uchar * q) {
            (p[1] - q[1]) * (p[1] - q[1]) +  \
            (p[2] - q[2]) * (p[2] - q[2]);
 }
+
+// Calculates angle of vectors between vectors (ax, ay) and (bx, by)
+point vector_bisector(float ax, float ay, float bx, float by) {
+    float b_angle = atan2(ay, ax);
+    float a_angle = atan2(by, bx);
+    if (b_angle < a_angle) b_angle += 2 * PI;
+    float diff_angle = b_angle - a_angle;
+    float mid_angle = (diff_angle / 2) + a_angle;
+    return (point) { cos(mid_angle), sin(mid_angle) };
+}
+
+float masked_convolute(int width, int height, __global uchar * img, int i, int j, float kern[], global uchar * mask) {
+    float acc = 0;
+
+    int kernel_radius = 1;
+    int kernel_diameter = kernel_radius * 2 + 1;
+    for (int ki = 0; ki < kernel_diameter; ki++) {
+        for (int kj = 0; kj < kernel_diameter; kj++) {
+            int inner_i = clamp(i + ki - kernel_radius, 0, height);
+            int inner_j = clamp(j + kj - kernel_radius, 0, width);
+            float avg = 0;
+            for (int ci = 0; ci < 3; ci++) {
+                avg += img[LINEAR3((int3)(inner_j, inner_i, ci))];
+            }
+            avg /= 3;
+            acc += avg * kern[LINEAR((int2)(kj, ki))];
+        }
+    }
+
+    return acc;
+}
+
 
 // KERNELS
 // +++++++
@@ -30,6 +82,8 @@ float squared_distance3(__global uchar * p, __global uchar * q) {
 __kernel void patch_priorities(
         __global uchar * img,
         __global uchar * mask,
+        __global uchar * contour_mask,
+        __global uchar * confidence,
         __global float * priorities) {
 
     int width = get_global_size(0);
@@ -39,7 +93,7 @@ __kernel void patch_priorities(
 
     bool is_contour = true;
 
-    if (!contour_mask[LINEAR(i,j)]) {
+    if (!contour_mask[LINEAR((int2)(j,i))]) {
         is_contour = false; // return?
     }
 
@@ -51,33 +105,34 @@ __kernel void patch_priorities(
     int top_l = min(j + PATCH_RADIUS + 1, width);
     for (int k = bot_k; k < top_k; k++) {
         for (int l = bot_l; l < top_l; l++) {
-            sum += confidence[LINEAR(k,l)];
+            sum += confidence[LINEAR((int2)(l,k))];
         }
     }
 
-    confidence[LINEAR(i,j)] = sum / (2 * PATCH_RADIUS + 1) * (2 * PATCH_RADIUS + 1);
+    confidence[LINEAR((int2)(j,i))] = sum / (2 * PATCH_RADIUS + 1) * (2 * PATCH_RADIUS + 1);
+    // TODO: I'm screwing up pretty baddly here dood. When do I need to update confidence...? What I'm doing can't be right.
 
 
     // Gradient:
     // According to impl I should take one gradient, according to paper I should take the max in the patch.
     // Also, according to both I need to look in the whole image, not just in the source. That's weird.
     // Following my gut, I'll calculate only one gradient
-    float sobel_kernel_x[3][3] = { \
-                    {-1, 0, 1}, \
-                    {-2, 0, 2}, \
-                    {-1, 0, 1}  \
+    float sobel_kernel_x[9] = { \
+                    -1, 0, 1, \
+                    -2, 0, 2, \
+                    -1, 0, 1  \
                 };
-    float sobel_kernel_y[3][3] = { \
-                    {-1, -2, -1}, \
-                    { 0,  0,  0}, \
-                    { 1,  2,  1}  \
+    float sobel_kernel_y[9] = { \
+                    -1, -2, -1, \
+                     0,  0,  0, \
+                     1,  2,  1  \
                 };
     float gx = masked_convolute(width, height, img, i, j, sobel_kernel_x, mask);
     float gy = masked_convolute(width, height, img, i, j, sobel_kernel_y, mask);
     float gx_t = -gy;
     float gy_t = gx;
 
-    gradient_t[LINEAR(i,j)] = (point) { .x = gx_t, .y = gy_t }; // TODO: Debug
+    //point gradient_t = (point) { .x = gx_t, .y = gy_t }; // TODO: I'm not using this value, lol
 
 
     // Normal:
@@ -88,9 +143,8 @@ __kernel void patch_priorities(
 
     // Find first edge/masked pixel
     for (int k = 0; k < 8; k++) {
-        if (!within(i + di[k], 0, height) || \
-            !within(j + dj[k], 0, width) ||  \
-            mask[LINEAR(i + di[k], j + dj[k])]) {
+        if (!within((int2)(j + dj[k], i + di[k]), (int2)(width, height)) ||  \
+            mask[LINEAR((int2)(j + dj[k], i + di[k]))]) {
             k_border = k;
             break;
         }
@@ -106,9 +160,8 @@ __kernel void patch_priorities(
         int k_prev = k_border;
         for (int l = 0; l < 8; l++) {
             int k = ((k_border + 1) + l) % 8;
-            bool is_out = !within(i + di[k], 0, height) ||  \
-                          !within(j + dj[k], 0, width);
-            if ((is_out && !is_out_prev) || (mask[LINEAR(i + di[k], j + dj[k])])){
+            bool is_out = !within((int2)(j + dj[k], i + di[k]), (int2)(width, height));
+            if ((is_out && !is_out_prev) || (mask[LINEAR((int2)(j + dj[k], i + di[k]))])){
                 int ax = di[k_prev];
                 int ay = dj[k_prev];
                 int bx = di[k];
@@ -134,14 +187,15 @@ __kernel void patch_priorities(
         ny_max= gy_t / g_norm;
     }
 
-    n_t[LINEAR(i,j)] = (point) { .x = nx_max, .y = ny_max }; // TODO: Debug
+    //point n_t = (point) { .x = nx_max, .y = ny_max }; // TODO: Debug
 
     // Data
-    float data = fabsf(gx_t * nx_max + gy_t * ny_max) / ALPHA;
+    float data = fabs(gx_t * nx_max + gy_t * ny_max) / ALPHA;
 
     // Priority
-    priorities[LINEAR(i,j)] = confidence[LINEAR(i,j)] * data;
+    priorities[LINEAR((int2)(j,i))] = is_contour ? confidence[LINEAR((int2)(j,i))] * data : 0.0f;
 }
+
 
 /*
  * Sets the output buffer 'diffs' so that 'diffs(x, y)' is equal to the difference

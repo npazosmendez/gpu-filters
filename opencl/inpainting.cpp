@@ -32,9 +32,6 @@ static int PATCH_RADIUS = 4;
 // GLOBALS
 // +++++++
 
-// Constants
-static float ALPHA = 255;
-
 // Macros
 #define LINEAR3(y,x,z) (3*((y)*width+(x))+(z))
 #define LINEAR(y,x) ((y)*width+(x))
@@ -46,11 +43,9 @@ float masked_convolute(int width, int height, char * img, int i, int j, float ke
 
 // Host Buffers
 #define MAX_LEN 2000
-bool contour_mask[MAX_LEN*MAX_LEN]; // whether a pixel belongs to the border
-float confidence[MAX_LEN*MAX_LEN];  // how trustworthy the info of a pixel is
-point gradient_t[MAX_LEN*MAX_LEN];  // transposed gradient at the pixel
+char contour_mask[MAX_LEN*MAX_LEN]; // whether a pixel belongs to the border
+cl_float confidence[MAX_LEN*MAX_LEN];  // how trustworthy the info of a pixel is
 cl_float priority[MAX_LEN*MAX_LEN];    // patch priority as next target
-point n_t[MAX_LEN*MAX_LEN];         // normal of border at pixel
 cl_float diffs[MAX_LEN*MAX_LEN];    // differences of patch to target
 
 // Device Memory Objects
@@ -58,6 +53,8 @@ Kernel k_patch_priorities;
 Kernel k_target_diffs;
 Buffer b_img;
 Buffer b_mask;
+Buffer b_contour_mask;
+Buffer b_confidence;
 Buffer b_diffs;
 Buffer b_priorities;
 
@@ -101,6 +98,14 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask) {
     b_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 
+    // Buffer for storing the contour mask
+    b_contour_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
+    clHandleError(__FILE__,__LINE__,err);
+
+    // Buffer for storing the confidence of patches
+    b_confidence = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err);
+    clHandleError(__FILE__,__LINE__,err);
+
     // Buffer for storing the priorities of patches
     b_priorities = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
@@ -109,6 +114,7 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask) {
     b_diffs = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 }
+
 
 bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
 
@@ -157,19 +163,8 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     tstart = clock();
 #endif
 
-    memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point));
-    memset(n_t, 0, MAX_LEN*MAX_LEN*sizeof(point));
+    // Buffer clear
     memset(priority, -1, MAX_LEN*MAX_LEN*sizeof(cl_float));
-
-
-
-
-
-
-
-
-
-
 
     // Write to Device
     err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
@@ -178,10 +173,18 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
     clHandleError(__FILE__,__LINE__,err);
 
+    err = queue.enqueueWriteBuffer(b_contour_mask, CL_TRUE, 0, sizeof(char)*width*height, contour_mask);
+    clHandleError(__FILE__,__LINE__,err);
+
+    err = queue.enqueueWriteBuffer(b_confidence, CL_TRUE, 0, sizeof(cl_float)*width*height, confidence);
+    clHandleError(__FILE__,__LINE__,err);
+
     // Kernel Execute
     k_patch_priorities.setArg(0, b_img);
     k_patch_priorities.setArg(1, b_mask);
-    k_patch_priorities.setArg(2, b_priorities);
+    k_patch_priorities.setArg(2, b_contour_mask);
+    k_patch_priorities.setArg(3, b_confidence);
+    k_patch_priorities.setArg(4, b_priorities);
     err = queue.enqueueNDRangeKernel(
             k_patch_priorities,
             NullRange,
@@ -194,125 +197,10 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     err = queue.enqueueReadBuffer(b_priorities, CL_TRUE, 0, sizeof(cl_float)*width*height, priority);
     clHandleError(__FILE__,__LINE__,err);
 
+    err = queue.enqueueReadBuffer(b_confidence, CL_TRUE, 0, sizeof(cl_float)*width*height, confidence);
+    clHandleError(__FILE__,__LINE__,err);
 
-
-
-
-
-
-
-
-/*
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-
-            if (!contour_mask[LINEAR(i,j)]) {
-                continue;
-            }
-
-            // Calculate confidence
-            float sum = 0;
-            int bot_k = max(i - PATCH_RADIUS, 0);
-            int top_k = min(i + PATCH_RADIUS + 1, height);
-            int bot_l = max(j - PATCH_RADIUS, 0);
-            int top_l = min(j + PATCH_RADIUS + 1, width);
-            for (int k = bot_k; k < top_k; k++) {
-                for (int l = bot_l; l < top_l; l++) {
-                    sum += confidence[LINEAR(k,l)];
-                }
-            }
-
-            confidence[LINEAR(i,j)] = sum / (2 * PATCH_RADIUS + 1) * (2 * PATCH_RADIUS + 1);
-
-
-            // Gradient:
-            // According to impl I should take one gradient, according to paper I should take the max in the patch.
-            // Also, according to both I need to look in the whole image, not just in the source. That's weird.
-            // Following my gut, I'll calculate only one gradient
-            float sobel_kernel_x[3][3] = { \
-                {-1, 0, 1}, \
-                {-2, 0, 2}, \
-                {-1, 0, 1}  \
-            };
-            float sobel_kernel_y[3][3] = { \
-                {-1, -2, -1}, \
-                { 0,  0,  0}, \
-                { 1,  2,  1}  \
-            };
-            float gx = masked_convolute(width, height, img, i, j, sobel_kernel_x, mask);
-            float gy = masked_convolute(width, height, img, i, j, sobel_kernel_y, mask);
-            float gx_t = -gy;
-            float gy_t = gx;
-
-            gradient_t[LINEAR(i,j)] = (point) { .x = gx_t, .y = gy_t }; // TODO: Debug
-            
-            
-            // Normal:
-            //  Easy way: Take spaces between edges (take the one who yields higher data)
-            int di[8] = {-1, 0, 1, 1, 1, 0, -1, -1};
-            int dj[8] = {1, 1, 1, 0, -1, -1, -1, 0};
-            int k_border = -1;
-
-            // Find first edge/masked pixel
-            for (int k = 0; k < 8; k++) {
-                if (!within(i + di[k], 0, height) || \
-                    !within(j + dj[k], 0, width) ||  \
-                    mask[LINEAR(i + di[k], j + dj[k])]) {
-                    k_border = k;
-                    break;
-                }
-            }
-
-            // Loop around and for every pair of edges/masked pixels
-            // take the middle vector as candidate for normal
-            float nx_max = -1;
-            float ny_max = -1;
-
-            if (k_border != -1) {
-                bool is_out_prev = false;
-                int k_prev = k_border;
-                for (int l = 0; l < 8; l++) {
-                    int k = ((k_border + 1) + l) % 8;
-                    bool is_out = !within(i + di[k], 0, height) ||  \
-                                  !within(j + dj[k], 0, width);
-                    if ((is_out && !is_out_prev) || (mask[LINEAR(i + di[k], j + dj[k])])){
-                        int ax = di[k_prev];
-                        int ay = dj[k_prev];
-                        int bx = di[k];
-                        int by = dj[k];
-
-                        point mid = vector_bisector(ax, ay, bx, by);
-                        int nx = mid.x;
-                        int ny = mid.y;
-
-                        if (norm(nx, ny) > norm(nx_max, ny_max)) {
-                            nx_max = nx;
-                            ny_max = ny;
-                        }
-                        k_prev = k;
-
-                        if (is_out) is_out_prev = true;
-                    }
-                }
-            } else {
-                // Since every vector is equally possible, I take the best
-                float g_norm = norm(gx_t, gy_t);
-                nx_max = gx_t / g_norm;
-                ny_max= gy_t / g_norm;
-            }
-
-            n_t[LINEAR(i,j)] = (point) { .x = nx_max, .y = ny_max }; // TODO: Debug
-
-            // Data
-            float data = fabsf(gx_t * nx_max + gy_t * ny_max) / ALPHA;
-
-            // Priority
-            priority[LINEAR(i,j)] = confidence[LINEAR(i,j)] * data;
-        }
-    }
-
-    */
-
+    // Reduce
     int max_i = -1;
     int max_j = -1;
     float max_priority = -1.0;
@@ -363,6 +251,7 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     err = queue.enqueueReadBuffer(b_diffs, CL_TRUE, 0, sizeof(cl_float)*width*height, diffs);
 	clHandleError(__FILE__,__LINE__,err);
 
+	// Reduce
     float cl_min_diff = FLT_MAX;
     int cl_min_source_i = -1;
     int cl_min_source_j = -1;
@@ -424,40 +313,3 @@ void CL_inpainting(char * ptr, int width, int height, bool * mask_ptr) {
     }
 }
 
-
-// AUXILIARS
-// +++++++++
-
-// Calculates angle of vectors between vectors (ax, ay) and (bx, by)
-point vector_bisector(float ax, float ay, float bx, float by) {
-    float b_angle = atan2f(ay, ax);
-    float a_angle = atan2f(by, bx);
-    if (b_angle < a_angle) b_angle += 2 * PI;
-    float diff_angle = b_angle - a_angle;
-    float mid_angle = (diff_angle / 2) + a_angle;
-    return (point) { cos(mid_angle), sin(mid_angle) };
-}
-
-// Convolution with a 3x3 kernel that handles edges via mirroring (ignores mask)
-// TODO: Mask ignore
-// TODO: Linus is a meanie: https://lkml.org/lkml/2015/9/3/428
-float masked_convolute(int width, int height, char * img, int i, int j, float kernel[3][3], bool * mask) {
-    float acc = 0;
-
-    int kernel_radius = 1;
-    int kernel_diameter = kernel_radius * 2 + 1;
-    for (int ki = 0; ki < kernel_diameter; ki++) {
-        for (int kj = 0; kj < kernel_diameter; kj++) {
-            int inner_i = clamp(i + ki - kernel_radius, 0, height);
-            int inner_j = clamp(j + kj - kernel_radius, 0, width);
-            float avg = 0;
-            for (int ci = 0; ci < 3; ci++) {
-                avg += img[LINEAR3(inner_i, inner_j, ci)];
-            }
-            avg /= 3;
-            acc += avg * kernel[ki][kj];
-        }
-    }
-
-    return acc;
-}
