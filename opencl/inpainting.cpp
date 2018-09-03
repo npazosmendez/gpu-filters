@@ -37,10 +37,6 @@ static int PATCH_RADIUS = 4;
 #define LINEAR(y,x) ((y)*width+(x))
 #define forn(i,n) for(int i=0; i<(n); i++)
 
-// Definitions
-point vector_bisector(float ax, float ay, float bx, float by);
-float masked_convolute(int width, int height, char * img, int i, int j, float kernel[3][3], bool * mask);
-
 // Host Buffers
 #define MAX_LEN 2000
 char contour_mask[MAX_LEN*MAX_LEN]; // whether a pixel belongs to the border
@@ -90,33 +86,32 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask) {
     k_patch_priorities = Kernel(program, "patch_priorities");
     k_target_diffs = Kernel(program, "target_diffs");
 
-    // Buffer for storing the image in rgb (uchar3)
+    // Buffers
     b_img = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err); // image in rgb (uchar3)
-    clHandleError(__FILE__,__LINE__,err);
-
-    // Buffer for storing the mask
+        clHandleError(__FILE__,__LINE__,err);
     b_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
-
-    // Buffer for storing the contour mask
+        clHandleError(__FILE__,__LINE__,err);
     b_contour_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
-
-    // Buffer for storing the confidence of patches
+        clHandleError(__FILE__,__LINE__,err);
     b_confidence = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
-
-    // Buffer for storing the priorities of patches
+        clHandleError(__FILE__,__LINE__,err);
     b_priorities = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
-
-    // Buffer for storing the pixel differences between best_target and source patches
-    b_diffs = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
+        clHandleError(__FILE__,__LINE__,err);
+    b_diffs = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err); // differences to target
+        clHandleError(__FILE__,__LINE__,err);
 }
 
 
 bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
+
+    // 0. WRITE
+    // ++++++++
+
+    err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
+    clHandleError(__FILE__,__LINE__,err);
+
+    err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
+    clHandleError(__FILE__,__LINE__,err);
 
     // 1. CALCULATE CONTOUR
     // ++++++++++++++++++++
@@ -128,9 +123,6 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
 
     // Write to Device
-    err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
-    clHandleError(__FILE__,__LINE__,err);
-
     err = queue.enqueueWriteBuffer(b_contour_mask, CL_TRUE, 0, sizeof(char)*width*height, contour_mask);
     clHandleError(__FILE__,__LINE__,err);
 
@@ -149,32 +141,10 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     err = queue.enqueueReadBuffer(b_contour_mask, CL_TRUE, 0, sizeof(char)*width*height, contour_mask);
     clHandleError(__FILE__,__LINE__,err);
 
-
-
-
-
-
-
-/*
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            if (mask[LINEAR(i,j)]) {
-                for (int di = -1; di <= 1; di++) {
-                    for (int dj = -1; dj <= 1; dj++) {
-                        if (within(i + di, 0, height) && within(j + dj, 0, width)) {
-                            if (!mask[LINEAR(i + di, j + dj)]) {
-                                contour_mask[LINEAR(i,j)] = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    */
-
+    // Exit condition
     int contour_size = 0;
-    for (int i = 0; i < height; i++) for (int j = 0; j < width; j++) {
+    for (int i = 0; i < height; i++)
+        for (int j = 0; j < width; j++) {
         if (contour_mask[LINEAR(i,j)]) contour_size++;
     }
 
@@ -198,12 +168,6 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     memset(priority, -1, MAX_LEN*MAX_LEN*sizeof(cl_float));
 
     // Write to Device
-    err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
-    clHandleError(__FILE__,__LINE__,err);
-
-    err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
-    clHandleError(__FILE__,__LINE__,err);
-
     err = queue.enqueueWriteBuffer(b_contour_mask, CL_TRUE, 0, sizeof(char)*width*height, contour_mask);
     clHandleError(__FILE__,__LINE__,err);
 
@@ -257,12 +221,6 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
 #endif
 
     // Write to Device
-	err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
-	clHandleError(__FILE__,__LINE__,err);
-
-	err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
-	clHandleError(__FILE__,__LINE__,err);
-
     cl_int2 best_target = { max_j, max_i };
 
     // Kernel Execute
