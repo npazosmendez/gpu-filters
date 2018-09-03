@@ -1,7 +1,7 @@
 
 __constant int PATCH_RADIUS = 4;
 
-#define LINEAR(position) ((position.x)+(position.y)*get_global_size(0))
+#define LINEAR(position) (((position).x)+((position).y)*get_global_size(0))
 
 // AUXILIARS
 // +++++++++
@@ -21,6 +21,18 @@ float squared_distance3(__global uchar * p, __global uchar * q) {
 
 // KERNELS
 // +++++++
+
+/*
+ * Sets the output buffer 'priorities' with the priority of each patch in the
+ * image as potential 'target' patch in a given step of the inpainting algorithm.
+ * The patch with the highest priority will be the next patch to be filled.
+ */
+__kernel void patch_priorities(
+        __global uchar * img,
+        __global uchar * mask,
+        __global float * priorities) {
+    priorities[LINEAR((int2)(get_global_id(0), get_global_id(1)))] = 3.0f;
+}
 
 /*
  * Sets the output buffer 'diffs' so that 'diffs(x, y)' is equal to the difference

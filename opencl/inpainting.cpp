@@ -49,15 +49,17 @@ float masked_convolute(int width, int height, char * img, int i, int j, float ke
 bool contour_mask[MAX_LEN*MAX_LEN]; // whether a pixel belongs to the border
 float confidence[MAX_LEN*MAX_LEN];  // how trustworthy the info of a pixel is
 point gradient_t[MAX_LEN*MAX_LEN];  // transposed gradient at the pixel
-float priority[MAX_LEN*MAX_LEN];    // patch priority as next target
+cl_float priority[MAX_LEN*MAX_LEN];    // patch priority as next target
 point n_t[MAX_LEN*MAX_LEN];         // normal of border at pixel
 cl_float diffs[MAX_LEN*MAX_LEN];    // differences of patch to target
 
 // Device Memory Objects
+Kernel k_patch_priorities;
 Kernel k_target_diffs;
 Buffer b_img;
 Buffer b_mask;
 Buffer b_diffs;
+Buffer b_priorities;
 
 // Misc
 static cl_int err = 0;
@@ -85,7 +87,10 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask) {
     // Program object
     createProgram("inpainting.cl");
 
-    // Kernel for calculating the source patch with minimum difference with target
+    // Kernel for calculating the patch with the maximum priority for target patch
+    k_patch_priorities = Kernel(program, "patch_priorities");
+
+    // Kernel for calculating the source patch with minimum difference with target patch
     k_target_diffs = Kernel(program, "target_diffs");
 
     // Buffer for storing the image in rgb (uchar3)
@@ -94,6 +99,10 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask) {
 
     // Buffer for storing the mask
     b_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
+    clHandleError(__FILE__,__LINE__,err);
+
+    // Buffer for storing the priorities of patches
+    b_priorities = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 
     // Buffer for storing the pixel differences between best_target and source patches
@@ -150,8 +159,50 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
 
     memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point));
     memset(n_t, 0, MAX_LEN*MAX_LEN*sizeof(point));
-    memset(priority, -1, MAX_LEN*MAX_LEN*sizeof(float));
+    memset(priority, -1, MAX_LEN*MAX_LEN*sizeof(cl_float));
 
+
+
+
+
+
+
+
+
+
+
+    // Write to Device
+    err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
+    clHandleError(__FILE__,__LINE__,err);
+
+    err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
+    clHandleError(__FILE__,__LINE__,err);
+
+    // Kernel Execute
+    k_patch_priorities.setArg(0, b_img);
+    k_patch_priorities.setArg(1, b_mask);
+    k_patch_priorities.setArg(2, b_priorities);
+    err = queue.enqueueNDRangeKernel(
+            k_patch_priorities,
+            NullRange,
+            NDRange(width, height),
+            NullRange // default
+    );
+    clHandleError(__FILE__,__LINE__,err);
+
+    // Read result
+    err = queue.enqueueReadBuffer(b_priorities, CL_TRUE, 0, sizeof(cl_float)*width*height, priority);
+    clHandleError(__FILE__,__LINE__,err);
+
+
+
+
+
+
+
+
+
+/*
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
 
@@ -258,17 +309,19 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
             // Priority
             priority[LINEAR(i,j)] = confidence[LINEAR(i,j)] * data;
         }
+    }
 
-        int max_i = -1;
-        int max_j = -1;
-        float max_priority = -1.0;
+    */
 
-        forn(x, width) forn(y, height) {
-            if (priority[LINEAR(y,x)] > max_priority) {
-                max_priority = priority;
-                max_i = y;
-                max_j = x;
-            }
+    int max_i = -1;
+    int max_j = -1;
+    float max_priority = -1.0;
+
+    forn(x, width) forn(y, height) {
+        if (priority[LINEAR(y,x)] > max_priority) {
+            max_priority = priority[LINEAR(y,x)];
+            max_i = y;
+            max_j = x;
         }
     }
 
