@@ -63,7 +63,7 @@ static cl_int err = 0;
 // ALGORITHM
 // +++++++++
 
-void CL_inpaint_init(int width, int height, char * img, bool * mask) {
+void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug) {
 
     cout << "Initializing OpenCL model for Inpainting\n";
 
@@ -103,7 +103,11 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask) {
 }
 
 
-bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
+bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
+
+#ifdef DEBUG
+    memset(debug, 0, width*height*sizeof(int));
+#endif
 
     // 0. WRITE
     // ++++++++
@@ -222,6 +226,9 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
 #endif
 
     // Write to Device
+    //err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
+    //clHandleError(__FILE__,__LINE__,err);
+
     cl_int2 best_target = { max_j, max_i };
 
     // Kernel Execute
@@ -259,6 +266,11 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
     printf("Source patch(%d, %d): %f\n", cl_min_source_i, cl_min_source_j, tcount);
 #endif
 
+#ifdef DEBUG
+    debug[LINEAR(max_i, max_j)] = 2; // RED - Target
+    debug[LINEAR(cl_min_source_i, cl_min_source_j)] = 1; // BLUE - Source
+#endif
+
     // 4. COPY
     // +++++++
 #ifdef PROFILE
@@ -294,11 +306,11 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask) {
 }
 
 
-void CL_inpainting(char * ptr, int width, int height, bool * mask_ptr) {
-    inpaint_init(width, height, ptr, mask_ptr);
+void CL_inpainting(char * ptr, int width, int height, bool * mask_ptr, int * debug = nullptr) {
+    CL_inpaint_init(width, height, ptr, mask_ptr, debug);
 
     while (true) {
-        bool is_more = inpaint_step(width, height, ptr, mask_ptr);
+        bool is_more = CL_inpaint_step(width, height, ptr, mask_ptr, debug);
         if (!is_more) break;
     }
 }

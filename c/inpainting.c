@@ -35,7 +35,7 @@ point n_t[MAX_LEN*MAX_LEN];
 clock_t start, end;
 float count;
 
-void inpaint_init(int width, int height, char * img, bool * mask) {
+void inpaint_init(int width, int height, char * img, bool * mask, int * debug) {
 
     memset(confidence, 0, MAX_LEN*MAX_LEN*sizeof(float));
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
@@ -47,7 +47,7 @@ void inpaint_init(int width, int height, char * img, bool * mask) {
     }
 }
 
-bool inpaint_step(int width, int height, char * img, bool * mask) {
+bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
     memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
@@ -299,11 +299,11 @@ bool inpaint_step(int width, int height, char * img, bool * mask) {
 }
 
 
-void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
-    inpaint_init(width, height, ptr, mask_ptr);
+void inpainting(char * ptr, int width, int height, bool * mask_ptr, int * debug) {
+    inpaint_init(width, height, ptr, mask_ptr, debug);
 
     while (true) {
-        bool is_more = inpaint_step(width, height, ptr, mask_ptr);
+        bool is_more = inpaint_step(width, height, ptr, mask_ptr, debug);
         if (!is_more) break;
     }
 }

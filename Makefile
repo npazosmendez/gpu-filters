@@ -3,7 +3,7 @@ CC = gcc
 CXX = g++
 CFLAGS = -std=c99
 CXXFLAGS = -std=c++11
-CPPFLAGS = -Wall -Wno-missing-braces -DCL_HPP_TARGET_OPENCL_VERSION=120 -DCL_HPP_MINIMUM_OPENCL_VERSION=120 -I . -I opencl/headers
+CPPFLAGS = $(EXFLAGS) -Wall -Wno-missing-braces -DCL_HPP_TARGET_OPENCL_VERSION=120 -DCL_HPP_MINIMUM_OPENCL_VERSION=120 -I . -I opencl/headers
 CSOURCES = $(wildcard c/*.c)
 CXXSOURCES = $(wildcard opencl/*.cpp ui/*.cpp)
 

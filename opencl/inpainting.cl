@@ -7,6 +7,8 @@ __constant float ALPHA = 255;
 
 #define LINEAR3(position) (3*(((position).y)*get_global_size(0)+((position).x))+((position).z))
 #define LINEAR(position) (((position).x)+((position).y)*get_global_size(0))
+#define forn(i,n) for(int i=0; i<(n); i++)
+
 
 // AUXILIARS
 // +++++++++
@@ -119,6 +121,7 @@ __kernel void patch_priorities(
 
     if (!contour_mask[LINEAR((int2)(j,i))]) {
         is_contour = false; // return?
+        goto prioriret;
     }
 
     /*
@@ -225,7 +228,8 @@ __kernel void patch_priorities(
     float data = fabs(gx_t * nx_max + gy_t * ny_max) / ALPHA;
 
     // Priority
-    priorities[LINEAR((int2)(j,i))] = is_contour ? confidence[LINEAR((int2)(j,i))] * data : 0.0f;
+prioriret:
+    priorities[LINEAR((int2)(j,i))] = is_contour ? confidence[LINEAR((int2)(j,i))] * data : -1.0f;
 }
 
 
@@ -253,10 +257,8 @@ __kernel void target_diffs(
             int2 local_pos        = (int2)(pos.x + px       , pos.y + py);
             int2 target_local_pos = (int2)(target_pos.x + px, target_pos.y + py);
 
-            if (!within(local_pos, size) || mask[LINEAR(local_pos)]) {
-                full_patch = false;
-                goto ret;
-            }
+            // TODO: Ideally, I'd early return here, but it wouldn't be working
+            full_patch = full_patch && (within(local_pos, size) && !mask[LINEAR(local_pos)]);
 
             if (within(target_local_pos, size) && !mask[LINEAR(target_local_pos)]) {
                 squared_diff += squared_distance3(img + 3*LINEAR(target_local_pos),  \
@@ -265,6 +267,5 @@ __kernel void target_diffs(
         }
     }
 
-ret:
     diffs[LINEAR(pos)] = full_patch ? squared_diff : FLT_MAX;
 }
