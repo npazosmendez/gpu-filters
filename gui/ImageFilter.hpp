@@ -24,7 +24,7 @@ class ImageFilter : public QThread {
 		bool C() {return !cl;};
 		void setCL() {cl = true;};
 		void setC() {cl = false;};
-		virtual FilterControls& controls() {};
+		virtual FilterControls * controls() {return NULL;};
 
 	public slots:
 		virtual void process_frame(Mat *){};
@@ -38,7 +38,7 @@ class CannyFilter : public ImageFilter {
 	public:
 		CannyFilter();
 		~CannyFilter();
-		FilterControls& controls();
+		FilterControls * controls();
 	public slots:
 		void process_frame(Mat *cameraFrame);
 		void setHigherThreshold(int value);
@@ -52,7 +52,7 @@ class CannyFilter : public ImageFilter {
 class HoughFilter : public ImageFilter {
     Q_OBJECT
 	public:
-		FilterControls& controls();
+		FilterControls * controls();
 		HoughFilter();
 		~HoughFilter();
 
@@ -66,7 +66,7 @@ class HoughFilter : public ImageFilter {
 class NoFilter : public ImageFilter {
     Q_OBJECT
 	public:
-		FilterControls& controls();
+		FilterControls * controls();
 
 	public slots:
 		void process_frame(Mat *cameraFrame);

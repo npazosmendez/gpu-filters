@@ -25,7 +25,7 @@ void ControlsWindow::setFilter(QString filterName){
 	if (filterName == "Hough") filter = new HoughFilter;
 	if (filterName == "No Filter") filter = new NoFilter;
 	_main_layout.removeWidget(_controls);
-	_controls = &filter->controls();
+	_controls = filter->controls();
 	_main_layout.addWidget(_controls);
 	emit filterChanged(filter);
 }
