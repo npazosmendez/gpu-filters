@@ -8,7 +8,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include "camera.hpp"
 #include "hitcounter.hpp"
-#include "filters.hpp"
+#include "ImageFilter.hpp"
 
 using namespace cv;
 using namespace std;
@@ -29,16 +29,16 @@ class VideoWindow : public QMainWindow  {
 		HitCounter hitcounter;
 		inline void overlay_frame_rate(QPixmap* pixmap);
 		int _cl_status;
-		void setFilter(ImageFilter * filter);
+		ImageFilter _filters[3];
 
     public:
-    	VideoWindow(QString filter, int cl_status);
+    	VideoWindow();
     	~VideoWindow();
 
 	public slots:
 		void show_frame(Mat *cameraFrame);
 		void setFilter(QString);
-		void toggleCL(int);
+		void setFilter(ImageFilter * filter);
 };
 
 #endif // __WINDOW_H__

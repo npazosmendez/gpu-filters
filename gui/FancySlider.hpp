@@ -13,6 +13,7 @@ class FancySlider : public QWidget
     Q_OBJECT
 public:
     FancySlider(QString title, int min, int max, QWidget *parent = 0);
+    int value();
 
 private:
 	QLabel _label;

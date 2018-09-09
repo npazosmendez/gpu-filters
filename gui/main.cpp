@@ -10,31 +10,18 @@ using namespace std;
 #include "VideoWindow.hpp"
 #include "FancySlider.hpp"
 #include "FilterControls.hpp"
+#include "ControlsWindow.hpp"
 
 int main(int argc, char** argv) {
     
 	QApplication app(argc, argv);
 
+	ControlsWindow controlsWindow;
 
-	FilterControls controls;
-	QDialog controlsWindow;
-	QVBoxLayout mainLayout;
-	QComboBox comboBox;
-	comboBox.addItem("Canny");
-	comboBox.addItem("Hough");
-	QCheckBox checkBox("OpenCL");
-	mainLayout.addWidget(&checkBox);
-	mainLayout.addWidget(&comboBox);
-	mainLayout.addWidget(&controls);
-	controlsWindow.setLayout(&mainLayout);
+	//VideoWindow videoWindow(comboBox.currentText(), checkBox.checkState());
+	VideoWindow videoWindow;
 
-
-	
-	VideoWindow videoWindow(comboBox.currentText(), checkBox.checkState());
-
-	QObject::connect(&comboBox, SIGNAL(currentIndexChanged(QString)), &videoWindow, SLOT(setFilter(QString)));
-	QObject::connect(&checkBox, SIGNAL(stateChanged(int)), &videoWindow, SLOT(toggleCL(int)));
-
+	QObject::connect(&controlsWindow, SIGNAL(filterChanged(ImageFilter*)), &videoWindow, SLOT(setFilter(ImageFilter*)));
 
 	controlsWindow.show();
 	videoWindow.show();

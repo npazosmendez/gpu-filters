@@ -29,3 +29,7 @@ FancySlider::FancySlider(QString title, int min, int max, QWidget *parent)
     _layout.addWidget(&_value,1,1);
     setLayout(&_layout);
 }
+
+int FancySlider::value(){
+    return _slider.value();
+}

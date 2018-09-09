@@ -6,13 +6,10 @@
 #include <QObject>
 #include <iostream>
 #include <opencv2/imgproc/imgproc.hpp>
+#include "FilterControls.hpp"
 
 using namespace cv;
 using namespace std;
-
-namespace Ui {
-    class MainWindow;
-}
 
 class ImageFilter : public QThread {
     Q_OBJECT
@@ -27,6 +24,7 @@ class ImageFilter : public QThread {
 		bool C() {return !cl;};
 		void setCL() {cl = true;};
 		void setC() {cl = false;};
+		virtual FilterControls& controls() {};
 
 	public slots:
 		virtual void process_frame(Mat *){};
@@ -37,21 +35,43 @@ class ImageFilter : public QThread {
 
 class CannyFilter : public ImageFilter {
     Q_OBJECT
+	public:
+		CannyFilter();
+		~CannyFilter();
+		FilterControls& controls();
 	public slots:
 		void process_frame(Mat *cameraFrame);
+		void setHigherThreshold(int value);
+		void setLowerThreshold(int value);
+	private:
+		CannyControls* _controls;
+		int _higherThreshold = 100;
+		int _lowerThreshold = 50;
 };
 
 class HoughFilter : public ImageFilter {
     Q_OBJECT
 	public:
-		HoughFilter() : a_ammount(150), p_ammount(150), counter((char*)malloc(150*150*3)) {};
-		~HoughFilter() { delete counter; };
+		FilterControls& controls();
+		HoughFilter();
+		~HoughFilter();
 
 	public slots:
 		void process_frame(Mat *cameraFrame);
 	private:
+		HoughControls* _controls;
 		int a_ammount, p_ammount;
 		char* counter;
+};
+class NoFilter : public ImageFilter {
+    Q_OBJECT
+	public:
+		FilterControls& controls();
+
+	public slots:
+		void process_frame(Mat *cameraFrame);
+	private:
+		FilterControls *_controls = new NoControls(NULL);
 };
 
 #endif // __FILTERS_H__

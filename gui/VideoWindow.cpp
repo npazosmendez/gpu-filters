@@ -3,7 +3,7 @@
 #include <QObject>
 #include <iostream>
 #include <opencv2/imgproc/imgproc.hpp>
-#include "filters.hpp"
+#include "ImageFilter.hpp"
 #include "camera.hpp"
 #include "VideoWindow.hpp"
 using namespace cv;
@@ -56,6 +56,7 @@ void VideoWindow::show_frame(Mat *cameraFrame){
 void VideoWindow::setFilter(QString filterName){
     if (filterName == "Canny") setFilter(new CannyFilter);
     if (filterName == "Hough") setFilter(new HoughFilter);
+    if (filterName == "No Filter") setFilter(new NoFilter);
 }
 
 void VideoWindow::setFilter(ImageFilter * filter){
@@ -63,28 +64,24 @@ void VideoWindow::setFilter(ImageFilter * filter){
     if (_currentFilter != NULL){
         QObject::disconnect(&cam, SIGNAL(new_frame(Mat*)), _currentFilter, SLOT(process_frame(Mat*)) );
         QObject::disconnect(_currentFilter, SIGNAL(frame_ready(Mat*)), this, SLOT(show_frame(Mat*)) );
+        _currentFilter->quit();
         delete _currentFilter;
     }
     _currentFilter = filter;
+    _currentFilter->start();
+
     QObject::connect(&cam, SIGNAL(new_frame(Mat*)), _currentFilter, SLOT(process_frame(Mat*)), Qt::QueuedConnection );   
     QObject::connect(_currentFilter, SIGNAL(frame_ready(Mat*)), this, SLOT(show_frame(Mat*)), Qt::QueuedConnection );
-    toggleCL(_cl_status);
-}
-void VideoWindow::toggleCL(int status){
-    if (status){
-        _currentFilter->setCL();
-    }else{
-        _currentFilter->setC();
-    }
-    _cl_status = status;
 }
 
-VideoWindow::VideoWindow(QString filter, int cl_status) : _label(new QLabel), _currentFilter(NULL), _cl_status(cl_status) {
+VideoWindow::VideoWindow() : _label(new QLabel), _currentFilter(NULL) {
     setCentralWidget(_label);
-    setFilter(filter);
+    setFilter("No Filter");
     _currentFilter->start();
-    toggleCL(cl_status);
     cam.start();
+    _filters[0] = new NoFilter;
+    _filters[1] = new HoughFilter;
+    _filters[2] = new CannyFilter;
 };
 
 VideoWindow::~VideoWindow() {
