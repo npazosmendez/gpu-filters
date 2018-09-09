@@ -1,5 +1,6 @@
 #include "cutils.h"
 #include "math.h"
+#include "stdbool.h"
 
 // Checks if value is inside the range [minimum, maximum)
 int within(int value, int minimum, int maximum) {

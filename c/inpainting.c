@@ -6,7 +6,6 @@
 #include "time.h"
 #include "float.h"
 #include "cutils.h"
-#include "assert.h"
 
 static int PATCH_RADIUS = 4;
 static float ALPHA = 255;
@@ -36,7 +35,7 @@ point n_t[MAX_LEN*MAX_LEN];
 clock_t start, end;
 float count;
 
-void inpaint_init(int width, int height, char * img, bool * mask) {
+void inpaint_init(int width, int height, char * img, bool * mask, int * debug) {
 
     memset(confidence, 0, MAX_LEN*MAX_LEN*sizeof(float));
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
@@ -48,7 +47,7 @@ void inpaint_init(int width, int height, char * img, bool * mask) {
     }
 }
 
-bool inpaint_step(int width, int height, char * img, bool * mask) {
+bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
     memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
@@ -217,19 +216,16 @@ bool inpaint_step(int width, int height, char * img, bool * mask) {
 
     // 3. FIND SOURCE PATCH
     // ++++++++++++++++++++
-    /*
-    A valid source patch must be entirely contained in the source region.
-    The difference between a valid source patch and the target patch is the sum of the difference of each pixel that's filled in both.
-    */
-
     start = clock();
 
     // (max_i, max_j) is the target patch
     float min_squared_diff = FLT_MAX;
     int max_source_i = -1;
     int max_source_j = -1;
-    for (int i = PATCH_RADIUS; i < height - PATCH_RADIUS; i++) {
-        for (int j = PATCH_RADIUS; j < width - PATCH_RADIUS; j++) {
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+
+            bool valid = true;
 
             // Sum
             float squared_diff = 0;
@@ -240,10 +236,11 @@ bool inpaint_step(int width, int height, char * img, bool * mask) {
                     int source_i = i + ki;
                     int source_j = j + kj;
 
-                    assert(within(LINEAR(source_i, source_j), 0, width*height));
-
-                    if (mask[LINEAR(source_i, source_j)]) {
-                        goto next_patch;
+                    if (!within(source_i, 0, height) ||  \
+                        !within(source_j, 0, width) ||   \
+                        mask[LINEAR(source_i, source_j)]) {
+                        valid = false;
+                        goto out;
                     }
 
                     if (within(target_i, 0, height) &&  \
@@ -253,6 +250,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask) {
                     }
                 }
             }
+            out: if (!valid) continue;
 
             // Update
             if (squared_diff < min_squared_diff) {
@@ -260,8 +258,6 @@ bool inpaint_step(int width, int height, char * img, bool * mask) {
                 max_source_i = i;
                 max_source_j = j;
             }
-
-            next_patch: ;
         }
     }
 
@@ -303,11 +299,11 @@ bool inpaint_step(int width, int height, char * img, bool * mask) {
 }
 
 
-void inpainting(char * ptr, int width, int height, bool * mask_ptr) {
-    inpaint_init(width, height, ptr, mask_ptr);
+void inpainting(char * ptr, int width, int height, bool * mask_ptr, int * debug) {
+    inpaint_init(width, height, ptr, mask_ptr, debug);
 
     while (true) {
-        bool is_more = inpaint_step(width, height, ptr, mask_ptr);
+        bool is_more = inpaint_step(width, height, ptr, mask_ptr, debug);
         if (!is_more) break;
     }
 }
@@ -349,7 +345,7 @@ float masked_convolute(int width, int height, char * img, int i, int j, float ke
     for (int ki = 0; ki < kernel_diameter; ki++) {
         for (int kj = 0; kj < kernel_diameter; kj++) {
             int inner_i = clamp(i + ki - kernel_radius, 0, height);
-            int inner_j = clamp(j + kj - kernel_radius, 0, width);
+            int inner_j = clamp(j + kj  - kernel_radius, 0, width);
             float avg = 0;
             for (int ci = 0; ci < 3; ci++) {
                 avg += img[LINEAR3(inner_i, inner_j, ci)];
