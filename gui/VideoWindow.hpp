@@ -29,7 +29,7 @@ class VideoWindow : public QMainWindow  {
 		HitCounter hitcounter;
 		inline void overlay_frame_rate(QPixmap* pixmap);
 		int _cl_status;
-		ImageFilter _filters[3];
+		ImageFilter * _filters[3];
 
     public:
     	VideoWindow();
