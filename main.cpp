@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
             break;
             case C_INPAINTING:
             inpaint_generate_arbitrary_mask(mask, width, height);
-            inpainting(ptr, width, height, mask);
+            inpainting(ptr, width, height, mask, NULL);
             break;
             default:
             break;
@@ -160,11 +160,32 @@ void on_mouse(int event, int x, int y, int flags, void* userdata){
 }
 
 void get_flags(int argc, char** argv){
-    // TODO: add help()
     string param;
     for (int i = 0; i < argc; i++) {
         param = argv[i];
-        if (param == "-i") {
+
+        if (param == "-h") {
+            cout << "Parameters\n";
+            cout << "\n";
+
+            cout << "-f <filter-name>\n";
+            cout << "  Specifies the filter that will be applied to the video stream\n";
+            cout << "  Possible values:\n";
+            cout << "   C implementations: c-canny, c-hough, c-inpainting, c-lucas-kanade\n";
+            cout << "   OpenCL implementations: cl-canny, cl-hough, cl-inpainting, cl-lucas-kanade\n";
+            cout << "\n";
+
+            cout << "-i <image-path>\n";
+            cout << "  Specifies a file path for something Nico knows but I don't\n";
+            cout << "\n";
+
+            cout << "-d <device-number>\n";
+            cout << "  Specifies what OpenCL device will be used for processing on the first platform \n";
+            cout << "\n";
+
+            exit(0);
+
+        } else if (param == "-i") {
             /* input file path */
             flags.file_input = true;
             if (i+1 == argc){
@@ -172,7 +193,7 @@ void get_flags(int argc, char** argv){
                 exit(1);
             }
             flags.file_path = argv[i+1];
-        }else if(param == "-f"){
+        } else if (param == "-f") {
             /* filter selection */
             if (i+1 == argc){
                 cerr << "Filter name missing after '-f'." << endl;
@@ -200,8 +221,21 @@ void get_flags(int argc, char** argv){
                 exit(1);
             }
 
-        }else if(param == " "){
-        }else if(param == " "){
+        } else if (param == "-d"){
+            /* device selection */
+            if (i+1 == argc) {
+                cerr << "Filter name missing after '-d'." << endl;
+                exit(1);
+            }
+            int device;
+            try {
+                device = stoi(argv[i+1]);
+            } catch (int e) {
+                cerr << "Couldn't convert '-d' parameter to number" << endl;
+                exit(1);
+            }
+            selectDevice(device);
+        } else if (param == " "){
 
         }
     }

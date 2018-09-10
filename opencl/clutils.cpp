@@ -6,7 +6,6 @@
 using namespace std;
 using namespace cl;
 
-
 cl::Platform platform;
 cl::Device device;
 cl::Context context;
@@ -14,6 +13,7 @@ cl::CommandQueue queue;
 cl::Program program;
 
 bool openCL_initialized = false;
+int device_index = 0;
 
 void initCL(){
     /* Find PLATFORM */
@@ -30,7 +30,7 @@ void initCL(){
     cout << "Available devices:" << endl;
     for (unsigned int i = 0; i < devices.size(); i++)
     cout << "\t* " << devices[i].getInfo<CL_DEVICE_NAME>() << ", " << devices[i].getInfo<CL_DEVICE_VENDOR>() << endl;
-    device = devices[0]; // el primer device
+    device = devices[device_index]; // el primer device
 
     /* Create CONTEXT on that platform */
     cl_context_properties context_properties[] = {CL_CONTEXT_PLATFORM, (cl_context_properties)(platform)(), 0};
@@ -42,6 +42,10 @@ void initCL(){
     cout << "Using platform: " << platform.getInfo<CL_PLATFORM_NAME>() << endl;
     cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << endl;
     openCL_initialized = true;
+}
+
+void selectDevice(int i) {
+    device_index = i;
 }
 
 void createProgram(string filename) {
