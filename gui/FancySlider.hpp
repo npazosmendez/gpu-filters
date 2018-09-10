@@ -23,6 +23,9 @@ private:
 
 signals:
 	void valueChanged(int);
+
+public slots:
+	void setValue(int);
 };
 
 #endif // FANCYSLIDER_H
