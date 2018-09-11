@@ -84,7 +84,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 
     end = clock();
     count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Contour (size = %d): %f\n", contour_size, count);
+    printf("Contour (size %d) = %f\n", contour_size, count);
 
     // 2. FIND TARGET PATCH
     // ++++++++++++++++++++
@@ -212,7 +212,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 
     end = clock();
     count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Target patch (%d, %d): %f\n", max_i, max_j, count);
+    printf("Target patch (%d, %d) = %f\n", max_i, max_j, count);
 
     // 3. FIND SOURCE PATCH
     // ++++++++++++++++++++
@@ -263,7 +263,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 
     end = clock();
     count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Source patch(%d, %d): %f\n", max_source_i, max_source_j, count);
+    printf("Source patch(%d, %d) = %f\n", max_source_i, max_source_j, count);
 
     // 4. COPY
     // +++++++
@@ -293,7 +293,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 
     end = clock();
     count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Copy: %f\n", count);
+    printf("Copy = %f\n", count);
 
     return 1;
 }

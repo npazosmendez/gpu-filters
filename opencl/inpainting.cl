@@ -77,30 +77,6 @@ float masked_convolute(int width, int height, __global uchar * img, int i, int j
 // +++++++
 
 /*
- * Saves in 'contour_mask' which pixels are part of the contour between the masked
- * and unmasked pixels, and which aren't. These will be the next pixels who will be
- * filled.
- */
-__kernel void contour(
-        __global uchar * mask,
-        __global uchar * contour_mask) {
-
-    int2 size = (int2)(get_global_size(0), get_global_size(1));
-    int2 pos = (int2)(get_global_id(0), get_global_id(1));
-
-    if (mask[LINEAR(pos)]) {
-        for (int dy = -1; dy <= 1; dy++) {
-            for (int dx = -1; dx <= 1; dx++) {
-                int2 local_pos = pos + (int2)(dx, dy);
-                if (within(local_pos, size) && !mask[LINEAR(local_pos)]) {
-                    contour_mask[LINEAR(pos)] = true;
-                }
-            }
-        }
-    }
-}
-
-/*
  * Sets the output buffer 'priorities' with the priority of each patch in the
  * image as potential 'target' patch in a given step of the inpainting algorithm.
  * The patch with the highest priority will be the next patch to be filled.
@@ -108,21 +84,37 @@ __kernel void contour(
 __kernel void patch_priorities(
         __global uchar * img,
         __global uchar * mask,
-        __global uchar * contour_mask,
         __global uchar * confidence,
         __global float * priorities) {
+
+    // STEP 1
+
+    int2 size = (int2)(get_global_size(0), get_global_size(1));
+    int2 pos = (int2)(get_global_id(0), get_global_id(1));
+
+    bool is_contour = false;
+    if (mask[LINEAR(pos)]) {
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                int2 local_pos = pos + (int2)(dx, dy);
+                if (within(local_pos, size) && !mask[LINEAR(local_pos)]) {
+                    is_contour = true;
+                }
+            }
+        }
+    }
+
+    if (!is_contour) {
+        priorities[LINEAR(pos)] = -1.0f;
+        return;
+    }
+
+    // STEP 2
 
     int width = get_global_size(0);
     int height = get_global_size(1);
     int i = get_global_id(1);
     int j = get_global_id(0);
-
-    bool is_contour = true;
-
-    if (!contour_mask[LINEAR((int2)(j,i))]) {
-        is_contour = false; // return?
-        goto prioriret;
-    }
 
     /*
      * Every patch has a certain 'priority'. At each step of the algorithm, the patch with
@@ -228,7 +220,6 @@ __kernel void patch_priorities(
     float data = fabs(gx_t * nx_max + gy_t * ny_max) / ALPHA;
 
     // Priority
-prioriret:
     priorities[LINEAR((int2)(j,i))] = is_contour ? confidence[LINEAR((int2)(j,i))] * data : -1.0f;
 }
 

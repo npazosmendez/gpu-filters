@@ -13,11 +13,6 @@ extern "C" {
 using namespace cv;
 using namespace std;
 
-// TODO
-// 1. 'I' should do nothing if there's no mask
-// 2. Image should be zoomed to see better
-// 3. Start designing how the debug info will be plotted
-
 #define LINEAR(y,x) (y)*width+(x)
 #define forn(i,n) for(int i=0; i<(n); i++)
 
@@ -72,7 +67,7 @@ int main( int argc, char** argv ) {
     // Read Images
     if (argc == 1) {
         cout << "Requires image path as parameter" << endl;
-        cout << "Usage: inpainter image_path [-cl]" << endl;
+        cout << "Usage: inpainter image_path [optional flags]" << endl;
         return -1;
     }
 
@@ -84,15 +79,37 @@ int main( int argc, char** argv ) {
 
     picked_init = inpaint_init;
     picked_step = inpaint_step;
-    if (argc > 2) {
-        if (string(argv[2]) == "-cl") {
+
+    for (int i = 2; i < argc; i++) {
+        string param = argv[i];
+        if (param == "-cl") {
+            /* implementation selection */
             cout << "Using OpenCL implementation..." << endl;
             picked_init = CL_inpaint_init;
             picked_step = CL_inpaint_step;
-        } else {
-            cout << "Unknown flag, aborting" << endl;
-            cout << "Did you mean '-cl'?" << endl;
-            return -1;
+        } else if (param == "-d") {
+            /* device selection */
+            if (i+1 == argc) {
+                cerr << "Filter name missing after '-d'." << endl;
+                exit(1);
+            }
+            int device;
+            try {
+                device = stoi(argv[i+1]);
+            } catch (int e) {
+                cerr << "Couldn't convert '-d' parameter to number" << endl;
+                return -1;
+            }
+            selectDevice(device);
+        } else if (param == "-h") {
+            cout << "Usage:\n";
+            cout << "  inpainter image_path [flags]\n";
+            cout << "Flags\n";
+            cout << "  -cl: Uses OpenCL implementation instead of the C implementation\n";
+            cout << "  -d <number>: Picks device to use for the computation\n";
+            cout << "\n";
+
+            return 0;
         }
     }
 
