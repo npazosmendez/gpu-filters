@@ -16,6 +16,7 @@ linedetector
 docs/
 imgs/
 vids/
+benchmarks/
 
 # Ide
 .vscode

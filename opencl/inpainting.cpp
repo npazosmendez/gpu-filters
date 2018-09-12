@@ -46,12 +46,10 @@ cl_float priority[MAX_LEN*MAX_LEN];    // patch priority as next target
 cl_float diffs[MAX_LEN*MAX_LEN];    // differences of patch to target
 
 // Device Memory Objects
-Kernel k_contour;
 Kernel k_patch_priorities;
 Kernel k_target_diffs;
 Buffer b_img;
 Buffer b_mask;
-Buffer b_contour_mask;
 Buffer b_confidence;
 Buffer b_diffs;
 Buffer b_priorities;
@@ -83,7 +81,6 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug
     createProgram("inpainting.cl");
 
     // Kernels
-    k_contour = Kernel(program, "contour");
     k_patch_priorities = Kernel(program, "patch_priorities");
     k_target_diffs = Kernel(program, "target_diffs");
 
@@ -91,8 +88,6 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug
     b_img = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err); // image in rgb (uchar3)
         clHandleError(__FILE__,__LINE__,err);
     b_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
-        clHandleError(__FILE__,__LINE__,err);
-    b_contour_mask = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height, NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
     b_confidence = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
@@ -111,6 +106,9 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
 
     // 0. WRITE
     // ++++++++
+#ifdef PROFILE
+    tstart = clock();
+#endif
 
     err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
     clHandleError(__FILE__,__LINE__,err);
@@ -118,49 +116,10 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
     clHandleError(__FILE__,__LINE__,err);
 
-    // 1. CALCULATE CONTOUR
-    // ++++++++++++++++++++
-#ifdef PROFILE
-    tstart = clock();
-#endif
-
-    // Buffer clear
-    memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
-
-    // Write to Device
-    err = queue.enqueueWriteBuffer(b_contour_mask, CL_TRUE, 0, sizeof(char)*width*height, contour_mask);
-    clHandleError(__FILE__,__LINE__,err);
-
-    // Kernel execute
-    k_contour.setArg(0, b_mask);
-    k_contour.setArg(1, b_contour_mask);
-    err = queue.enqueueNDRangeKernel(
-            k_contour,
-            NullRange,
-            NDRange(width, height),
-            NullRange // default
-    );
-    clHandleError(__FILE__,__LINE__,err);
-
-    // Read result
-    err = queue.enqueueReadBuffer(b_contour_mask, CL_TRUE, 0, sizeof(char)*width*height, contour_mask);
-    clHandleError(__FILE__,__LINE__,err);
-
-    // Exit condition
-    int contour_size = 0;
-    for (int i = 0; i < height; i++)
-        for (int j = 0; j < width; j++) {
-        if (contour_mask[LINEAR(i,j)]) contour_size++;
-    }
-
-    if (contour_size == 0) {
-        return 0;
-    }
-
 #ifdef PROFILE
     tend = clock();
     tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-    printf("Contour (size = %d): %f\n", contour_size, tcount);
+    printf("Write = %f\n", tcount);
 #endif
 
     // 2. FIND TARGET PATCH
@@ -169,22 +128,15 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     tstart = clock();
 #endif
 
-    // Buffer clear
-    memset(priority, -1, MAX_LEN*MAX_LEN*sizeof(cl_float));
-
     // Write to Device
-    err = queue.enqueueWriteBuffer(b_contour_mask, CL_TRUE, 0, sizeof(char)*width*height, contour_mask);
-    clHandleError(__FILE__,__LINE__,err);
-
     err = queue.enqueueWriteBuffer(b_confidence, CL_TRUE, 0, sizeof(cl_float)*width*height, confidence);
     clHandleError(__FILE__,__LINE__,err);
 
     // Kernel Execute
     k_patch_priorities.setArg(0, b_img);
     k_patch_priorities.setArg(1, b_mask);
-    k_patch_priorities.setArg(2, b_contour_mask);
-    k_patch_priorities.setArg(3, b_confidence);
-    k_patch_priorities.setArg(4, b_priorities);
+    k_patch_priorities.setArg(2, b_confidence);
+    k_patch_priorities.setArg(3, b_priorities);
     err = queue.enqueueNDRangeKernel(
             k_patch_priorities,
             NullRange,
@@ -213,10 +165,15 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
         }
     }
 
+    // Exit condition
+    if (max_priority == -1.0) {
+        return 0;
+    }
+
 #ifdef PROFILE
     tend = clock();
     tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-    printf("Target patch (%d, %d): %f\n", max_i, max_j, tcount);
+    printf("Target patch (%d, %d) = %f\n", max_i, max_j, tcount);
 #endif
 
     // 3. FIND SOURCE PATCH
@@ -226,9 +183,6 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
 #endif
 
     // Write to Device
-    //err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
-    //clHandleError(__FILE__,__LINE__,err);
-
     cl_int2 best_target = { max_j, max_i };
 
     // Kernel Execute
@@ -263,7 +217,7 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
 #ifdef PROFILE
     tend = clock();
     tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-    printf("Source patch(%d, %d): %f\n", cl_min_source_i, cl_min_source_j, tcount);
+    printf("Source patch(%d, %d) = %f\n", cl_min_source_i, cl_min_source_j, tcount);
 #endif
 
 #ifdef DEBUG
@@ -298,7 +252,7 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
 #ifdef PROFILE
     tend = clock();
     tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-    printf("Copy: %f\n", tcount);
+    printf("Copy = %f\n", tcount);
     printf("\n");
 #endif
 
