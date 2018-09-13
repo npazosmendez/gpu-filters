@@ -19,7 +19,8 @@ private:
 	QVBoxLayout _main_layout;
 	QComboBox _comboBox;
 	QCheckBox _checkBox;
-	
+	ImageFilter * _filters[3];
+
 public slots:
 	void setFilter(QString);
 signals:

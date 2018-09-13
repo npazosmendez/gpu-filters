@@ -26,10 +26,10 @@ class VideoWindow : public QMainWindow  {
 		Camera cam;
 		QImage MatToQImage(const Mat& mat);
 		ImageFilter* _currentFilter;
+		NoFilter _noFilter;
 		HitCounter hitcounter;
 		inline void overlay_frame_rate(QPixmap* pixmap);
 		int _cl_status;
-		ImageFilter * _filters[3];
 
     public:
     	VideoWindow();
@@ -37,7 +37,6 @@ class VideoWindow : public QMainWindow  {
 
 	public slots:
 		void show_frame(Mat *cameraFrame);
-		void setFilter(QString);
 		void setFilter(ImageFilter * filter);
 };
 

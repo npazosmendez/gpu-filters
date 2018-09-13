@@ -53,11 +53,6 @@ void VideoWindow::show_frame(Mat *cameraFrame){
     _label->show();
     frameReady = 0;
 }
-void VideoWindow::setFilter(QString filterName){
-    if (filterName == "Canny") setFilter(new CannyFilter);
-    if (filterName == "Hough") setFilter(new HoughFilter);
-    if (filterName == "No Filter") setFilter(new NoFilter);
-}
 
 void VideoWindow::setFilter(ImageFilter * filter){
     assert(filter != NULL);
@@ -65,7 +60,6 @@ void VideoWindow::setFilter(ImageFilter * filter){
         QObject::disconnect(&cam, SIGNAL(new_frame(Mat*)), _currentFilter, SLOT(process_frame(Mat*)) );
         QObject::disconnect(_currentFilter, SIGNAL(frame_ready(Mat*)), this, SLOT(show_frame(Mat*)) );
         _currentFilter->quit();
-        delete _currentFilter;
     }
     _currentFilter = filter;
     _currentFilter->start();
@@ -76,15 +70,10 @@ void VideoWindow::setFilter(ImageFilter * filter){
 
 VideoWindow::VideoWindow() : _label(new QLabel), _currentFilter(NULL) {
     setCentralWidget(_label);
-    setFilter("No Filter");
-    _currentFilter->start();
+    setFilter(&_noFilter);
     cam.start();
-    _filters[0] = new NoFilter;
-    _filters[1] = new HoughFilter;
-    _filters[2] = new CannyFilter;
 };
 
 VideoWindow::~VideoWindow() {
     delete _label;
-    if (_currentFilter) delete _currentFilter;
 }
