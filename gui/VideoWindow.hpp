@@ -9,6 +9,7 @@
 #include "camera.hpp"
 #include "hitcounter.hpp"
 #include "ImageFilter.hpp"
+#include <QMainWindow>
 
 using namespace cv;
 using namespace std;
