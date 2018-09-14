@@ -4,10 +4,11 @@
 #include "stdbool.h"
 #include "string.h"
 #include "math.h"
-#include "time.h"
 #include "float.h"
 #include <stdint.h>
 #include "assert.h"
+#include <chrono>
+#include <iomanip>
 extern "C" {
     #include "../c/cutils.h"
     #include "../c/c-filters.h"
@@ -15,6 +16,7 @@ extern "C" {
 #include "opencl-filters.hpp"
 
 using namespace std;
+using namespace std::chrono;
 using namespace cl;
 
 static int PATCH_RADIUS = 4;
@@ -40,23 +42,25 @@ static int PATCH_RADIUS = 4;
 
 // Host Buffers
 #define MAX_LEN 2000
-char contour_mask[MAX_LEN*MAX_LEN]; // whether a pixel belongs to the border
-cl_float confidence[MAX_LEN*MAX_LEN];  // how trustworthy the info of a pixel is
-cl_float priority[MAX_LEN*MAX_LEN];    // patch priority as next target
-cl_float diffs[MAX_LEN*MAX_LEN];    // differences of patch to target
+static char contour_mask[MAX_LEN*MAX_LEN]; // whether a pixel belongs to the border
+static cl_float confidence[MAX_LEN*MAX_LEN];  // how trustworthy the info of a pixel is
+static cl_float priority[MAX_LEN*MAX_LEN];    // patch priority as next target
+static cl_float diffs[MAX_LEN*MAX_LEN];    // differences of patch to target
 
 // Device Memory Objects
-Kernel k_patch_priorities;
-Kernel k_target_diffs;
-Buffer b_img;
-Buffer b_mask;
-Buffer b_confidence;
-Buffer b_diffs;
-Buffer b_priorities;
+static Kernel k_patch_priorities;
+static Kernel k_target_diffs;
+static Buffer b_img;
+static Buffer b_mask;
+static Buffer b_confidence;
+static Buffer b_diffs;
+static Buffer b_priorities;
 
 // Misc
 static cl_int err = 0;
-
+static steady_clock::time_point tstart;
+static steady_clock::time_point tend;
+duration<double> time_span;
 
 // ALGORITHM
 // +++++++++
@@ -111,7 +115,7 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     // 0. WRITE
     // ++++++++
 #ifdef PROFILE
-    tstart = clock();
+    tstart = steady_clock::now();
 #endif
 
     err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
@@ -121,15 +125,15 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     clHandleError(__FILE__,__LINE__,err);
 
 #ifdef PROFILE
-    tend = clock();
-    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-    printf("Write = %f\n", tcount);
+    tend = steady_clock::now();
+    time_span = duration_cast<duration<double>>(tend - tstart);
+    printf("Write = %f\n", time_span.count() * 1000.0);
 #endif
 
     // 2. FIND TARGET PATCH
     // ++++++++++++++++++++
 #ifdef PROFILE
-    tstart = clock();
+    tstart = steady_clock::now();
 #endif
 
     // Kernel Execute
@@ -168,15 +172,15 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     }
 
 #ifdef PROFILE
-    tend = clock();
-    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-    printf("Target patch (%d, %d) = %f\n", max_i, max_j, tcount);
+    tend = steady_clock::now();
+    time_span = duration_cast<duration<double>>(tend - tstart);
+    printf("Target patch (%d, %d) = %f\n", max_i, max_j, time_span.count() * 1000.0);
 #endif
 
     // 3. FIND SOURCE PATCH
     // ++++++++++++++++++++
 #ifdef PROFILE
-    tstart = clock();
+    tstart = steady_clock::now();
 #endif
 
     // Write to Device
@@ -212,9 +216,9 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     }
 
 #ifdef PROFILE
-    tend = clock();
-    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-    printf("Source patch(%d, %d) = %f\n", cl_min_source_i, cl_min_source_j, tcount);
+    tend = steady_clock::now();
+    time_span = duration_cast<duration<double>>(tend - tstart);
+    printf("Source patch(%d, %d) = %f\n", cl_min_source_i, cl_min_source_j, time_span.count() * 1000.0);
 #endif
 
 #ifdef DEBUG
@@ -225,7 +229,7 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     // 4. COPY
     // +++++++
 #ifdef PROFILE
-    tstart = clock();
+    tstart = steady_clock::now();
 #endif
 
     for (int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++) {
@@ -247,9 +251,9 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     }
 
 #ifdef PROFILE
-    tend = clock();
-    tcount = (float)(tend - tstart) / CLOCKS_PER_SEC;
-    printf("Copy = %f\n", tcount);
+    tend = steady_clock::now();
+    time_span = duration_cast<duration<double>>(tend - tstart);
+    printf("Copy = %f\n", time_span.count() * 1000.0);
     printf("\n");
 #endif
 

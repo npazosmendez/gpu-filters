@@ -15,6 +15,3 @@ float norm(float x, float y);
 float squared_distance3(char p[3], char q[3]);
 
 void convoluion2D(float * src, int width, int height, float * kernel, int ksize, float * dst);
-
-clock_t tstart, tend;
-float tcount;
