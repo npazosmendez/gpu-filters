@@ -31,7 +31,8 @@ void ControlsWindow::setFilter(QString filterName){
 	if (filterName == "No Filter") filter = _filters[0];
 	if (filterName == "Canny") filter = _filters[1];
 	if (filterName == "Hough") filter = _filters[2];
-	_main_layout.removeWidget(_controls);
+    _main_layout.removeWidget(_controls);
+    delete _controls;
 	_controls = filter->controls();
 	_main_layout.addWidget(_controls);
 	emit filterChanged(filter);

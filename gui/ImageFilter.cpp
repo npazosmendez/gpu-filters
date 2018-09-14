@@ -55,7 +55,7 @@ void HoughFilter::process_frame(Mat *cameraFrame){
 }
 
 FilterControls* CannyFilter::controls(){
-    return _controls;
+    return new CannyControls(this);
 }
 void CannyFilter::setHigherThreshold(int value){
     _higherThreshold = value;
@@ -65,9 +65,9 @@ void CannyFilter::setLowerThreshold(int value){
 }
 
 FilterControls* HoughFilter::controls(){
-    return _controls;
+    return new HoughControls(this);
 }
 
 FilterControls* NoFilter::controls(){
-    return _controls;
+    return new NoControls(this);
 }
