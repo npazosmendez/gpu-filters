@@ -14,40 +14,37 @@ using namespace std;
 class ImageFilter : public QThread {
     Q_OBJECT
 	private:
-		bool cl = true;
-	protected:
-		void run(){
-			while(1) sleep(1);
-		}
+		bool cl = false;
+		virtual void process_frame_CL(Mat *){};
+		virtual void process_frame_C(Mat *){};
 	public:
-		bool CL() {return cl;};
-		bool C() {return !cl;};
-		void setCL() {cl = true;};
-		void setC() {cl = false;};
 		virtual FilterControls * controls() {return NULL;};
 
 	public slots:
-		virtual void process_frame(Mat *){};
+		void toggleCL(int);
+		void process_frame(Mat *);
 
 	signals:
 		void frame_ready(Mat* cameraFrame);
 };
 
+
 class CannyFilter : public ImageFilter {
     Q_OBJECT
 	public:
-		CannyFilter();
-		~CannyFilter();
 		FilterControls * controls();
+
 	public slots:
-		void process_frame(Mat *cameraFrame);
 		void setHigherThreshold(int value);
 		void setLowerThreshold(int value);
+
 	private:
-		CannyControls* _controls;
+		void process_frame_CL(Mat *);
+		void process_frame_C(Mat *);
 		int _higherThreshold = 100;
 		int _lowerThreshold = 50;
 };
+
 
 class HoughFilter : public ImageFilter {
     Q_OBJECT
@@ -56,22 +53,18 @@ class HoughFilter : public ImageFilter {
 		HoughFilter();
 		~HoughFilter();
 
-	public slots:
-		void process_frame(Mat *cameraFrame);
 	private:
-		HoughControls* _controls;
+		void process_frame_CL(Mat *);
+		void process_frame_C(Mat *);
 		int a_ammount, p_ammount;
 		char* counter;
 };
+
+
 class NoFilter : public ImageFilter {
     Q_OBJECT
 	public:
 		FilterControls * controls();
-
-	public slots:
-		void process_frame(Mat *cameraFrame);
-	private:
-		FilterControls *_controls = new NoControls(NULL);
 };
 
 #endif // __FILTERS_H__

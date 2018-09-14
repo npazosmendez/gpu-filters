@@ -23,10 +23,10 @@ void Camera::run(){
 	while(1){
 	    stream.read(frames[index]);
 	    bool is_new_frame = frameReady.testAndSetAcquire(0, 1);
-
 		if (is_new_frame){
 			emit new_frame(&frames[index]);
 			index = (index+1) % 2;
+		}else{
 		}
 	}
 }
