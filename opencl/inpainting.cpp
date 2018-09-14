@@ -65,15 +65,6 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug
 
     cout << "Initializing OpenCL model for Inpainting\n";
 
-    // Buffer Initialization
-    memset(confidence, 0, MAX_LEN*MAX_LEN*sizeof(float));
-    memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            confidence[LINEAR(i,j)] = mask[LINEAR(i,j)] ? 0.0 : 1.0;
-        }
-    }
-
     // OpenCL initialization
     if(!openCL_initialized) initCL();
 
@@ -95,6 +86,19 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug
         clHandleError(__FILE__,__LINE__,err);
     b_diffs = Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_float)*width*height, NULL, &err); // differences to target
         clHandleError(__FILE__,__LINE__,err);
+
+    // Buffer Initialization - Host
+    memset(confidence, 0, MAX_LEN*MAX_LEN*sizeof(float));
+    memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            confidence[LINEAR(i,j)] = mask[LINEAR(i,j)] ? 0.0 : 1.0;
+        }
+    }
+
+    // Buffer Initialization - Device
+    err = queue.enqueueWriteBuffer(b_confidence, CL_TRUE, 0, sizeof(cl_float)*width*height, confidence);
+    clHandleError(__FILE__,__LINE__,err);
 }
 
 
@@ -128,10 +132,6 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     tstart = clock();
 #endif
 
-    // Write to Device
-    err = queue.enqueueWriteBuffer(b_confidence, CL_TRUE, 0, sizeof(cl_float)*width*height, confidence);
-    clHandleError(__FILE__,__LINE__,err);
-
     // Kernel Execute
     k_patch_priorities.setArg(0, b_img);
     k_patch_priorities.setArg(1, b_mask);
@@ -147,9 +147,6 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
 
     // Read result
     err = queue.enqueueReadBuffer(b_priorities, CL_TRUE, 0, sizeof(cl_float)*width*height, priority);
-    clHandleError(__FILE__,__LINE__,err);
-
-    err = queue.enqueueReadBuffer(b_confidence, CL_TRUE, 0, sizeof(cl_float)*width*height, confidence);
     clHandleError(__FILE__,__LINE__,err);
 
     // Reduce
