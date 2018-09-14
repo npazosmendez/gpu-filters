@@ -66,7 +66,8 @@ void VideoWindow::setFilter(ImageFilter * filter){
 
     // It's important to keep the order of these two lines below
     QObject::connect(_currentFilter, SIGNAL(frame_ready(Mat*)), this, SLOT(show_frame(Mat*)), Qt::QueuedConnection );
-    QObject::connect(&cam, SIGNAL(new_frame(Mat*)), _currentFilter, SLOT(process_frame(Mat*)), Qt::QueuedConnection );   
+    QObject::connect(&cam, SIGNAL(new_frame(Mat*)), _currentFilter, SLOT(process_frame(Mat*)), Qt::QueuedConnection );
+    frameReady = 0;
 }
 
 VideoWindow::VideoWindow() : _label(new QLabel), _currentFilter(NULL) {
