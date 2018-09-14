@@ -32,8 +32,9 @@ point n_t[MAX_LEN*MAX_LEN];
     - Loop until image is filled
 */
 
-clock_t start, end;
-float count;
+// TODO: Don't use clock it's not clock time!!
+//clock_t start, end;
+//float count;
 
 void inpaint_init(int width, int height, char * img, bool * mask, int * debug) {
 
@@ -55,7 +56,6 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 
     // 1. CALCULATE CONTOUR
     // ++++++++++++++++++++
-    start = clock();
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
@@ -82,13 +82,8 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
         return 0;
     }
 
-    end = clock();
-    count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Contour (size %d) = %f\n", contour_size, count);
-
     // 2. FIND TARGET PATCH
     // ++++++++++++++++++++
-    start = clock();
 
     int max_i = -1;
     int max_j = -1;
@@ -210,13 +205,8 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
         }
     }
 
-    end = clock();
-    count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Target patch (%d, %d) = %f\n", max_i, max_j, count);
-
     // 3. FIND SOURCE PATCH
     // ++++++++++++++++++++
-    start = clock();
 
     // (max_i, max_j) is the target patch
     float min_squared_diff = FLT_MAX;
@@ -261,13 +251,8 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
         }
     }
 
-    end = clock();
-    count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Source patch(%d, %d) = %f\n", max_source_i, max_source_j, count);
-
     // 4. COPY
     // +++++++
-    start = clock();
 
     if (min_squared_diff == -1) {
         return 0; // Abort mission
@@ -290,10 +275,6 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
             }
         }
     }
-
-    end = clock();
-    count = (float)(end - start) / CLOCKS_PER_SEC;
-    printf("Copy = %f\n", count);
 
     return 1;
 }
