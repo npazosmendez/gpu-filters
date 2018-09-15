@@ -45,11 +45,6 @@ void ControlsWindow::setFilter(QString filterName){
 	_main_layout.addWidget(_controls);
 
 	QObject::connect(
-		_current_filter, SIGNAL(need_frame()),
-		_camera, SLOT(request_frame()),
-		Qt::DirectConnection
-	);
-	QObject::connect(
 		_camera, SIGNAL(emit_frame(Mat*)),
 		_current_filter, SLOT(give_frame(Mat*)),
 		Qt::QueuedConnection
@@ -64,6 +59,6 @@ void ControlsWindow::show(){
 	QDialog::show();
 	_video_window->show();
 	setFilter("No Filter");
-	_camera->start();
 	_current_filter->start();
+	_camera->start();
 }

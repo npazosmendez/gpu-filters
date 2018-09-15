@@ -5,6 +5,7 @@
 
 using namespace cv;
 using namespace std;
+extern uint qGlobalPostedEventsCount(); // from qapplication.cpp
 
 Camera::Camera(){
 	/* open webcam */
@@ -24,11 +25,17 @@ Camera::Camera(){
 void Camera::run(){
 	while(1){
 	    stream.read(_buffer[index]);
+	    _frame_ready = true;
+	    //cout << "queue is sized " << qGlobalPostedEventsCount() << endl;
+		emit emit_frame(&_buffer[index]);
 	}
 }
 
 void Camera::request_frame(){
-    stream.read(_buffer[index]);
-	emit emit_frame(&_buffer[index]);
+	return;
+	if (!_frame_ready){
+	    stream.read(_buffer[index]);
+	}
+	_frame_ready = false;
 	index = (index+1) % 4;
 }

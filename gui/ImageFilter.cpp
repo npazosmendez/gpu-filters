@@ -20,15 +20,14 @@ void ImageFilter::give_frame(Mat *frame){
         process_frame_C(frame);
     }
     emit filtered_frame(frame);
-    emit need_frame();
 }
 
 void ImageFilter::start(){
-    emit need_frame();
+    return;
 }
 
 void ImageFilter::stop(){
-
+    return;
 }
 
 
@@ -83,4 +82,11 @@ HoughFilter::HoughFilter() :
 
 FilterControls* NoFilter::controls(){
     return new NoControls(this);
+}
+
+void NoFilter::process_frame_C(Mat *frame){
+
+}
+void NoFilter::process_frame_CL(Mat *frame){
+
 }

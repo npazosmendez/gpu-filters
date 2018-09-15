@@ -26,7 +26,6 @@ class ImageFilter : public QThread {
 		void give_frame(Mat* frame);
 
 	signals:
-		void need_frame();
 		void filtered_frame(Mat* frame);
 };
 
@@ -66,6 +65,8 @@ class HoughFilter : public ImageFilter {
 class NoFilter : public ImageFilter {
     Q_OBJECT
 	public:
+		void process_frame_CL(Mat *);
+		void process_frame_C(Mat *);
 		FilterControls * controls();
 };
 

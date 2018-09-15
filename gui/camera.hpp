@@ -17,8 +17,8 @@ class Camera : public QThread {
 		int width, height;
 		VideoCapture stream;
 		int index = 0;
-		Mat * _frame_ready = NULL;
 		Mat _buffer[4];
+		bool _frame_ready = true;
 
     public:
 		Camera();
