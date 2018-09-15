@@ -9,6 +9,8 @@
 
 using namespace cv;
 
+extern bool frame_processed;
+
 class Camera : public QThread {
 	
 	Q_OBJECT
@@ -19,13 +21,12 @@ class Camera : public QThread {
 		int index = 0;
 		Mat _buffer[4];
 		bool _frame_ready = true;
+		bool _stop;
 
     public:
 		Camera();
 		void run();
-
-    public slots:
-    	void request_frame();
+		void stop();
 
     signals:
     	void emit_frame(Mat*);

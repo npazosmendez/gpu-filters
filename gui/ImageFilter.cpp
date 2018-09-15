@@ -3,6 +3,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencl/opencl-filters.hpp>
 #include "ImageFilter.hpp"
+#include "camera.hpp"
 
 extern "C" {
     #include <c/c-filters.h>
@@ -14,12 +15,14 @@ using namespace cv;
 // Parent class
 
 void ImageFilter::give_frame(Mat *frame){
+    _frame = *frame;
     if (cl){
-        process_frame_CL(frame);
+        process_frame_CL(&_frame);
     }else{
-        process_frame_C(frame);
+        process_frame_C(&_frame);
     }
-    emit filtered_frame(frame);
+    emit filtered_frame(&_frame);
+    frame_processed = true;
 }
 
 void ImageFilter::start(){
@@ -28,6 +31,14 @@ void ImageFilter::start(){
 
 void ImageFilter::stop(){
     return;
+}
+
+void ImageFilter::toggle_CL(int val){
+    if (val){
+        cl = true;
+    }else{
+        cl = false;
+    }
 }
 
 

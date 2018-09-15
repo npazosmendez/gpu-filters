@@ -14,7 +14,7 @@ HoughControls::HoughControls(ImageFilter* filter, QWidget *parent)
 	_main_layout.addWidget(&_checkBox);
 	_main_layout.addWidget(&_higher_slider);
 
-	QObject::connect(&_checkBox, SIGNAL(stateChanged(int)), filter, SLOT(toggleCL(int)));
+	QObject::connect(&_checkBox, SIGNAL(stateChanged(int)), filter, SLOT(toggle_CL(int)));
 
 	setLayout(&_main_layout);
 }
@@ -35,7 +35,7 @@ CannyControls::CannyControls(CannyFilter* filter, QWidget *parent)
 	_higher_slider.setValue(70);
 	_lower_slider.setValue(30);
 
-	QObject::connect(&_checkBox, SIGNAL(stateChanged(int)), filter, SLOT(toggleCL(int)));
+	QObject::connect(&_checkBox, SIGNAL(stateChanged(int)), filter, SLOT(toggle_CL(int)));
 
 	setLayout(&_main_layout);
 }

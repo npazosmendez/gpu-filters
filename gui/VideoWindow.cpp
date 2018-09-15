@@ -52,6 +52,7 @@ void VideoWindow::show_frame(Mat *frame){
     _label->setPixmap(pixmap);
     _label->show();
     this->show();
+
 }
 
 

@@ -17,6 +17,7 @@ class ImageFilter : public QThread {
 		bool cl = false;
 		virtual void process_frame_CL(Mat *){};
 		virtual void process_frame_C(Mat *){};
+		Mat _frame;
 	public:
 		virtual FilterControls * controls() {return NULL;};
 		void start();
@@ -24,6 +25,7 @@ class ImageFilter : public QThread {
 
 	public slots:
 		void give_frame(Mat* frame);
+		void toggle_CL(int);
 
 	signals:
 		void filtered_frame(Mat* frame);

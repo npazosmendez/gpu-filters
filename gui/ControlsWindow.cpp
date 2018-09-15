@@ -31,16 +31,28 @@ ControlsWindow::ControlsWindow(QWidget *parent) : QDialog(parent){
 }
 
 void ControlsWindow::setFilter(QString filterName){
-	_camera->exit();
+	_camera->stop();
 	_camera->wait();
-	if (filterName == "No Filter") _current_filter = _filters[0];
-	if (filterName == "Canny") _current_filter = _filters[1];
-	if (filterName == "Hough") _current_filter = _filters[2];
-
     if (_controls != NULL){
     	_main_layout.removeWidget(_controls);
     	delete _controls;
     }
+
+    if (_current_filter != NULL){
+		QObject::disconnect(
+			_camera, SIGNAL(emit_frame(Mat*)),
+			_current_filter, SLOT(give_frame(Mat*))
+		);
+		QObject::disconnect(
+			_current_filter, SIGNAL(filtered_frame(Mat*)),
+			_video_window, SLOT(show_frame(Mat*))
+		);
+    }
+
+	if (filterName == "No Filter") _current_filter = _filters[0];
+	if (filterName == "Canny") _current_filter = _filters[1];
+	if (filterName == "Hough") _current_filter = _filters[2];
+
 	_controls = _current_filter->controls();
 	_main_layout.addWidget(_controls);
 
@@ -54,11 +66,11 @@ void ControlsWindow::setFilter(QString filterName){
 		_video_window, SLOT(show_frame(Mat*)),
 		Qt::DirectConnection
 	);
+	_current_filter->start();
+	_camera->start();
 }
 void ControlsWindow::show(){
 	QDialog::show();
 	_video_window->show();
 	setFilter("No Filter");
-	_current_filter->start();
-	_camera->start();
 }

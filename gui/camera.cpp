@@ -7,6 +7,8 @@ using namespace cv;
 using namespace std;
 extern uint qGlobalPostedEventsCount(); // from qapplication.cpp
 
+bool frame_processed = true;
+
 Camera::Camera(){
 	/* open webcam */
 	stream = VideoCapture(0); // video device number 0
@@ -14,7 +16,7 @@ Camera::Camera(){
 	height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
 	if (!stream.isOpened()) {
 	    cerr << "Failed to open stream." << endl;
-	    exit(1);
+	    int a = 1/0;
 	}
     stream.read(_buffer[0]);
     stream.read(_buffer[1]);
@@ -23,19 +25,18 @@ Camera::Camera(){
 }
 
 void Camera::run(){
-	while(1){
+	frame_processed = true;
+	_stop = false;
+	while(!_stop){
 	    stream.read(_buffer[index]);
-	    _frame_ready = true;
-	    //cout << "queue is sized " << qGlobalPostedEventsCount() << endl;
-		emit emit_frame(&_buffer[index]);
+	    if (frame_processed){
+		    frame_processed = false;
+			emit emit_frame(&_buffer[index]);
+			index = (index+1) % 4;
+	    }
 	}
 }
 
-void Camera::request_frame(){
-	return;
-	if (!_frame_ready){
-	    stream.read(_buffer[index]);
-	}
-	_frame_ready = false;
-	index = (index+1) % 4;
+void Camera::stop(){
+	_stop = true;
 }
