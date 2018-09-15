@@ -6,6 +6,8 @@
 #include <QObject>
 #include "FilterControls.hpp"
 #include "ImageFilter.hpp"
+#include "VideoWindow.hpp"
+#include "camera.hpp"
 
 class ControlsWindow : public QDialog {
 	Q_OBJECT
@@ -14,16 +16,18 @@ public:
 	void show();
 
 private:
+	VideoWindow * _video_window;
+	Camera * _camera;
+	ImageFilter * _current_filter;
+	ImageFilter * _filters[3];
 	FilterControls* _controls;
 
 	QVBoxLayout _main_layout;
 	QComboBox _comboBox;
-	ImageFilter * _filters[3];
 
 public slots:
 	void setFilter(QString);
-signals:
-	void filterChanged(ImageFilter*);
+
 };
 
 #endif

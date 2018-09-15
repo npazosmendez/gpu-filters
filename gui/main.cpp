@@ -18,13 +18,17 @@ int main(int argc, char** argv) {
 
 	ControlsWindow controlsWindow;
 
-	//VideoWindow videoWindow(comboBox.currentText(), checkBox.checkState());
-	VideoWindow videoWindow;
-
-	QObject::connect(&controlsWindow, SIGNAL(filterChanged(ImageFilter*)), &videoWindow, SLOT(setFilter(ImageFilter*)));
 	controlsWindow.show();
-	videoWindow.show();
-
+	cout << "app exec" << endl;
+	cout << "app exec" << endl;
+	cout << "app exec" << endl;
+	cout << "app exec" << endl;
+	cout << "app exec" << endl;
+	cout << "app exec" << endl;
+	cout << "app exec" << endl;
+	cout << "app exec" << endl;
+	cout << "app exec" << endl;
+	cout << "app exec" << endl;
     return app.exec();
 }
 

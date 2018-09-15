@@ -6,10 +6,7 @@
 using namespace cv;
 using namespace std;
 
-QAtomicInt frameReady = 0; 
-
-void Camera::run(){
-
+Camera::Camera(){
 	/* open webcam */
 	stream = VideoCapture(0); // video device number 0
 	width = stream.get(CV_CAP_PROP_FRAME_WIDTH);
@@ -18,15 +15,20 @@ void Camera::run(){
 	    cerr << "Failed to open stream." << endl;
 	    exit(1);
 	}
-	Mat frames[2];
-	int index = 0;
+    stream.read(_buffer[0]);
+    stream.read(_buffer[1]);
+    stream.read(_buffer[2]);
+    stream.read(_buffer[3]);
+}
+
+void Camera::run(){
 	while(1){
-	    stream.read(frames[index]);
-	    bool is_new_frame = frameReady.testAndSetAcquire(0, 1);
-		if (is_new_frame){
-			emit new_frame(&frames[index]);
-			index = (index+1) % 2;
-		}else{
-		}
+	    stream.read(_buffer[index]);
 	}
+}
+
+void Camera::request_frame(){
+    stream.read(_buffer[index]);
+	emit emit_frame(&_buffer[index]);
+	index = (index+1) % 4;
 }

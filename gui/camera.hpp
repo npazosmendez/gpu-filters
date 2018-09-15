@@ -9,8 +9,6 @@
 
 using namespace cv;
 
-extern QAtomicInt frameReady; 
-
 class Camera : public QThread {
 	
 	Q_OBJECT
@@ -18,12 +16,19 @@ class Camera : public QThread {
 	private:
 		int width, height;
 		VideoCapture stream;
-
+		int index = 0;
+		Mat * _frame_ready = NULL;
+		Mat _buffer[4];
 
     public:
+		Camera();
 		void run();
+
+    public slots:
+    	void request_frame();
+
     signals:
-    	void new_frame(Mat*);
+    	void emit_frame(Mat*);
 };
 
 #endif

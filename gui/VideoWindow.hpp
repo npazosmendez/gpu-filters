@@ -24,21 +24,17 @@ class VideoWindow : public QMainWindow  {
 		QLabel * _label;
 		QPixmap pixmap;
 		QImage image;
-		Camera cam;
-		QImage MatToQImage(const Mat& mat);
-		ImageFilter* _currentFilter;
-		NoFilter _noFilter;
 		HitCounter hitcounter;
+
+		QImage MatToQImage(const Mat& mat);
 		inline void overlay_frame_rate(QPixmap* pixmap);
-		int _cl_status;
 
     public:
     	VideoWindow();
     	~VideoWindow();
 
 	public slots:
-		void show_frame(Mat *cameraFrame);
-		void setFilter(ImageFilter * filter);
+		void show_frame(Mat *frame);
 };
 
 #endif // __WINDOW_H__

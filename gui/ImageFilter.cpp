@@ -13,32 +13,33 @@ using namespace cv;
 
 // Parent class
 
-void ImageFilter::process_frame(Mat *cameraFrame){
+void ImageFilter::give_frame(Mat *frame){
     if (cl){
-        process_frame_CL(cameraFrame);
+        process_frame_CL(frame);
     }else{
-        process_frame_C(cameraFrame);
+        process_frame_C(frame);
     }
-    emit frame_ready(cameraFrame);
+    emit filtered_frame(frame);
+    emit need_frame();
 }
 
-void ImageFilter::toggleCL(int val){
-    if (val){
-        cl = true;
-    }else{
-        cl = false;
-    }
+void ImageFilter::start(){
+    emit need_frame();
+}
+
+void ImageFilter::stop(){
+
 }
 
 
 // Canny Filter
 
-void CannyFilter::process_frame_CL(Mat *cameraFrame){
-    CL_canny((char*)cameraFrame->ptr(), cameraFrame->size().width, cameraFrame->size().height, _lowerThreshold, _higherThreshold);
+void CannyFilter::process_frame_CL(Mat *frame){
+    CL_canny((char*)frame->ptr(), frame->size().width, frame->size().height, _lowerThreshold, _higherThreshold);
 }
 
-void CannyFilter::process_frame_C(Mat *cameraFrame){
-    canny((char*)cameraFrame->ptr(), cameraFrame->size().width, cameraFrame->size().height, _lowerThreshold, _higherThreshold);
+void CannyFilter::process_frame_C(Mat *frame){
+    canny((char*)frame->ptr(), frame->size().width, frame->size().height, _lowerThreshold, _higherThreshold);
 }
 
 FilterControls* CannyFilter::controls(){
@@ -55,12 +56,12 @@ void CannyFilter::setLowerThreshold(int value){
 
 // Hough Filter
 
-void HoughFilter::process_frame_CL(Mat *cameraFrame){
-    CL_hough((char*)cameraFrame->ptr(), cameraFrame->size().width, cameraFrame->size().height, 150, 150, counter);
+void HoughFilter::process_frame_CL(Mat *frame){
+    CL_hough((char*)frame->ptr(), frame->size().width, frame->size().height, 150, 150, counter);
 }
 
-void HoughFilter::process_frame_C(Mat *cameraFrame){
-    hough((char*)cameraFrame->ptr(), cameraFrame->size().width, cameraFrame->size().height, 150, 150, counter);
+void HoughFilter::process_frame_C(Mat *frame){
+    hough((char*)frame->ptr(), frame->size().width, frame->size().height, 150, 150, counter);
 }
 
 FilterControls* HoughFilter::controls(){

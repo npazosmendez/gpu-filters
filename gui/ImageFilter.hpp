@@ -19,13 +19,15 @@ class ImageFilter : public QThread {
 		virtual void process_frame_C(Mat *){};
 	public:
 		virtual FilterControls * controls() {return NULL;};
+		void start();
+		void stop();
 
 	public slots:
-		void toggleCL(int);
-		void process_frame(Mat *);
+		void give_frame(Mat* frame);
 
 	signals:
-		void frame_ready(Mat* cameraFrame);
+		void need_frame();
+		void filtered_frame(Mat* frame);
 };
 
 
