@@ -57,6 +57,7 @@ void VideoWindow::show_frame(Mat *frame){
 
 
 VideoWindow::VideoWindow() : _label(new QLabel) {
+    // _label->setMinimumSize(1, 1);
     setCentralWidget(_label);
 };
 

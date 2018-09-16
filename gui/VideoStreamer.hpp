@@ -1,5 +1,5 @@
-#ifndef __CAMERA__H
-#define __CAMERA__H
+#ifndef __VIDEOSTREAMER_H_
+#define __VIDEOSTREAMER_H_
 
 #include <QtGui>
 #include <QLabel>
@@ -12,7 +12,7 @@ using namespace cv;
 
 extern QAtomicInt frame_processed;
 
-class Camera : public QThread {
+class VideoStreamer : public QThread {
 	
 	Q_OBJECT
 
@@ -23,9 +23,13 @@ class Camera : public QThread {
 		Mat _buffer[4];
 		bool _frame_ready = true;
 		bool _stop;
+		float _fps;
+		string _filename;
+
+		inline long milliseconds_since_epoch();
 
     public:
-		Camera();
+		VideoStreamer(string filename);
 		void run();
 		void stop();
 

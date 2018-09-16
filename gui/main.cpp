@@ -19,16 +19,7 @@ int main(int argc, char** argv) {
 	ControlsWindow controlsWindow;
 
 	controlsWindow.show();
-	cout << "app exec" << endl;
-	cout << "app exec" << endl;
-	cout << "app exec" << endl;
-	cout << "app exec" << endl;
-	cout << "app exec" << endl;
-	cout << "app exec" << endl;
-	cout << "app exec" << endl;
-	cout << "app exec" << endl;
-	cout << "app exec" << endl;
-	cout << "app exec" << endl;
+
     return app.exec();
 }
 

@@ -22,7 +22,7 @@ void ImageFilter::give_frame(Mat *frame){
         process_frame_C(&_frame);
     }
     emit filtered_frame(&_frame);
-    frame_processed = true;
+    frame_processed = 1;
 }
 
 void ImageFilter::start(){

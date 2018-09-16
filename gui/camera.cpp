@@ -7,7 +7,6 @@ using namespace cv;
 using namespace std;
 extern uint qGlobalPostedEventsCount(); // from qapplication.cpp
 
-bool frame_processed = true;
 
 Camera::Camera(){
 	/* open webcam */
@@ -25,12 +24,12 @@ Camera::Camera(){
 }
 
 void Camera::run(){
-	frame_processed = true;
+	frame_processed = 1;
 	_stop = false;
 	while(!_stop){
 	    stream.read(_buffer[index]);
 	    if (frame_processed){
-		    frame_processed = false;
+		    frame_processed = 0;
 			emit emit_frame(&_buffer[index]);
 			index = (index+1) % 4;
 	    }
