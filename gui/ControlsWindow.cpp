@@ -7,7 +7,7 @@
 
 
 ControlsWindow::ControlsWindow(QWidget *parent) : 
-	QDialog(parent), _button("..."){
+	QDialog(parent), _browser("Browse video"){
 
 	_video_window = new VideoWindow;
 	_camera = new VideoStreamer("../children_640.mp4");
@@ -21,10 +21,9 @@ ControlsWindow::ControlsWindow(QWidget *parent) :
 	_comboBox.addItem("Canny");
 	_comboBox.addItem("Hough");
 	_main_layout.addWidget(&_comboBox);
-	_main_layout.addWidget(&_button);
+	_main_layout.addWidget(&_browser);
 	QObject::connect(&_comboBox, SIGNAL(currentIndexChanged(QString)), this, SLOT(setFilter(QString)));
-	QObject::connect(&_button, SIGNAL(clicked()), this, SLOT(browse_file()));
-	QObject::connect(&_filedialog, SIGNAL(fileSelected(QString)), this, SLOT(setFile(QString)));
+	QObject::connect(&_browser, SIGNAL(fileSelected(QString)), this, SLOT(setFile(QString)));
 
 
     _controls = _filters[0]->controls();
@@ -32,10 +31,6 @@ ControlsWindow::ControlsWindow(QWidget *parent) :
 
 
 	setLayout(&_main_layout);
-}
-
-void ControlsWindow::browse_file(){
-	_filedialog.show();
 }
 
 void ControlsWindow::setFile(QString file_name){

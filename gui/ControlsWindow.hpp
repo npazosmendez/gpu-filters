@@ -9,6 +9,7 @@
 #include "VideoWindow.hpp"
 #include "camera.hpp"
 #include "VideoStreamer.hpp"
+#include "FileBrowser.hpp"
 
 class ControlsWindow : public QDialog {
 	Q_OBJECT
@@ -23,13 +24,10 @@ private:
 	ImageFilter * _filters[3];
 	FilterControls* _controls;
 
-	QVBoxLayout _main_layout;
+	FileBrowser _browser;
 	QComboBox _comboBox;
-	QFileDialog _filedialog;
-	QPushButton _button;
+	QVBoxLayout _main_layout;
 
-private slots:
-	void browse_file();
 
 public slots:
 	void setFilter(QString);
