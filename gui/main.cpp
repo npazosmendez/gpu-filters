@@ -13,13 +13,15 @@ using namespace std;
 #include "ControlsWindow.hpp"
 
 int main(int argc, char** argv) {
-    
+    qDebug() << "Creating QApplication";
 	QApplication app(argc, argv);
 
+    qDebug() << "Creating controls window";
 	ControlsWindow controlsWindow;
 
 	controlsWindow.show();
 
+    qDebug() << "Event loop executing";
     return app.exec();
 }
 
