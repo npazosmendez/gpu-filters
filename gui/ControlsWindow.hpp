@@ -29,6 +29,9 @@ private:
 	QVBoxLayout _main_layout;
 
 
+	void disassemble();
+	void assemble();
+
 public slots:
 	void setFilter(QString);
 	void setFile(QString);
