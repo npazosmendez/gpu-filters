@@ -1,5 +1,7 @@
 
-__constant int PATCH_RADIUS = 4;
+#define PATCH_RADIUS 4
+__constant int2 POSITIVE_PATCH_CORNER = (int2)(PATCH_RADIUS, PATCH_RADIUS);
+__constant int2 NEGATIVE_PATCH_CORNER = (int2)(-PATCH_RADIUS, -PATCH_RADIUS);
 
 __constant float ALPHA = 255;
 
@@ -259,4 +261,32 @@ __kernel void target_diffs(
     }
 
     diffs[LINEAR(pos)] = full_patch ? squared_diff : FLT_MAX;
+}
+
+/*
+ * Fills the target patch with the source patch
+ */
+__kernel void copy(
+        __global uchar * img,
+        __global uchar * mask,
+        int2 target_pos,
+        int2 source_pos) {
+
+    int2 size = (int2)(get_global_size(0), get_global_size(1));
+    int2 target_local_pos = (int2)(get_global_id(0), get_global_id(1));
+
+    int2 diff = target_pos - target_local_pos;
+    int2 source_local_pos = source_pos + diff;
+
+    int2 in_patch = NEGATIVE_PATCH_CORNER <= diff && diff <= POSITIVE_PATCH_CORNER;
+
+    if (within(source_local_pos, size) &&  \
+        mask[LINEAR(target_local_pos)] &&  \
+        in_patch.x && in_patch.y) {
+        printf("(%i, %i) will be <%i, %i, %i>\n", source_local_pos.x, source_local_pos.y, img[3*LINEAR(target_local_pos)+0], img[3*LINEAR(target_local_pos)+1], img[3*LINEAR(target_local_pos)+2]);
+        img[3*LINEAR(target_local_pos)+0] = img[3*LINEAR(source_local_pos)+0];
+        img[3*LINEAR(target_local_pos)+1] = img[3*LINEAR(source_local_pos)+1];
+        img[3*LINEAR(target_local_pos)+2] = img[3*LINEAR(source_local_pos)+2];
+        mask[LINEAR(target_local_pos)] = false;
+    }
 }

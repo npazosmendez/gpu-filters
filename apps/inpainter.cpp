@@ -40,6 +40,7 @@ int cursor_radius;
 void (*picked_init)(int, int, char*, bool*, int*);
 bool (*picked_step)(int, int, char*, bool*, int*);
 
+
 bool quit = false;
 
 /*
