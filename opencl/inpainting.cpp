@@ -101,6 +101,12 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug
     }
 
     // Buffer Initialization - Device
+    err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
+    clHandleError(__FILE__,__LINE__,err);
+
+    err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
+    clHandleError(__FILE__,__LINE__,err);
+
     err = queue.enqueueWriteBuffer(b_confidence, CL_TRUE, 0, sizeof(cl_float)*width*height, confidence);
     clHandleError(__FILE__,__LINE__,err);
 }
@@ -112,26 +118,8 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     memset(debug, 0, width*height*sizeof(int));
 #endif
 
-    // 0. WRITE
-    // ++++++++
-#ifdef PROFILE
-    tstart = steady_clock::now();
-#endif
-
-    err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
-    clHandleError(__FILE__,__LINE__,err);
-
-    err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
-    clHandleError(__FILE__,__LINE__,err);
-
-#ifdef PROFILE
-    tend = steady_clock::now();
-    time_span = duration_cast<duration<double>>(tend - tstart);
-    printf("Write = %f\n", time_span.count() * 1000.0);
-#endif
-
-    // 2. FIND TARGET PATCH
-    // ++++++++++++++++++++
+    // FIND TARGET PATCH
+    // +++++++++++++++++
 #ifdef PROFILE
     tstart = steady_clock::now();
 #endif
@@ -177,8 +165,8 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     printf("Target patch (%d, %d) = %f\n", max_i, max_j, time_span.count() * 1000.0);
 #endif
 
-    // 3. FIND SOURCE PATCH
-    // ++++++++++++++++++++
+    // FIND SOURCE PATCH
+    // +++++++++++++++++
 #ifdef PROFILE
     tstart = steady_clock::now();
 #endif
@@ -226,8 +214,8 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     debug[LINEAR(cl_min_source_i, cl_min_source_j)] = 1; // BLUE - Source
 #endif
 
-    // 4. COPY
-    // +++++++
+    // COPY
+    // ++++
 #ifdef PROFILE
     tstart = steady_clock::now();
 #endif
@@ -246,9 +234,17 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
                 img[LINEAR3(target_i, target_j, 1)] = img[LINEAR3(source_i, source_j, 1)];
                 img[LINEAR3(target_i, target_j, 2)] = img[LINEAR3(source_i, source_j, 2)];
                 mask[LINEAR(target_i, target_j)] = false;
+
+
             }
         }
     }
+
+    err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
+    clHandleError(__FILE__,__LINE__,err);
+
+    err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
+    clHandleError(__FILE__,__LINE__,err);
 
 #ifdef PROFILE
     tend = steady_clock::now();
