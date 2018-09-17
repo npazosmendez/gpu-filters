@@ -22,7 +22,6 @@ int main(int argc, char** argv) {
 	VideoWindow videoWindow;
 
 	QObject::connect(&controlsWindow, SIGNAL(filterChanged(ImageFilter*)), &videoWindow, SLOT(setFilter(ImageFilter*)));
-
 	controlsWindow.show();
 	videoWindow.show();
 

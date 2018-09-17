@@ -11,52 +11,41 @@ extern "C" {
 using namespace std;
 using namespace cv;
 
-void CannyFilter::process_frame(Mat *cameraFrame){
-    if (CL()){
-        CL_canny((char*)cameraFrame->ptr(), cameraFrame->size().width, cameraFrame->size().height, _lowerThreshold, _higherThreshold);
+// Parent class
+
+void ImageFilter::process_frame(Mat *cameraFrame){
+    if (cl){
+        process_frame_CL(cameraFrame);
     }else{
-        canny((char*)cameraFrame->ptr(), cameraFrame->size().width, cameraFrame->size().height, _lowerThreshold, _higherThreshold);
+        process_frame_C(cameraFrame);
     }
     emit frame_ready(cameraFrame);
-
 }
 
-HoughFilter::~HoughFilter() {
-    delete counter;
-    delete _controls;
-}
-        
-HoughFilter::HoughFilter() : 
-    a_ammount(150), p_ammount(150), counter((char*)malloc(150*150*3)) {
-    _controls = new HoughControls(this);
-        
-}
-CannyFilter::CannyFilter() { 
-    _controls = new CannyControls(this);
-
-}
-CannyFilter::~CannyFilter() { 
-    delete _controls;
-
-}
-
-void NoFilter::process_frame(Mat *cameraFrame){
-    emit frame_ready(cameraFrame);
-
-}
-void HoughFilter::process_frame(Mat *cameraFrame){
-    if (CL()){
-        CL_hough((char*)cameraFrame->ptr(), cameraFrame->size().width, cameraFrame->size().height, 150, 150, counter);
+void ImageFilter::toggleCL(int val){
+    if (val){
+        cl = true;
     }else{
-        hough((char*)cameraFrame->ptr(), cameraFrame->size().width, cameraFrame->size().height, 150, 150, counter);
+        cl = false;
     }
-    emit frame_ready(cameraFrame);
+}
 
+
+// Canny Filter
+
+void CannyFilter::process_frame_CL(Mat *cameraFrame){
+    CL_canny((char*)cameraFrame->ptr(), cameraFrame->size().width, cameraFrame->size().height, _lowerThreshold, _higherThreshold);
+}
+
+void CannyFilter::process_frame_C(Mat *cameraFrame){
+    canny((char*)cameraFrame->ptr(), cameraFrame->size().width, cameraFrame->size().height, _lowerThreshold, _higherThreshold);
 }
 
 FilterControls* CannyFilter::controls(){
-    return _controls;
+    return new CannyControls(this);
 }
+
+
 void CannyFilter::setHigherThreshold(int value){
     _higherThreshold = value;
 }
@@ -64,10 +53,33 @@ void CannyFilter::setLowerThreshold(int value){
     _lowerThreshold = value;
 }
 
-FilterControls* HoughFilter::controls(){
-    return _controls;
+// Hough Filter
+
+void HoughFilter::process_frame_CL(Mat *cameraFrame){
+    CL_hough((char*)cameraFrame->ptr(), cameraFrame->size().width, cameraFrame->size().height, 150, 150, counter);
 }
 
+void HoughFilter::process_frame_C(Mat *cameraFrame){
+    hough((char*)cameraFrame->ptr(), cameraFrame->size().width, cameraFrame->size().height, 150, 150, counter);
+}
+
+FilterControls* HoughFilter::controls(){
+    return new HoughControls(this);
+}
+
+
+HoughFilter::~HoughFilter() {
+    delete counter;
+}
+
+HoughFilter::HoughFilter() :
+    a_ammount(150), p_ammount(150), counter((char*)malloc(150*150*3)) {
+        
+}
+
+
+// No Filter
+
 FilterControls* NoFilter::controls(){
-    return _controls;
+    return new NoControls(this);
 }

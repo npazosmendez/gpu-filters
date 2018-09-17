@@ -25,6 +25,8 @@ public:
 private:
 	CannyFilter* _filter;
 	QVBoxLayout _main_layout;
+	QCheckBox _checkBox;
+
 	FancySlider _higher_slider;
 	FancySlider _lower_slider;
 };
@@ -36,6 +38,8 @@ public:
 private:
 	ImageFilter* _filter;
 	QVBoxLayout _main_layout;
+	QCheckBox _checkBox;
+
 	FancySlider _higher_slider;
 };
 

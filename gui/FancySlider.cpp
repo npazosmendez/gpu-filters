@@ -7,7 +7,7 @@
 #include <QSpinBox>
 
 FancySlider::FancySlider(QString title, int min, int max, QWidget *parent)
-    : QWidget(parent), _slider(Qt::Horizontal), _label(title) {
+    : QWidget(parent), _label(title), _slider(Qt::Horizontal) {
 
     // Set bounds
     _slider.setMinimum(min);
@@ -32,4 +32,8 @@ FancySlider::FancySlider(QString title, int min, int max, QWidget *parent)
 
 int FancySlider::value(){
     return _slider.value();
+}
+
+void FancySlider::setValue(int value){
+    _slider.setValue(value);
 }

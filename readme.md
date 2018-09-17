@@ -63,3 +63,4 @@ For an advanced GUI only, not actually needed to run the bascis. More informatio
 - [ ] Optimize all OpenCL code
 - [ ] Test / validate current implementations
 - [x] Create a friendly UI
+- [ ] Fix Canny C bugs
