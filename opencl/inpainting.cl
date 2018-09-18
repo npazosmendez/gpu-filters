@@ -275,7 +275,7 @@ __kernel void copy(
     int2 size = (int2)(get_global_size(0), get_global_size(1));
     int2 target_local_pos = (int2)(get_global_id(0), get_global_id(1));
 
-    int2 diff = target_pos - target_local_pos;
+    int2 diff = target_local_pos - target_pos;
     int2 source_local_pos = source_pos + diff;
 
     int2 in_patch = NEGATIVE_PATCH_CORNER <= diff && diff <= POSITIVE_PATCH_CORNER;
@@ -283,7 +283,6 @@ __kernel void copy(
     if (within(source_local_pos, size) &&  \
         mask[LINEAR(target_local_pos)] &&  \
         in_patch.x && in_patch.y) {
-        printf("(%i, %i) will be <%i, %i, %i>\n", source_local_pos.x, source_local_pos.y, img[3*LINEAR(target_local_pos)+0], img[3*LINEAR(target_local_pos)+1], img[3*LINEAR(target_local_pos)+2]);
         img[3*LINEAR(target_local_pos)+0] = img[3*LINEAR(source_local_pos)+0];
         img[3*LINEAR(target_local_pos)+1] = img[3*LINEAR(source_local_pos)+1];
         img[3*LINEAR(target_local_pos)+2] = img[3*LINEAR(source_local_pos)+2];
