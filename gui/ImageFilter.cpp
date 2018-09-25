@@ -3,7 +3,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencl/opencl-filters.hpp>
 #include "ImageFilter.hpp"
-#include "camera.hpp"
+#include "VideoStreamer.hpp"
 
 extern "C" {
     #include <c/c-filters.h>

@@ -7,7 +7,6 @@
 #include "FilterControls.hpp"
 #include "ImageFilter.hpp"
 #include "VideoWindow.hpp"
-#include "camera.hpp"
 #include "VideoStreamer.hpp"
 #include "FileBrowser.hpp"
 
@@ -24,10 +23,12 @@ private:
 	ImageFilter * _filters[3];
 	FilterControls* _controls;
 
+	QPushButton _camera_button;
 	FileBrowser _browser;
 	QComboBox _comboBox;
 	QVBoxLayout _main_layout;
 
+	bool _camera_is_on;
 
 	void disassemble();
 	void assemble();
@@ -35,6 +36,7 @@ private:
 public slots:
 	void setFilter(QString);
 	void setFile(QString);
+	void setCamera();
 
 };
 

@@ -7,7 +7,7 @@
 
 
 ControlsWindow::ControlsWindow(QWidget *parent) : 
-	QDialog(parent), _browser("Browse video"){
+	QDialog(parent), _browser("Browse video"), _camera_button("Camera"){
 
 	qDebug() << "Initializing controls window";
 	
@@ -15,16 +15,20 @@ ControlsWindow::ControlsWindow(QWidget *parent) :
 	_comboBox.addItem("No Filter");
 	_comboBox.addItem("Canny");
 	_comboBox.addItem("Hough");
+
 	_main_layout.addWidget(&_comboBox);
 	_main_layout.addWidget(&_browser);
+	_main_layout.addWidget(&_camera_button);
 	QObject::connect(&_comboBox, SIGNAL(currentIndexChanged(QString)), this, SLOT(setFilter(QString)));
 	QObject::connect(&_browser, SIGNAL(fileSelected(QString)), this, SLOT(setFile(QString)));
+    QObject::connect(&_camera_button, SIGNAL(clicked()), this, SLOT(setCamera()));
 
 	setLayout(&_main_layout);
 
 	qDebug() << "Initializing processing pipeline";
 	_video_window = new VideoWindow;
-	_camera = new VideoStreamer("../children_640.mp4");
+	_camera = new Camera;
+	_camera_is_on = true;
     _filters[0] = new NoFilter;
     _filters[1] = new CannyFilter;
     _filters[2] = new HoughFilter;
@@ -33,12 +37,24 @@ ControlsWindow::ControlsWindow(QWidget *parent) :
 	assemble();
 }
 
+void ControlsWindow::setCamera(){
+	if (_camera_is_on) return;
+	qDebug() << "Setting camera as input stream" ;
+	disassemble();
+
+	_camera->deleteLater();
+	_camera = new Camera;
+	_camera_is_on = true;
+	assemble();
+
+}
 void ControlsWindow::setFile(QString file_name){
 	qDebug() << "Video file set to " << file_name ;
 	disassemble();
 
 	_camera->deleteLater();
-	_camera = new VideoStreamer(file_name.toStdString());
+	_camera = new VideoFileStreamer(file_name.toStdString());
+	_camera_is_on = false;
 
 	assemble();
 

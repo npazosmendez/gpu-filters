@@ -17,6 +17,21 @@ class VideoStreamer : public QThread {
 	Q_OBJECT
 
 	private:
+		inline long milliseconds_since_epoch();
+
+    public:
+		virtual void run() {};
+		virtual void stop() {};
+
+    signals:
+    	virtual void emit_frame(Mat*);
+};
+
+class VideoFileStreamer : public VideoStreamer {
+
+	Q_OBJECT
+
+	private:
 		int width, height;
 		VideoCapture stream;
 		int index = 0;
@@ -29,7 +44,29 @@ class VideoStreamer : public QThread {
 		inline long milliseconds_since_epoch();
 
     public:
-		VideoStreamer(string filename);
+		VideoFileStreamer(string filename);
+		void run();
+		void stop();
+
+    signals:
+    	void emit_frame(Mat*);
+};
+
+
+class Camera : public VideoStreamer {
+
+	Q_OBJECT
+
+	private:
+		int width, height;
+		VideoCapture stream;
+		int index = 0;
+		Mat _buffer[4];
+		bool _frame_ready = true;
+		bool _stop;
+
+    public:
+		Camera();
 		void run();
 		void stop();
 

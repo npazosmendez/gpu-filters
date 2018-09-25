@@ -6,7 +6,6 @@
 #include <QObject>
 #include <iostream>
 #include <opencv2/imgproc/imgproc.hpp>
-#include "camera.hpp"
 #include "hitcounter.hpp"
 #include "ImageFilter.hpp"
 #include <QMainWindow>

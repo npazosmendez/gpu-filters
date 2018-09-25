@@ -4,7 +4,6 @@
 #include <iostream>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "ImageFilter.hpp"
-#include "camera.hpp"
 #include "VideoWindow.hpp"
 using namespace cv;
 using namespace std;
