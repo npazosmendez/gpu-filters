@@ -42,7 +42,7 @@ $(EXEC): $(OBJECTS) main.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LIBS) -o $@
 
 # Apps
-APPS := inpainter linedetector
+APPS := inpainter linedetector flowcalculator
 
 apps: CPPFLAGS += -O3
 apps: $(APPS)
