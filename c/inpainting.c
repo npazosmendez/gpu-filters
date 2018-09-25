@@ -13,14 +13,14 @@ static float ALPHA = 255;
 #define LINEAR3(y,x,z) 3*((y)*width+(x))+(z)
 #define LINEAR(y,x) (y)*width+(x)
 
-point vector_bisector(float ax, float ay, float bx, float by);
-float masked_convolute(int width, int height, char * img, int i, int j, float kernel[3][3], bool * mask);
+static point vector_bisector(float ax, float ay, float bx, float by);
+static float masked_convolute(int width, int height, char * img, int i, int j, float kernel[3][3], bool * mask);
 
 #define MAX_LEN 2000
-bool contour_mask[MAX_LEN*MAX_LEN];
-float confidence[MAX_LEN*MAX_LEN];
-point gradient_t[MAX_LEN*MAX_LEN];
-point n_t[MAX_LEN*MAX_LEN];
+static bool contour_mask[MAX_LEN*MAX_LEN];
+static float confidence[MAX_LEN*MAX_LEN];
+static point gradient_t[MAX_LEN*MAX_LEN];
+static point n_t[MAX_LEN*MAX_LEN];
 
 /*
     Outline:
@@ -329,10 +329,10 @@ float masked_convolute(int width, int height, char * img, int i, int j, float ke
             int inner_j = clamp(j + kj  - kernel_radius, 0, width);
             float avg = 0;
             for (int ci = 0; ci < 3; ci++) {
-                avg += img[LINEAR3(inner_i, inner_j, ci)];
+                avg += img[LINEAR3(inner_i, inner_j, ci)]; // Isn't backwards?
             }
             avg /= 3;
-            acc += avg * kernel[ki][kj];
+            acc += avg * kernel[ki][kj]; // Isn't backwards?
         }
     }
 

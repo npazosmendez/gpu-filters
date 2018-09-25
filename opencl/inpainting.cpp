@@ -42,7 +42,6 @@ static int PATCH_RADIUS = 4;
 
 // Host Buffers
 #define MAX_LEN 2000
-static char contour_mask[MAX_LEN*MAX_LEN]; // whether a pixel belongs to the border
 static cl_float confidence[MAX_LEN*MAX_LEN];  // how trustworthy the info of a pixel is
 static cl_float priority[MAX_LEN*MAX_LEN];    // patch priority as next target
 static cl_float diffs[MAX_LEN*MAX_LEN];    // differences of patch to target
@@ -50,6 +49,7 @@ static cl_float diffs[MAX_LEN*MAX_LEN];    // differences of patch to target
 // Device Memory Objects
 static Kernel k_patch_priorities;
 static Kernel k_target_diffs;
+static Kernel k_copy;
 static Buffer b_img;
 static Buffer b_mask;
 static Buffer b_confidence;
@@ -78,6 +78,7 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug
     // Kernels
     k_patch_priorities = Kernel(program, "patch_priorities");
     k_target_diffs = Kernel(program, "target_diffs");
+    k_copy = Kernel(program, "copy");
 
     // Buffers
     b_img = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err); // image in rgb (uchar3)
@@ -93,7 +94,6 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug
 
     // Buffer Initialization - Host
     memset(confidence, 0, MAX_LEN*MAX_LEN*sizeof(float));
-    memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             confidence[LINEAR(i,j)] = mask[LINEAR(i,j)] ? 0.0 : 1.0;
@@ -101,6 +101,12 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug
     }
 
     // Buffer Initialization - Device
+    err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
+    clHandleError(__FILE__,__LINE__,err);
+
+    err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
+    clHandleError(__FILE__,__LINE__,err);
+
     err = queue.enqueueWriteBuffer(b_confidence, CL_TRUE, 0, sizeof(cl_float)*width*height, confidence);
     clHandleError(__FILE__,__LINE__,err);
 }
@@ -112,26 +118,8 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     memset(debug, 0, width*height*sizeof(int));
 #endif
 
-    // 0. WRITE
-    // ++++++++
-#ifdef PROFILE
-    tstart = steady_clock::now();
-#endif
-
-    err = queue.enqueueWriteBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
-    clHandleError(__FILE__,__LINE__,err);
-
-    err = queue.enqueueWriteBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
-    clHandleError(__FILE__,__LINE__,err);
-
-#ifdef PROFILE
-    tend = steady_clock::now();
-    time_span = duration_cast<duration<double>>(tend - tstart);
-    printf("Write = %f\n", time_span.count() * 1000.0);
-#endif
-
-    // 2. FIND TARGET PATCH
-    // ++++++++++++++++++++
+    // FIND TARGET PATCH
+    // +++++++++++++++++
 #ifdef PROFILE
     tstart = steady_clock::now();
 #endif
@@ -166,24 +154,30 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
         }
     }
 
-    // Exit condition
+    // Exit
     if (max_priority == -1.0) {
+        err = queue.enqueueReadBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
+        clHandleError(__FILE__,__LINE__,err);
+
+        err = queue.enqueueReadBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
+        clHandleError(__FILE__,__LINE__,err);
+
         return 0;
     }
 
 #ifdef PROFILE
     tend = steady_clock::now();
     time_span = duration_cast<duration<double>>(tend - tstart);
-    printf("Target patch (%d, %d) = %f\n", max_i, max_j, time_span.count() * 1000.0);
+    printf("Target patch (%d, %d) = %f\n", max_j, max_i, time_span.count() * 1000.0);
 #endif
 
-    // 3. FIND SOURCE PATCH
-    // ++++++++++++++++++++
+    // FIND SOURCE PATCH
+    // +++++++++++++++++
 #ifdef PROFILE
     tstart = steady_clock::now();
 #endif
 
-    // Write to Device
+    // Params
     cl_int2 best_target = { max_j, max_i };
 
     // Kernel Execute
@@ -218,7 +212,7 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
 #ifdef PROFILE
     tend = steady_clock::now();
     time_span = duration_cast<duration<double>>(tend - tstart);
-    printf("Source patch(%d, %d) = %f\n", cl_min_source_i, cl_min_source_j, time_span.count() * 1000.0);
+    printf("Source patch(%d, %d) = %f\n", cl_min_source_j, cl_min_source_i, time_span.count() * 1000.0);
 #endif
 
 #ifdef DEBUG
@@ -226,29 +220,28 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     debug[LINEAR(cl_min_source_i, cl_min_source_j)] = 1; // BLUE - Source
 #endif
 
-    // 4. COPY
-    // +++++++
+    // COPY
+    // ++++
 #ifdef PROFILE
     tstart = steady_clock::now();
 #endif
 
-    for (int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++) {
-        for (int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++) {
-            int target_i = max_i + ki;
-            int target_j = max_j + kj;
-            int source_i = cl_min_source_i + ki;
-            int source_j = cl_min_source_j + kj;
+    // Params
+    cl_int2 target = { max_j, max_i };
+    cl_int2 source = { cl_min_source_j, cl_min_source_i };
 
-            if (within(target_i, 0, height) &&  \
-                within(target_j, 0, width) &&   \
-                mask[LINEAR(target_i, target_j)]) {
-                img[LINEAR3(target_i, target_j, 0)] = img[LINEAR3(source_i, source_j, 0)];
-                img[LINEAR3(target_i, target_j, 1)] = img[LINEAR3(source_i, source_j, 1)];
-                img[LINEAR3(target_i, target_j, 2)] = img[LINEAR3(source_i, source_j, 2)];
-                mask[LINEAR(target_i, target_j)] = false;
-            }
-        }
-    }
+    // Kernel Execute
+    k_copy.setArg(0, b_img);
+    k_copy.setArg(1, b_mask);
+    k_copy.setArg(2, target);
+    k_copy.setArg(3, source);
+    err = queue.enqueueNDRangeKernel(
+            k_copy,
+            NullRange,
+            NDRange(width, height),
+            NullRange // default
+    );
+    clHandleError(__FILE__,__LINE__,err);
 
 #ifdef PROFILE
     tend = steady_clock::now();
