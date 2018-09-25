@@ -1,6 +1,7 @@
 #include "cutils.h"
 #include "math.h"
 #include "stdbool.h"
+#include "stdio.h"
 
 // Checks if value is inside the range [minimum, maximum)
 int within(int value, int minimum, int maximum) {
@@ -55,9 +56,12 @@ void convoluion2D(float * src, int width, int height, float * kernel, int ksize,
 
     /* image loop*/
     for (int i = 0; i < height; i++) {
-        if ((i - ksize/2 ) < 0 || (i + ksize/2) > (height-1)) continue; // TODO: handle boundaries
         for (int j = 0; j < width; j++) {
-            if ((j - ksize/2 ) < 0 || (j + ksize/2) > (width-1)) continue; // TODO: handle boundaries
+            if ((i - ksize/2 ) < 0 || (i + ksize/2) > (height-1) ||
+                (j - ksize/2 ) < 0 || (j + ksize/2) > (width-1)){
+                dst_img[i][j] = 0;
+                continue; // TODO: handle boundaries
+            }
             /* kernel loop */
             float temp = 0;
             for (int ik = 0; ik < ksize; ik++) {

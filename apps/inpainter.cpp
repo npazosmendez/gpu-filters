@@ -40,26 +40,26 @@ int cursor_radius;
 void (*picked_init)(int, int, char*, bool*, int*);
 bool (*picked_step)(int, int, char*, bool*, int*);
 
+
 bool quit = false;
 
-/*
+    /*
    Two modes:
     - Original
     - Filled
 
-    You Change between these two modes with 'C'
-
     In Original mode you can't do anything.
     In Filled mode you can draw a mask with the mouse,
-    which will be shown above the image transparently.
+    which will be used for the inpainting algorithm.
 
     With 'I', we attempt to Inpaint with the mask.
     Inpainting is done in steps. Every time we press
     'I' again, we do a single step of the algorithm.
     Pressing 'T' will Terminate the inpaint mode by
     running the algorithm until the end.
-   */
 
+    With 'C' we can Chance between these two modes
+    */
 
 
 int main( int argc, char** argv ) {
