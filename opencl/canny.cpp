@@ -8,8 +8,6 @@
 using namespace std;
 using namespace cl;
 
-bool canny_initialized = false;
-
 Image2D clImage;
 Buffer clResult_float;
 Buffer cl_charImage;
@@ -22,18 +20,32 @@ Kernel k_hysteresis;
 Kernel k_torgb;
 
 void initCLCanny(int width, int height){
-    /* 1. Build PROGRAM from source, for specific context */
-    createProgram("canny.cl");
+    static int _width, _height = -1;
+    static bool canny_initialized = false;
 
-    /*2. Create kernels */
-    k_intensity_gauss = Kernel(program, "intensity_gauss_filter");
-    k_max_edges = Kernel(program, "max_edges");
-    k_hysteresis = Kernel(program, "hysteresis");
-    k_torgb = Kernel(program, "floatEdges_to_RGBChar");
+    cl_int err = 0;
+    if (not canny_initialized){
+        /* 1. Build PROGRAM from source, for specific context */
+        createProgram("canny.cl");
+
+        /*2. Create kernels */
+        k_intensity_gauss = Kernel(program, "intensity_gauss_filter");
+        k_max_edges = Kernel(program, "max_edges");
+        k_hysteresis = Kernel(program, "hysteresis");
+        k_torgb = Kernel(program, "floatEdges_to_RGBChar");
+
+        // Int (Bool) for hysteresis iteration
+        cl_intbool = Buffer(context, CL_MEM_USE_HOST_PTR, sizeof(int), &intbool, &err);
+        clHandleError(__FILE__,__LINE__,err);
+
+
+        canny_initialized = true;
+    }
+
+    if (_width == width or _height == height) return;
 
     /* 3. Buffers setup */
     // OpenCL Image / texture to store image intensity
-    cl_int err = 0;
     clImage = Image2D(context, CL_MEM_READ_WRITE, ImageFormat(CL_INTENSITY, CL_FLOAT), width, height, 0, NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 
@@ -44,20 +56,13 @@ void initCLCanny(int width, int height){
     // Buffer for input/output image in rgb (uchar3)
     cl_charImage = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
-
-    // Int (Bool) for hysteresis iteration
-    cl_intbool = Buffer(context, CL_MEM_USE_HOST_PTR, sizeof(int), &intbool, &err);
-    clHandleError(__FILE__,__LINE__,err);
-
-
-    canny_initialized = true;
     return;
 }
 
 void CL_canny(char * src_c, int width, int height, float uthreshold, float lthreshold){
 
     if(!openCL_initialized) initCL();
-    if(!canny_initialized) initCLCanny(width, height);
+    initCLCanny(width, height);
 
    	cl_int err = 0;
     // 1. Transfer image to GPU

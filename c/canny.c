@@ -20,14 +20,12 @@ float * img_inten;
 float * img_smooth;
 float * Gx;
 float * Gy;
-int _width, _height;
-_width = -1;
-_height = -1;
 /* ******************* */
 /* Auxiliary Functions */
 /* ******************* */
 
 void initCannyC(int width, int height){
+    static int _width = -1, _height = -1;
     debug_print("initing Canny in C\n");
     // Initialize buffers for Canny algorithm
     if (width != _width || height != _height){
