@@ -77,6 +77,7 @@ void ControlsWindow::setFilter(QString filterName){
 
 	_controls = _current_filter->controls();
 	_main_layout.addWidget(_controls);
+	this->adjustSize();
 	QObject::connect(this, SIGNAL(yyy()),_current_filter, SLOT(xxx()), Qt::QueuedConnection);
 
 	assemble();
