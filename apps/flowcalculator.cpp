@@ -18,6 +18,9 @@ extern "C" {
 using namespace cv;
 using namespace std;
 
+#define GRANULARITY 1
+#define FACTOR 1
+
 #define LINEAR(x,y) (y)*width+(x)
 #define forn(i,n) for(int i=0; i<(n); i++)
 
@@ -75,12 +78,12 @@ int main(int argc, char** argv) {
         kanade(width, height, old_ptr, current_ptr, flow);
 
         drawnFrame = cameraFrame.clone();
-        for(int y = 0; y < height; y++) {
-            for(int x = 0; x < width; x++) {
-                vec displacement = flow[LINEAR(x, y)];
-                if (displacement.x != 0 || displacement.y != 0) {
-                    arrowedLine(drawnFrame, Point(x, y), Point(x + displacement.x, y + displacement.y), Scalar( 0, 200, 0 ), 1);
-                }
+        forn(y, height) forn(x, width) if (y % GRANULARITY == 0 && x % GRANULARITY == 0) {
+            vec displacement = flow[LINEAR(x, y)];
+            displacement.x *= FACTOR;
+            displacement.y *= FACTOR;
+            if (displacement.x != 0 || displacement.y != 0) {
+                arrowedLine(drawnFrame, Point(x, y), Point(x + displacement.x, y + displacement.y), Scalar( 0, 200, 0 ), 1);
             }
         }
 

@@ -37,23 +37,6 @@ static float * intensity_old;
 static float * intensity_new;
 
 
-
-
-
-
-void convolute(float * in, float * out, int width, int height, float kernel[][3]) {
-    forn(y, height) forn(x, width) {
-        float acc = 0;
-        forn(ky, 3) forn(kx, 3) {
-            int inner_x = clamp(x + (kx - 1), 0, width-1);
-            int inner_y = clamp(y + (ky - 1), 0, height-1);
-            acc += in[LINEAR(inner_x, inner_y)] * kernel[kx][ky];
-        }
-        out[LINEAR(x, y)] = acc;
-    }
-}
-
-
 // ROSETTA SNIPPET
 // https://rosettacode.org/wiki/Gaussian_elimination
 
@@ -140,8 +123,8 @@ void kanade(int width, int height, char * img_old, char * img_new, vec * flow) {
     }
 
     // Gradients
-    convolute(intensity_old, gradient_y, width, height, KERNEL_SOBEL_Y);
-    convolute(intensity_old, gradient_x, width, height, KERNEL_SOBEL_X);
+    convoluion2D(intensity_old, width, height, KERNEL_SOBEL_Y, 3, gradient_y);
+    convoluion2D(intensity_old, width, height, KERNEL_SOBEL_X, 3, gradient_x);
     forn(i, width * height) gradient_t[i] = intensity_new[i] - intensity_old[i];
 
     // Build Matrices
