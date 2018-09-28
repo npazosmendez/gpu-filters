@@ -11,17 +11,19 @@ using namespace std;
 #include "FancySlider.hpp"
 #include "FilterControls.hpp"
 #include "ControlsWindow.hpp"
+#include "debug.h"
 
 int main(int argc, char** argv) {
-    qDebug() << "Creating QApplication";
+	debug_print("Creating QApplication\n");
 	QApplication app(argc, argv);
 
-    qDebug() << "Creating controls window";
+	debug_print("Creating controls window\n");
 	ControlsWindow controlsWindow;
 
 	controlsWindow.show();
 
-    qDebug() << "Event loop executing";
+	debug_print("Event loop executing\n");
+
     return app.exec();
 }
 

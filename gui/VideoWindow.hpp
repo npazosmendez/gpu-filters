@@ -34,6 +34,7 @@ class VideoWindow : public QMainWindow  {
 
 	public slots:
 		void show_frame(Mat *frame);
+		void xxx();
 };
 
 #endif // __WINDOW_H__

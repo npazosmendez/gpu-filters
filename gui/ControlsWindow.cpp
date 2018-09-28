@@ -4,14 +4,15 @@
 #include <QLabel>
 #include <QObject>
 #include <unistd.h>
+#include "debug.h"
 
 
 ControlsWindow::ControlsWindow(QWidget *parent) : 
-	QDialog(parent), _browser("Browse video"), _camera_button("Camera"){
+	QDialog(parent), _browser("Browse video"), _camera_button("Camera", this){
 
-	qDebug() << "Initializing controls window";
+	debug_print("Initializing controls window\n");
 	
-	qDebug() << "Setting layout";
+	debug_print("Setting layout\n");
 	_comboBox.addItem("No Filter");
 	_comboBox.addItem("Canny");
 	_comboBox.addItem("Hough");
@@ -22,10 +23,9 @@ ControlsWindow::ControlsWindow(QWidget *parent) :
 	QObject::connect(&_comboBox, SIGNAL(currentIndexChanged(QString)), this, SLOT(setFilter(QString)));
 	QObject::connect(&_browser, SIGNAL(fileSelected(QString)), this, SLOT(setFile(QString)));
     QObject::connect(&_camera_button, SIGNAL(clicked()), this, SLOT(setCamera()));
-
 	setLayout(&_main_layout);
 
-	qDebug() << "Initializing processing pipeline";
+	debug_print("Initializing processing pipeline\n");
 	_video_window = new VideoWindow;
 	_camera = new Camera;
 	_camera_is_on = true;
@@ -35,13 +35,17 @@ ControlsWindow::ControlsWindow(QWidget *parent) :
 	_current_filter = _filters[0];
 	_controls = _current_filter->controls();
 	assemble();
+
+	QObject::connect(this, SIGNAL(yyy()),_video_window, SLOT(xxx()), Qt::QueuedConnection);
+	QObject::connect(this, SIGNAL(yyy()),_current_filter, SLOT(xxx()), Qt::QueuedConnection);
+
+
 }
 
 void ControlsWindow::setCamera(){
 	if (_camera_is_on) return;
-	qDebug() << "Setting camera as input stream" ;
+	debug_print("Setting camera as input stream\n" );
 	disassemble();
-
 	_camera->deleteLater();
 	_camera = new Camera;
 	_camera_is_on = true;
@@ -49,7 +53,7 @@ void ControlsWindow::setCamera(){
 
 }
 void ControlsWindow::setFile(QString file_name){
-	qDebug() << "Video file set to " << file_name ;
+	debug_print("Video file set to %s\n", file_name );
 	disassemble();
 
 	_camera->deleteLater();
@@ -60,11 +64,12 @@ void ControlsWindow::setFile(QString file_name){
 
 }
 void ControlsWindow::setFilter(QString filterName){
-	qDebug() << "Filter set to " << filterName ;
+	debug_print("Filter set to %s\n",filterName);
 	disassemble();
 
     _main_layout.removeWidget(_controls);
 	_controls->deleteLater();
+	QObject::disconnect(this, SIGNAL(yyy()),_current_filter, SLOT(xxx()));
 
 	if (filterName == "No Filter") _current_filter = _filters[0];
 	if (filterName == "Canny") _current_filter = _filters[1];
@@ -72,11 +77,12 @@ void ControlsWindow::setFilter(QString filterName){
 
 	_controls = _current_filter->controls();
 	_main_layout.addWidget(_controls);
+	QObject::connect(this, SIGNAL(yyy()),_current_filter, SLOT(xxx()), Qt::QueuedConnection);
 
 	assemble();
 }
 void ControlsWindow::show(){
-	qDebug() << "Showing controls window";
+	debug_print("Showing controls window\n");
 	QDialog::show();
 	_video_window->show();
 	setFilter("No Filter");
@@ -84,9 +90,11 @@ void ControlsWindow::show(){
 
 
 void ControlsWindow::disassemble(){
-	qDebug() << "Dissassembling processing pipe";
+	debug_print("Dissassembling processing pipe\n");
 	_camera->stop();
 	_camera->wait();
+	debug_print("Streamer said it is done\n");
+	empty_pipe();
 
     if (_current_filter != NULL){
 		QObject::disconnect(
@@ -102,7 +110,7 @@ void ControlsWindow::disassemble(){
 }
 
 void ControlsWindow::assemble(){
-	qDebug() << "Assembling processing pipe";
+	debug_print("Assembling processing pipe\n");
 	QObject::connect(
 	_camera, SIGNAL(emit_frame(Mat*)),
 	_current_filter, SLOT(give_frame(Mat*)),
@@ -117,4 +125,8 @@ void ControlsWindow::assemble(){
 	_current_filter->start();
 	_camera->start();
 
+}
+
+void ControlsWindow::empty_pipe(){
+	emit yyy();
 }

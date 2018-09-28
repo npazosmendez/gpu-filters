@@ -24,6 +24,7 @@ class ImageFilter : public QThread {
 		void stop();
 
 	public slots:
+		void xxx();
 		void give_frame(Mat* frame);
 		void toggle_CL(int);
 

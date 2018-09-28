@@ -32,11 +32,15 @@ private:
 
 	void disassemble();
 	void assemble();
+	void empty_pipe();
 
 public slots:
 	void setFilter(QString);
 	void setFile(QString);
 	void setCamera();
+
+signals:
+	void yyy();
 
 };
 

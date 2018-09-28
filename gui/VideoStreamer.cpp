@@ -3,10 +3,11 @@
 #include <iostream>
 #include <QAtomicInt>
 #include <chrono>
+#include "debug.h"
 
 using namespace cv;
 using namespace std;
-extern uint qGlobalPostedEventsCount(); // from qapplication.cpp
+extern uint qGlobalPostedEventsCount();// from qapplication.cpp
 
 QAtomicInt frame_processed = 1;
 
@@ -31,11 +32,11 @@ void VideoFileStreamer::run(){
 	float frame_ms_period = 1000.0 / _fps;
 
 	while(!_stop){
-
 	    if ( milliseconds_since_epoch() - last_frame_ms < frame_ms_period) continue;
 
 		bool ready = frame_processed.testAndSetAcquire(1, 0);
 	    if (ready){
+			debug_print("Getting new frame at %p\n", &_buffer[index]);
 		    if(not stream.read(_buffer[index])){
 		    	frame_processed.testAndSetAcquire(0, 1);
 		    	stream.open(_filename);
@@ -43,6 +44,7 @@ void VideoFileStreamer::run(){
 		    }
 		    last_frame_ms = milliseconds_since_epoch();
 			emit emit_frame(&_buffer[index]);
+			debug_print("Sending frame at %p\n", &_buffer[index]);
 			index = (index+1) % 4;
 	    }else{
 	    	continue;
@@ -51,6 +53,7 @@ void VideoFileStreamer::run(){
 }
 
 void VideoFileStreamer::stop(){
+	debug_print("Streamer stopping\n");
 	_stop = true;
 }
 
@@ -79,10 +82,12 @@ void Camera::run(){
 	frame_processed = 1;
 	_stop = false;
 	while(!_stop){
+		debug_print("Getting new frame at %p\n", &_buffer[index]);
 	    stream.read(_buffer[index]);
 	    if (frame_processed){
 		    frame_processed = 0;
 			emit emit_frame(&_buffer[index]);
+			debug_print("Sending frame at %p\n", &_buffer[index]);
 			index = (index+1) % 4;
 	    }
 	}

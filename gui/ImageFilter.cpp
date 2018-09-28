@@ -4,6 +4,7 @@
 #include <opencl/opencl-filters.hpp>
 #include "ImageFilter.hpp"
 #include "VideoStreamer.hpp"
+#include "debug.h"
 
 extern "C" {
     #include <c/c-filters.h>
@@ -15,16 +16,23 @@ using namespace cv;
 // Parent class
 
 void ImageFilter::give_frame(Mat *frame){
+    debug_print("Got frame of size %dx%d at %p, storing it at %p\n",
+        frame->cols, frame->rows, frame, &_frame);
     _frame = *frame;
     if (cl){
         process_frame_CL(&_frame);
     }else{
         process_frame_C(&_frame);
     }
+    debug_print("Finished processing frame at %p\n", &_frame);
     emit filtered_frame(&_frame);
     frame_processed = 1;
 }
 
+void ImageFilter::xxx(){
+    debug_print("Filter xxx\n");
+    return;
+}
 void ImageFilter::start(){
     return;
 }
@@ -95,9 +103,9 @@ FilterControls* NoFilter::controls(){
     return new NoControls(this);
 }
 
-void NoFilter::process_frame_C(Mat *frame){
+void NoFilter::process_frame_C(Mat*){
 
 }
-void NoFilter::process_frame_CL(Mat *frame){
+void NoFilter::process_frame_CL(Mat*){
 
 }

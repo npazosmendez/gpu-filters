@@ -5,6 +5,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include "ImageFilter.hpp"
 #include "VideoWindow.hpp"
+#include "debug.h"
 using namespace cv;
 using namespace std;
 
@@ -29,7 +30,7 @@ QImage VideoWindow::MatToQImage(const Mat& mat){
         QImage img(qImageBuffer, mat.cols, mat.rows, mat.step, QImage::Format_RGB888);
         return img.rgbSwapped();
     }else{
-        qDebug() << "ERROR: Mat could not be converted to QImage.";
+        debug_print("ERROR: Mat could not be converted to QImage.\n");
         return QImage();
     }
 }
@@ -43,6 +44,7 @@ inline void VideoWindow::overlay_frame_rate(QPixmap* pixmap){
 }
     
 void VideoWindow::show_frame(Mat *frame){
+    debug_print("Showing frame at %p\n", frame);
     hitcounter.hit();
     image = MatToQImage(*frame);
     pixmap.convertFromImage(image);
@@ -51,7 +53,7 @@ void VideoWindow::show_frame(Mat *frame){
     _label->setPixmap(pixmap);
     _label->show();
     this->show();
-
+    debug_print("Done showing frame\n");
 }
 
 
@@ -62,4 +64,8 @@ VideoWindow::VideoWindow() : _label(new QLabel) {
 
 VideoWindow::~VideoWindow() {
     delete _label;
+}
+
+void VideoWindow::xxx() {
+    debug_print("xxx\n");
 }
