@@ -29,12 +29,15 @@ static float KERNEL_SOBEL_X[] = {
 
 static bool initialized = false;
 
-static float ** gradient_x;
-static float ** gradient_y;
-static float ** gradient_t;
+static int * pyramidal_widths;
+static int * pyramidal_heights;
 
-static float ** intensity_old;
-static float ** intensity_new;
+static float ** pyramidal_gradients_x;
+static float ** pyramidal_gradients_y;
+static float ** pyramidal_gradients_t;
+
+static float ** pyramidal_intensities_old;
+static float ** pyramidal_intensities_new;
 
 /**
  * Algorithm Overview
@@ -113,32 +116,32 @@ int interest_x = 100;
 int interest_y = 100;
 
 
-void init(int width, int height) {
-    gradient_x = (float **) malloc(1 * sizeof(gradient_x));
-    gradient_y = (float **) malloc(1 * sizeof(gradient_y));
-    gradient_t = (float **) malloc(1 * sizeof(gradient_t));
+void init(int in_width, int in_height) {
+    // Pyramid buffers
+    pyramidal_widths = (int *) malloc(1 * sizeof(pyramidal_widths));
+    pyramidal_heights = (int *) malloc(1 * sizeof(pyramidal_heights));
+    pyramidal_gradients_x = (float **) malloc(1 * sizeof(pyramidal_gradients_x));
+    pyramidal_gradients_y = (float **) malloc(1 * sizeof(pyramidal_gradients_y));
+    pyramidal_gradients_t = (float **) malloc(1 * sizeof(pyramidal_gradients_t));
+    pyramidal_intensities_old = (float **) malloc(1 * sizeof(pyramidal_intensities_old));
+    pyramidal_intensities_new = (float **) malloc(1 * sizeof(pyramidal_intensities_new));
 
-    intensity_old = (float **) malloc(1 * sizeof(intensity_old));
-    intensity_new = (float **) malloc(1 * sizeof(intensity_new));
-
-    gradient_x[0] = (float *) malloc(width * height * sizeof(float));
-    gradient_y[0] = (float *) malloc(width * height * sizeof(float));
-    gradient_t[0] = (float *) malloc(width * height * sizeof(float));
-
-    intensity_old[0] = (float *) malloc(width * height * sizeof(float));
-    intensity_new[0] = (float *) malloc(width * height * sizeof(float));
+    // Image buffers
+    forn(pi, 1) {
+        pyramidal_widths[pi] = in_width;
+        pyramidal_heights[pi] = in_height;
+        pyramidal_gradients_x[pi] = (float *) malloc(pyramidal_widths[pi] * pyramidal_heights[pi] * sizeof(float));
+        pyramidal_gradients_y[pi] = (float *) malloc(pyramidal_widths[pi] * pyramidal_heights[pi] * sizeof(float));
+        pyramidal_gradients_t[pi] = (float *) malloc(pyramidal_widths[pi] * pyramidal_heights[pi] * sizeof(float));
+        pyramidal_intensities_old[pi] = (float *) malloc(pyramidal_widths[pi] * pyramidal_heights[pi] * sizeof(float));
+        pyramidal_intensities_new[pi] = (float *) malloc(pyramidal_widths[pi] * pyramidal_heights[pi] * sizeof(float));
+    }
 
     initialized = true;
 }
 
-void finish(int width, int height) {
+void finish() {
     // TODO
-    free(gradient_x);
-    free(gradient_y);
-    free(gradient_t);
-
-    free(intensity_old);
-    free(intensity_new);
 }
 
 #define THRESHOLD_CORNER 100000
@@ -152,12 +155,18 @@ int is_corner(double tensor[2][2]) {
     return cornerism > THRESHOLD_CORNER;
 }
 
-void calculate_flow(int width, int height, vec * flow, int pi) {
+void calculate_flow(vec * flow, int pi) {
     // Matrices
     /*
      * A = [ sum IxIx  sum IxIy           b = [ - sum IxIt
      *       sum IyIx  sum IyIy ]               - sum IyIt ]
      */
+
+    int height = pyramidal_heights[pi];
+    int width = pyramidal_widths[pi];
+    float * gradient_x = pyramidal_gradients_x[pi];
+    float * gradient_y = pyramidal_gradients_y[pi];
+    float * gradient_t = pyramidal_gradients_t[pi];
 
     forn(y, height) forn(x, width) {
 
@@ -172,11 +181,11 @@ void calculate_flow(int width, int height, vec * flow, int pi) {
             int in_x = clamp(x + (wx - LK_WINDOW_RADIUS), 0, width - 1);
             int in_y = clamp(y + (wy - LK_WINDOW_RADIUS), 0, height - 1);
 
-            IxIx += gradient_x[pi][LINEAR(in_x, in_y)] * gradient_x[pi][LINEAR(in_x, in_y)];
-            IxIy += gradient_x[pi][LINEAR(in_x, in_y)] * gradient_y[pi][LINEAR(in_x, in_y)];
-            IyIy += gradient_y[pi][LINEAR(in_x, in_y)] * gradient_y[pi][LINEAR(in_x, in_y)];
-            IxIt += gradient_x[pi][LINEAR(in_x, in_y)] * gradient_t[pi][LINEAR(in_x, in_y)];
-            IyIt += gradient_y[pi][LINEAR(in_x, in_y)] * gradient_t[pi][LINEAR(in_x, in_y)];
+            IxIx += gradient_x[LINEAR(in_x, in_y)] * gradient_x[LINEAR(in_x, in_y)];
+            IxIy += gradient_x[LINEAR(in_x, in_y)] * gradient_y[LINEAR(in_x, in_y)];
+            IyIy += gradient_y[LINEAR(in_x, in_y)] * gradient_y[LINEAR(in_x, in_y)];
+            IxIt += gradient_x[LINEAR(in_x, in_y)] * gradient_t[LINEAR(in_x, in_y)];
+            IyIt += gradient_y[LINEAR(in_x, in_y)] * gradient_t[LINEAR(in_x, in_y)];
         }
 
         double A[2][2] = {IxIx, IxIy, IxIy, IyIy};
@@ -187,34 +196,46 @@ void calculate_flow(int width, int height, vec * flow, int pi) {
             gauss_eliminate((double*)A, b, u, 2);
             flow[LINEAR(x, y)] = (vec) {u[0], u[1]};
         } else {
-            flow[LINEAR(x, y)] = (vec) {0, 0}; // TODO: Is this ok?
+            flow[LINEAR(x, y)] = (vec) {0, 0};
         }
     }
 }
 
 
-void kanade(int width, int height, char * img_old, char * img_new, vec * flow) {
+void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * flow) {
 
-    if (!initialized) init(width, height);
+    if (!initialized) init(in_width, in_height);
 
-    // Intensity
-    forn(i, height * width) {
-        unsigned char (*img_oldRGB)[3] = (unsigned char (*)[3])img_old;
-        intensity_old[0][i] = (img_oldRGB[i][0] + img_oldRGB[i][1] + img_oldRGB[i][2]) / 3;
+
+    forn(pi, 1) {
+        // Sub-image buffers
+        int width = pyramidal_widths[pi];
+        int height = pyramidal_heights[pi];
+        float * gradient_x = pyramidal_gradients_x[pi];
+        float * gradient_y = pyramidal_gradients_y[pi];
+        float * gradient_t = pyramidal_gradients_t[pi];
+        float * intensity_old = pyramidal_intensities_old[pi];
+        float * intensity_new = pyramidal_intensities_new[pi];
+
+        // Intensity
+        forn(i, height * width) {
+            unsigned char (*img_oldRGB)[3] = (unsigned char (*)[3])img_old;
+            intensity_old[i] = (img_oldRGB[i][0] + img_oldRGB[i][1] + img_oldRGB[i][2]) / 3;
+        }
+
+        forn(i, height * width) {
+            unsigned char (*img_newRGB)[3] = (unsigned char (*)[3])img_new;
+            intensity_new[i] = (img_newRGB[i][0] + img_newRGB[i][1] + img_newRGB[i][2]) / 3;
+        }
+
+        // Gradients
+        convoluion2D(intensity_old, width, height, KERNEL_SOBEL_Y, 3, gradient_y);
+        convoluion2D(intensity_old, width, height, KERNEL_SOBEL_X, 3, gradient_x);
+        forn(i, width * height) gradient_t[i] = intensity_new[i] - intensity_old[i];
+
+        // LK algorithm (+ corner detection)
+        calculate_flow(flow, pi);
     }
-
-    forn(i, height * width) {
-        unsigned char (*img_newRGB)[3] = (unsigned char (*)[3])img_new;
-        intensity_new[0][i] = (img_newRGB[i][0] + img_newRGB[i][1] + img_newRGB[i][2]) / 3;
-    }
-
-    // Gradients
-    convoluion2D(intensity_old[0], width, height, KERNEL_SOBEL_Y, 3, gradient_y[0]);
-    convoluion2D(intensity_old[0], width, height, KERNEL_SOBEL_X, 3, gradient_x[0]);
-    forn(i, width * height) gradient_t[0][i] = intensity_new[0][i] - intensity_old[0][i];
-
-    // LK algorithm (+ corner detection)
-    calculate_flow(width, height, flow, 0);
 
 
 
