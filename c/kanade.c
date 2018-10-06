@@ -29,12 +29,12 @@ static float KERNEL_SOBEL_X[] = {
 
 static bool initialized = false;
 
-static float * gradient_x;
-static float * gradient_y;
-static float * gradient_t;
+static float ** gradient_x;
+static float ** gradient_y;
+static float ** gradient_t;
 
-static float * intensity_old;
-static float * intensity_new;
+static float ** intensity_old;
+static float ** intensity_new;
 
 /**
  * Algorithm Overview
@@ -43,12 +43,15 @@ static float * intensity_new;
  *   1. Obtenemos la intensidad (promedio de colores)
  *   2. Calculamos el gradiente en X, en Y (sobel) y en T (resta de imágenes)
  *   3. Armamos el sistema de LK con los gradientes
- *   4. Resolvemos (me choree Gauss-Jordan) obteniendo el vector de desplazamiento
- *
+ *   4. Chequeamos si el tensor (matriz A del sistema) es 'interesante' (Usé el Detector de Esquinas de Harris, hay mejores)
+ *    a. Si lo es, resolvemos el sistema que nos da el vector de desplazamiento (Me choree Gauss-Jordan, hay mejores)
+ *    b. Si no lo es, dejamos el flow en cero
  *
  *  Fuentes:
- *   Algoritmo base de LK - Wikipedia (https://en.wikipedia.org/wiki/Lucas%E2%80%93Kanade_method)
+ *   Base Optical Flow - Wikipedia (https://en.wikipedia.org/wiki/Lucas%E2%80%93Kanade_method)
  *   Harris Corner Detector - O'Reilly's 'Learning OpenCV' and Wikipedia (https://en.wikipedia.org/wiki/Harris_Corner_Detector)
+ *   Pyramidal Implementation - Intel's 'Pyramidal Implementation of the Lucas Kanade Feature Tracker'
+ *
  */
 
 
@@ -111,14 +114,31 @@ int interest_y = 100;
 
 
 void init(int width, int height) {
-    gradient_x = (float *) malloc(width * height * sizeof(float));
-    gradient_y = (float *) malloc(width * height * sizeof(float));
-    gradient_t = (float *) malloc(width * height * sizeof(float));
+    gradient_x = (float **) malloc(1 * sizeof(gradient_x));
+    gradient_y = (float **) malloc(1 * sizeof(gradient_y));
+    gradient_t = (float **) malloc(1 * sizeof(gradient_t));
 
-    intensity_old = (float *) malloc(width * height * sizeof(float));
-    intensity_new = (float *) malloc(width * height * sizeof(float));
+    intensity_old = (float **) malloc(1 * sizeof(intensity_old));
+    intensity_new = (float **) malloc(1 * sizeof(intensity_new));
+
+    gradient_x[0] = (float *) malloc(width * height * sizeof(float));
+    gradient_y[0] = (float *) malloc(width * height * sizeof(float));
+    gradient_t[0] = (float *) malloc(width * height * sizeof(float));
+
+    intensity_old[0] = (float *) malloc(width * height * sizeof(float));
+    intensity_new[0] = (float *) malloc(width * height * sizeof(float));
 
     initialized = true;
+}
+
+void finish(int width, int height) {
+    // TODO
+    free(gradient_x);
+    free(gradient_y);
+    free(gradient_t);
+
+    free(intensity_old);
+    free(intensity_new);
 }
 
 #define THRESHOLD_CORNER 100000
@@ -129,17 +149,16 @@ int is_corner(double tensor[2][2]) {
 
     double cornerism = determinant - (magic_coefficient * trace * trace);
 
-    //printf("%.2f\n", cornerism);
-
     return cornerism > THRESHOLD_CORNER;
 }
 
-void calculate_flow(int width, int height, vec * flow) {
-    // Build Matrices
+void calculate_flow(int width, int height, vec * flow, int pi) {
+    // Matrices
     /*
      * A = [ sum IxIx  sum IxIy           b = [ - sum IxIt
      *       sum IyIx  sum IyIy ]               - sum IyIt ]
      */
+
     forn(y, height) forn(x, width) {
 
         float IxIx = 0;
@@ -153,11 +172,11 @@ void calculate_flow(int width, int height, vec * flow) {
             int in_x = clamp(x + (wx - LK_WINDOW_RADIUS), 0, width - 1);
             int in_y = clamp(y + (wy - LK_WINDOW_RADIUS), 0, height - 1);
 
-            IxIx += gradient_x[LINEAR(in_x, in_y)] * gradient_x[LINEAR(in_x, in_y)];
-            IxIy += gradient_x[LINEAR(in_x, in_y)] * gradient_y[LINEAR(in_x, in_y)];
-            IyIy += gradient_y[LINEAR(in_x, in_y)] * gradient_y[LINEAR(in_x, in_y)];
-            IxIt += gradient_x[LINEAR(in_x, in_y)] * gradient_t[LINEAR(in_x, in_y)];
-            IyIt += gradient_y[LINEAR(in_x, in_y)] * gradient_t[LINEAR(in_x, in_y)];
+            IxIx += gradient_x[pi][LINEAR(in_x, in_y)] * gradient_x[pi][LINEAR(in_x, in_y)];
+            IxIy += gradient_x[pi][LINEAR(in_x, in_y)] * gradient_y[pi][LINEAR(in_x, in_y)];
+            IyIy += gradient_y[pi][LINEAR(in_x, in_y)] * gradient_y[pi][LINEAR(in_x, in_y)];
+            IxIt += gradient_x[pi][LINEAR(in_x, in_y)] * gradient_t[pi][LINEAR(in_x, in_y)];
+            IyIt += gradient_y[pi][LINEAR(in_x, in_y)] * gradient_t[pi][LINEAR(in_x, in_y)];
         }
 
         double A[2][2] = {IxIx, IxIy, IxIy, IyIy};
@@ -181,21 +200,21 @@ void kanade(int width, int height, char * img_old, char * img_new, vec * flow) {
     // Intensity
     forn(i, height * width) {
         unsigned char (*img_oldRGB)[3] = (unsigned char (*)[3])img_old;
-        intensity_old[i] = (img_oldRGB[i][0] + img_oldRGB[i][1] + img_oldRGB[i][2]) / 3;
+        intensity_old[0][i] = (img_oldRGB[i][0] + img_oldRGB[i][1] + img_oldRGB[i][2]) / 3;
     }
 
     forn(i, height * width) {
         unsigned char (*img_newRGB)[3] = (unsigned char (*)[3])img_new;
-        intensity_new[i] = (img_newRGB[i][0] + img_newRGB[i][1] + img_newRGB[i][2]) / 3;
+        intensity_new[0][i] = (img_newRGB[i][0] + img_newRGB[i][1] + img_newRGB[i][2]) / 3;
     }
 
     // Gradients
-    convoluion2D(intensity_old, width, height, KERNEL_SOBEL_Y, 3, gradient_y);
-    convoluion2D(intensity_old, width, height, KERNEL_SOBEL_X, 3, gradient_x);
-    forn(i, width * height) gradient_t[i] = intensity_new[i] - intensity_old[i];
+    convoluion2D(intensity_old[0], width, height, KERNEL_SOBEL_Y, 3, gradient_y[0]);
+    convoluion2D(intensity_old[0], width, height, KERNEL_SOBEL_X, 3, gradient_x[0]);
+    forn(i, width * height) gradient_t[0][i] = intensity_new[0][i] - intensity_old[0][i];
 
     // LK algorithm (+ corner detection)
-    calculate_flow(width, height, flow);
+    calculate_flow(width, height, flow, 0);
 
 
 
