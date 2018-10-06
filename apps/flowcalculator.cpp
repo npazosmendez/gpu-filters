@@ -18,8 +18,8 @@ extern "C" {
 using namespace cv;
 using namespace std;
 
-#define GRANULARITY 1
-#define FACTOR 1
+#define GRANULARITY 5
+#define FACTOR 10
 
 #define LINEAR(x,y) (y)*width+(x)
 #define forn(i,n) for(int i=0; i<(n); i++)
@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
     // Initialize stuff
 
     VideoCapture stream = VideoCapture(0);
-    int width = stream.get(CV_CAP_PROP_FRAME_WIDTH);
-    int height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
+    width = stream.get(CV_CAP_PROP_FRAME_WIDTH);
+    height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
 
     if (!stream.isOpened()) {
         cerr << "Failed to open stream." << endl;

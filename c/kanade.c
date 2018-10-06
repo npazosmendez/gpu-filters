@@ -16,12 +16,12 @@
 
 static int LK_WINDOW_RADIUS = 2;
 
-static float KERNEL_SOBEL_Y[3][3] = {
+static float KERNEL_SOBEL_Y[] = {
         -1,-2,-1,
         0,0,0,
         1,2,1
 };
-static float KERNEL_SOBEL_X[3][3] = {
+static float KERNEL_SOBEL_X[] = {
         -1,0,1,
         -2,0,2,
         -1,0,1
@@ -35,6 +35,21 @@ static float * gradient_t;
 
 static float * intensity_old;
 static float * intensity_new;
+
+/**
+ * Algorithm Overview
+ *
+ * Para cada pixel...
+ *   1. Obtenemos la intensidad (promedio de colores)
+ *   2. Calculamos el gradiente en X, en Y (sobel) y en T (resta de imágenes)
+ *   3. Armamos el sistema de LK con los gradientes
+ *   4. Resolvemos (me choree Gauss-Jordan) obteniendo el vector de desplazamiento
+ *
+ *
+ *  Fuentes:
+ *   Algoritmo base de LK - Wikipedia (https://en.wikipedia.org/wiki/Lucas%E2%80%93Kanade_method)
+ *   Harris Corner Detector - O'Reilly's 'Learning OpenCV' and Wikipedia (https://en.wikipedia.org/wiki/Harris_Corner_Detector)
+ */
 
 
 // ROSETTA SNIPPET
@@ -61,7 +76,7 @@ void swap_row(double *a, double *b, int r1, int r2, int n)
 void gauss_eliminate(double *a, double *b, double *x, int n)
 {
 #define A(y, x) (*mat_elem(a, y, x, n))
-    int i, j, col, row, max_row,dia;
+    int j, col, row, max_row,dia; // i
     double max, tmp;
 
     for (dia = 0; dia < n; dia++) {
@@ -91,8 +106,8 @@ void gauss_eliminate(double *a, double *b, double *x, int n)
 }
 
 
-int interest_x = 400;
-int interest_y = 190;
+int interest_x = 100;
+int interest_y = 100;
 
 
 void init(int width, int height) {
@@ -106,27 +121,20 @@ void init(int width, int height) {
     initialized = true;
 }
 
+#define THRESHOLD_CORNER 100000
+int is_corner(double tensor[2][2]) {
+    double determinant = tensor[0][0] * tensor[1][1] - tensor[0][1] * tensor[1][0];
+    double trace = tensor[0][0] + tensor[1][1];
+    double magic_coefficient = 0.05;
 
-void kanade(int width, int height, char * img_old, char * img_new, vec * flow) {
+    double cornerism = determinant - (magic_coefficient * trace * trace);
 
-    if (!initialized) init(width, height);
+    //printf("%.2f\n", cornerism);
 
-    // Intensity channels
-    for (int i = 0; i < height * width; i++) {
-        unsigned char (*img_oldRGB)[3] = (unsigned char (*)[3])img_old;
-        intensity_old[i] = (img_oldRGB[i][0] + img_oldRGB[i][1] + img_oldRGB[i][2]) / 3;
-    }
+    return cornerism > THRESHOLD_CORNER;
+}
 
-    for (int i = 0; i < height * width; i++) {
-        unsigned char (*img_newRGB)[3] = (unsigned char (*)[3])img_new;
-        intensity_new[i] = (img_newRGB[i][0] + img_newRGB[i][1] + img_newRGB[i][2]) / 3;
-    }
-
-    // Gradients
-    convoluion2D(intensity_old, width, height, KERNEL_SOBEL_Y, 3, gradient_y);
-    convoluion2D(intensity_old, width, height, KERNEL_SOBEL_X, 3, gradient_x);
-    forn(i, width * height) gradient_t[i] = intensity_new[i] - intensity_old[i];
-
+void calculate_flow(int width, int height, vec * flow) {
     // Build Matrices
     /*
      * A = [ sum IxIx  sum IxIy           b = [ - sum IxIt
@@ -154,34 +162,46 @@ void kanade(int width, int height, char * img_old, char * img_new, vec * flow) {
 
         double A[2][2] = {IxIx, IxIy, IxIy, IyIy};
         double b[2] = {-IxIt, -IyIt};
-        double u[2]; // TODO: If this was x it would still compile, why?
+        double u[2];
 
-        gauss_eliminate((double*)A, b, u, 2);
-
-        flow[LINEAR(x, y)] = (vec) {u[0], u[1]};
-
-        /*
-        if (y == interest_y && x == interest_x) {
-            forn(dy, 3) {
-                forn(dx, 3) {
-                    printf("%.2f ", intensity_old[LINEAR(interest_x + (dx - 1), interest_y + (dy - 1))]);
-                }
-                printf("\n");
-            }
-
-            flow[LINEAR(interest_x - 10, interest_y - 10)] = (vec) {u[0] * 10, u[1] * 10};
-            printf("Disp = <%.2f, %.2f>\n", u[0], u[1]);
-            printf("\n");
+        if (is_corner(A)) {
+            gauss_eliminate((double*)A, b, u, 2);
+            flow[LINEAR(x, y)] = (vec) {u[0], u[1]};
+        } else {
+            flow[LINEAR(x, y)] = (vec) {0, 0}; // TODO: Is this ok?
         }
-        */
+    }
+}
+
+
+void kanade(int width, int height, char * img_old, char * img_new, vec * flow) {
+
+    if (!initialized) init(width, height);
+
+    // Intensity
+    forn(i, height * width) {
+        unsigned char (*img_oldRGB)[3] = (unsigned char (*)[3])img_old;
+        intensity_old[i] = (img_oldRGB[i][0] + img_oldRGB[i][1] + img_oldRGB[i][2]) / 3;
     }
 
-    // Debug
+    forn(i, height * width) {
+        unsigned char (*img_newRGB)[3] = (unsigned char (*)[3])img_new;
+        intensity_new[i] = (img_newRGB[i][0] + img_newRGB[i][1] + img_newRGB[i][2]) / 3;
+    }
+
+    // Gradients
+    convoluion2D(intensity_old, width, height, KERNEL_SOBEL_Y, 3, gradient_y);
+    convoluion2D(intensity_old, width, height, KERNEL_SOBEL_X, 3, gradient_x);
+    forn(i, width * height) gradient_t[i] = intensity_new[i] - intensity_old[i];
+
+    // LK algorithm (+ corner detection)
+    calculate_flow(width, height, flow);
 
 
-    //printf("Gradient = <%.2f, %.2f>\n", gradient_x[LINEAR(interest_x, interest_y)], gradient_y[LINEAR(interest_x, interest_y)]);
 
     /*
+        printf("Gradient = <%.2f, %.2f>\n", gradient_x[LINEAR(interest_x, interest_y)], gradient_y[LINEAR(interest_x, interest_y)]);
+
 
         flow[LINEAR(interest_x - 10, interest_y - 10)] = (vec) {10, 10};
 
