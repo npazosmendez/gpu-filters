@@ -189,6 +189,14 @@ void calculate_flow(vec * flow, int pi) {
     float * gradient_x = pyramidal_gradients_x[pi];
     float * gradient_y = pyramidal_gradients_y[pi];
     float * gradient_t = pyramidal_gradients_t[pi];
+    float * intensity_old = pyramidal_intensities_old[pi];
+    float * intensity_new = pyramidal_intensities_new[pi];
+
+    forn(y, height) forn(x, width) {
+        if (LINEAR(x + flow->x, y + flow->y) < height * width) { // TODO: Uh, maybe do this better
+            gradient_t[LINEAR(x, y)] = intensity_new[LINEAR(x, y)] - intensity_old[LINEAR(x + flow->x, y + flow->y)];
+        }
+    }
 
     forn(y, height) forn(x, width) {
 
@@ -286,14 +294,11 @@ void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * f
         int height = pyramidal_heights[pi];
         float * gradient_x = pyramidal_gradients_x[pi];
         float * gradient_y = pyramidal_gradients_y[pi];
-        float * gradient_t = pyramidal_gradients_t[pi];
         float * intensity_old = pyramidal_intensities_old[pi];
-        float * intensity_new = pyramidal_intensities_new[pi];
 
         // Gradients
         convoluion2D(intensity_old, width, height, KERNEL_SOBEL_Y, 3, gradient_y);
         convoluion2D(intensity_old, width, height, KERNEL_SOBEL_X, 3, gradient_x);
-        forn(i, width * height) gradient_t[i] = intensity_new[i] - intensity_old[i];
 
         // LK algorithm (+ corner detection)
         calculate_flow(flow, pi);
