@@ -125,7 +125,7 @@ int interest_x = 100;
 int interest_y = 100;
 
 
-#define LEVELS 1
+#define LEVELS 4
 
 void init(int in_width, int in_height) {
     // Flag
@@ -224,7 +224,17 @@ void calculate_flow(vec * flow, int pi) {
 
         if (is_corner(A)) {
             gauss_eliminate((double*)A, b, u, 2);
-            flow[LINEAR(x, y)] = (vec) {u[0], u[1]};
+
+            // TODO: Oh shit, this is actually better than waht I had, why
+            vec previous_guess = flow[LINEAR(x, y)];
+            vec next_guess = (vec) {2 * (previous_guess.x + u[0]), 2 * (previous_guess.y + u[1])};
+
+            if (pi == 0) {
+                flow[LINEAR(x, y)] = (vec) {next_guess.x + u[0], next_guess.y + u[1]};
+            } else {
+                flow[LINEAR(x, y)] = next_guess;
+            }
+
         } else {
             flow[LINEAR(x, y)] = (vec) {0, 0};
         }
@@ -235,6 +245,9 @@ void calculate_flow(vec * flow, int pi) {
 void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * flow) {
 
     if (!initialized) init(in_width, in_height);
+
+    // Zero Flow
+    memset(flow, 0, in_width * in_height * sizeof(vec));
 
     // Full Image Intensity
     int full_width = pyramidal_widths[0];

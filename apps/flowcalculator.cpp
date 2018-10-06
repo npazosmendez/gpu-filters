@@ -19,7 +19,7 @@ using namespace cv;
 using namespace std;
 
 #define GRANULARITY 5
-#define FACTOR 10
+#define FACTOR 1
 
 #define LINEAR(x,y) (y)*width+(x)
 #define forn(i,n) for(int i=0; i<(n); i++)
