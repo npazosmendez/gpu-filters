@@ -33,6 +33,7 @@
 #define LINEAR(x, y) (y)*width+(x)
 #define forn(i,n) for(int i=0; i<(n); i++)
 
+#define LEVELS 4
 static int LK_WINDOW_RADIUS = 2;
 
 static float KERNEL_SOBEL_Y[] = {
@@ -125,8 +126,6 @@ int interest_x = 100;
 int interest_y = 100;
 
 
-#define LEVELS 4
-
 void init(int in_width, int in_height) {
     // Flag
     initialized = true;
@@ -193,8 +192,9 @@ void calculate_flow(vec * flow, int pi) {
     float * intensity_new = pyramidal_intensities_new[pi];
 
     forn(y, height) forn(x, width) {
-        if (LINEAR(x + flow->x, y + flow->y) < height * width) { // TODO: Uh, maybe do this better
-            gradient_t[LINEAR(x, y)] = intensity_new[LINEAR(x, y)] - intensity_old[LINEAR(x + flow->x, y + flow->y)];
+        vec local_flow = flow[LINEAR(x, y)];
+        if (LINEAR(x + local_flow.x, y + local_flow.y) < height * width) { // TODO: Uh, maybe do this better
+            gradient_t[LINEAR(x, y)] = intensity_new[LINEAR(x + local_flow.x, y + local_flow.y)] - intensity_old[LINEAR(x, y)];
         }
     }
 
@@ -225,7 +225,7 @@ void calculate_flow(vec * flow, int pi) {
         if (is_corner(A)) {
             gauss_eliminate((double*)A, b, u, 2);
 
-            // TODO: Oh shit, this is actually better than waht I had, why
+            // TODO: I don't understand this but ok
             vec previous_guess = flow[LINEAR(x, y)];
             vec next_guess = (vec) {2 * (previous_guess.x + u[0]), 2 * (previous_guess.y + u[1])};
 
@@ -286,16 +286,6 @@ void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * f
         float * next_intensity_old = pyramidal_intensities_old[pi+1];
         float * next_intensity_new = pyramidal_intensities_new[pi+1];
         forn(y, next_height) forn(x, next_width) {
-
-            /*
-            if (LINEAR(x, y) >= next_width * next_height) {
-                printf("++++++++++++++++PREV SIZE = (%d, %d)\n", width, height);
-                printf("++++++++++++++++NEXT SIZE = (%d, %d)\n", next_width, next_height);
-                printf("PREV GET = (%d, %d)\n", 2*x, 2*y);
-                printf("NEXT GET = (%d, %d)\n", x, y);
-            }
-            */
-
             next_intensity_old[y * next_width + x] = blur_old[LINEAR(2*x, 2*y)]; // TODO: Dangerous macro yo
             next_intensity_new[y * next_width + x] = blur_new[LINEAR(2*x, 2*y)]; // TODO: Dangerous macro yo
         }
