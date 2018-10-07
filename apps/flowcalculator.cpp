@@ -18,7 +18,7 @@ extern "C" {
 using namespace cv;
 using namespace std;
 
-#define GRANULARITY 5
+#define GRANULARITY 10
 #define FACTOR 1
 
 #define LINEAR(x,y) (y)*width+(x)

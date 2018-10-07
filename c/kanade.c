@@ -67,6 +67,8 @@ static float ** pyramidal_gradients_x;
 static float ** pyramidal_gradients_y;
 static float ** pyramidal_gradients_t;
 
+static vecf ** pyramidal_flows;
+
 
 // ROSETTA SNIPPET
 // https://rosettacode.org/wiki/Gaussian_elimination
@@ -140,6 +142,7 @@ void init(int in_width, int in_height) {
     pyramidal_gradients_t = (float **) malloc(LEVELS * sizeof(float *));
     pyramidal_blurs_old = (float **) malloc(LEVELS * sizeof(float *));
     pyramidal_blurs_new = (float **) malloc(LEVELS * sizeof(float *));
+    pyramidal_flows = (vecf **) malloc(LEVELS * sizeof(vecf *));
 
     // Image buffers
     int current_width = in_width;
@@ -155,6 +158,7 @@ void init(int in_width, int in_height) {
         pyramidal_gradients_t[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_blurs_old[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_blurs_new[pi] = (float *) malloc(current_width * current_height * sizeof(float));
+        pyramidal_flows[pi] = (vecf *) malloc(current_width * current_height * sizeof(vecf));
 
         current_width /= 2;
         current_height /= 2;
@@ -165,7 +169,7 @@ void finish() {
     // TODO free buffers
 }
 
-#define THRESHOLD_CORNER 100000
+#define THRESHOLD_CORNER 1000000
 int is_corner(double tensor[2][2]) {
     double determinant = tensor[0][0] * tensor[1][1] - tensor[0][1] * tensor[1][0];
     double trace = tensor[0][0] + tensor[1][1];
@@ -176,7 +180,7 @@ int is_corner(double tensor[2][2]) {
     return cornerism > THRESHOLD_CORNER;
 }
 
-void calculate_flow(vec * flow, int pi) {
+void calculate_flow(int pi) {
     // Matrices
     /*
      * A = [ sum IxIx  sum IxIy           b = [ - sum IxIt
@@ -190,11 +194,14 @@ void calculate_flow(vec * flow, int pi) {
     float * gradient_t = pyramidal_gradients_t[pi];
     float * intensity_old = pyramidal_intensities_old[pi];
     float * intensity_new = pyramidal_intensities_new[pi];
+    vecf * flow = pyramidal_flows[pi];
 
     forn(y, height) forn(x, width) {
-        vec local_flow = flow[LINEAR(x, y)];
-        if (LINEAR(x + local_flow.x, y + local_flow.y) < height * width) { // TODO: Uh, maybe do this better
-            gradient_t[LINEAR(x, y)] = intensity_new[LINEAR(x + local_flow.x, y + local_flow.y)] - intensity_old[LINEAR(x, y)];
+        vecf previous_guess = pi != LEVELS - 1 ? pyramidal_flows[pi+1][(y/2) * pyramidal_widths[pi+1] + (x/2)] : (vecf) {0}; // Fucking macro
+        vec previous_guess_int = (vec) { (int) previous_guess.x, (int) previous_guess.y };
+
+        if (LINEAR(x + previous_guess_int.x, y + previous_guess_int.y) < height * width) { // TODO: Uh, maybe do this better
+            gradient_t[LINEAR(x, y)] = intensity_new[LINEAR(x + previous_guess_int.x, y + previous_guess_int.y)] - intensity_old[LINEAR(x, y)];
         }
     }
 
@@ -225,29 +232,36 @@ void calculate_flow(vec * flow, int pi) {
         if (is_corner(A)) {
             gauss_eliminate((double*)A, b, u, 2);
 
-            // TODO: I don't understand this but ok
-            vec previous_guess = flow[LINEAR(x, y)];
-            vec next_guess = (vec) {2 * (previous_guess.x + u[0]), 2 * (previous_guess.y + u[1])};
+            vecf previous_guess = pi != LEVELS - 1 ? pyramidal_flows[pi+1][(y/2) * pyramidal_widths[pi+1] + (x/2)] : (vecf) {0}; // Fucking macro
 
-            if (pi == 0) {
-                flow[LINEAR(x, y)] = (vec) {next_guess.x + u[0], next_guess.y + u[1]};
-            } else {
-                flow[LINEAR(x, y)] = next_guess;
+            flow[LINEAR(x, y)] = (vecf) { previous_guess.x + u[0], previous_guess.y + u[1] };
+
+            // Prepare next guess
+            if (pi != 0) {
+                flow[LINEAR(x, y)].x *= 2;
+                flow[LINEAR(x, y)].y *= 2;
             }
 
         } else {
-            flow[LINEAR(x, y)] = (vec) {0, 0};
+            flow[LINEAR(x, y)] = (vecf) {0, 0};
         }
     }
 }
 
 
-void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * flow) {
+void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * output_flow) {
 
     if (!initialized) init(in_width, in_height);
 
     // Zero Flow
-    memset(flow, 0, in_width * in_height * sizeof(vec));
+    forn(pi, LEVELS) {
+        int width = pyramidal_widths[pi];
+        int height = pyramidal_heights[pi];
+        vecf * flow = pyramidal_flows[pi];
+
+        memset(flow, 0, width * height * sizeof(vecf));
+    }
+
 
     // Full Image Intensity
     int full_width = pyramidal_widths[0];
@@ -267,6 +281,7 @@ void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * f
 
 
     // Pyramid Construction
+    // TODO: I could abstract these steps into two for the old and new buffers
     forn(pi, LEVELS - 1) {
         // Sub-image
         int width = pyramidal_widths[pi];
@@ -291,6 +306,23 @@ void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * f
         }
     }
 
+    // DEBUG
+    /*
+    int shown_level = 2;
+    forn(i, full_height * full_width) {
+        unsigned char (*img_newRGB)[3] = (unsigned char (*)[3])img_new;
+        if (i < pyramidal_widths[shown_level] * pyramidal_heights[shown_level]) {
+            char intensity = (char) pyramidal_intensities_new[shown_level][i];
+            intensity = min(255, intensity);
+            intensity = max(0, intensity);
+            img_newRGB[i][0] = img_newRGB[i][1] = img_newRGB[i][2] = intensity;
+        } else {
+            img_newRGB[i][0] = img_newRGB[i][1] = img_newRGB[i][2] = 0;
+        }
+    }
+    */
+    // DEBUG
+
     for (int pi = LEVELS - 1; pi >= 0; pi--) {
         // Sub-image
         int width = pyramidal_widths[pi];
@@ -304,7 +336,15 @@ void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * f
         convoluion2D(intensity_old, width, height, KERNEL_SOBEL_X, 3, gradient_x);
 
         // LK algorithm (+ corner detection)
-        calculate_flow(flow, pi);
+        calculate_flow(pi);
+    }
+
+
+    // Output
+    vecf * full_flow = pyramidal_flows[0];
+
+    forn(i, full_width * full_height) {
+        output_flow[i] = (vec) { (int) full_flow[i].x, (int) full_flow[i].y };
     }
 
 
