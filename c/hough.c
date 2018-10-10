@@ -4,43 +4,60 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "debug.h"
 
 #define M_PI 3.14159265358979323846
 #define LINEAR(y,x) (y)*width+(x)
 
-bool C_hough_initialized = false;
 unsigned char (*edgesRGB)[3] = NULL;
 float* alfas, *cos_alfas, *sin_alfas, *pp;
 
 void initHoughC(int width, int height, int a_ammount, int p_ammount){
-    // Initialize buffers for Hough line detection algorithm
+    debug_print("Initializing C Hough\n");
 
-    edgesRGB = malloc(width*height*3);
-    float p_max = sqrt(width*width + height*height);
-    float p_min = -p_max;
-    float p_step = (p_max-p_min)/p_ammount;
-    float a_max = M_PI;
-    float a_min = 0;
-    float a_step = (a_max-a_min)/a_ammount;
+    static int _width = -1, _height = -1, _a_ammount = -1, _p_ammount = -1;
 
-    alfas = malloc(a_ammount * sizeof(float));
-    /* NOTE: second optimization that made a really big difference,
-    having cos a sin precomputed
-    */
-    cos_alfas = malloc(a_ammount * sizeof(float));
-    sin_alfas =  malloc(a_ammount * sizeof(float));
-    for (int i = 0; i < a_ammount; ++i){
-        alfas[i] = a_min+a_step*i;
-        cos_alfas[i] = cos(alfas[i]);
-        sin_alfas[i] = sin(alfas[i]);
-    }    
-    pp = malloc(p_ammount* sizeof(int));
-    for (int i = 0; i < p_ammount; ++i){
-        pp[i] = p_min+p_step*i;
+    if (width != _width || height != _height ||
+        _a_ammount != a_ammount || _p_ammount != p_ammount){
+        _width = width;
+        _height = height;
+        _a_ammount = a_ammount;
+        _p_ammount = p_ammount;
+        if (_width != -1){
+            free(edgesRGB);
+            free(alfas);
+            free(cos_alfas);
+            free(sin_alfas);
+            free(pp);
+        }
 
-    }
+        // Initialize buffers for Hough line detection algorithm
+        edgesRGB = malloc(width*height*3);
+        float p_max = sqrt(width*width + height*height);
+        float p_min = -p_max;
+        float p_step = (p_max-p_min)/p_ammount;
+        float a_max = M_PI;
+        float a_min = 0;
+        float a_step = (a_max-a_min)/a_ammount;
+
+        alfas = malloc(a_ammount * sizeof(float));
+        /* NOTE: second optimization that made a really big difference,
+        having cos a sin precomputed
+        */
+        cos_alfas = malloc(a_ammount * sizeof(float));
+        sin_alfas =  malloc(a_ammount * sizeof(float));
+        for (int i = 0; i < a_ammount; ++i){
+            alfas[i] = a_min+a_step*i;
+            cos_alfas[i] = cos(alfas[i]);
+            sin_alfas[i] = sin(alfas[i]);
+        }
+        pp = malloc(p_ammount* sizeof(int));
+        for (int i = 0; i < p_ammount; ++i){
+            pp[i] = p_min+p_step*i;
+
+        }
     
-    C_hough_initialized = true;
+    }
 }
 
 void hough(char * src, int width, int height, int a_ammount, int p_ammount, char* counter){
@@ -54,8 +71,7 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
     - p_ammount: line position granularity, quantity considered along image diagonal
     - counter: pointer to matrix of char[3], to output hough transform of edge pixels
     */
-    if(!C_hough_initialized) initHoughC(width, height, a_ammount, p_ammount);
-
+    initHoughC(width, height, a_ammount, p_ammount);
     float p_max = sqrt(width*width + height*height);
     float p_min = -p_max;
     float p_step = (p_max-p_min)/p_ammount;
