@@ -1,5 +1,6 @@
 #include <QtGui>
 #include <iostream>
+#include <algorithm>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencl/opencl-filters.hpp>
 #include "ImageFilter.hpp"
@@ -75,11 +76,11 @@ void CannyFilter::setLowerThreshold(int value){
 // Hough Filter
 
 void HoughFilter::process_frame_CL(Mat *frame){
-    CL_hough((char*)frame->ptr(), frame->size().width, frame->size().height, 150, 150, counter);
+    CL_hough((char*)frame->ptr(), frame->size().width, frame->size().height, a_ammount, p_ammount, counter);
 }
 
 void HoughFilter::process_frame_C(Mat *frame){
-    hough((char*)frame->ptr(), frame->size().width, frame->size().height, 150, 150, counter);
+    hough((char*)frame->ptr(), frame->size().width, frame->size().height,  a_ammount, p_ammount, counter);
 }
 
 FilterControls* HoughFilter::controls(){
@@ -92,10 +93,26 @@ HoughFilter::~HoughFilter() {
 }
 
 HoughFilter::HoughFilter() :
-    a_ammount(150), p_ammount(150), counter((char*)malloc(150*150*3)) {
+    a_ammount(150), p_ammount(150), counter((char*)malloc(300*300*3)) {
         
 }
 
+
+void HoughFilter::setCannyHigherThreshold(int value){
+    _canny_high = value;
+}
+void HoughFilter::setCannyLowerThreshold(int value){
+    _canny_low = value;
+}
+
+void HoughFilter::setAngleGranularity(int value){
+    // TODO
+    // a_ammount = max(0, min(value, 300));
+}
+void HoughFilter::setDistanceGranularity(int value){
+    // TODO
+    // p_ammount = max(0, min(value, 300));
+}
 
 // No Filter
 

@@ -13,6 +13,7 @@ DEFINES += "CL_HPP_MINIMUM_OPENCL_VERSION=120"
 QMAKE_CXXFLAGS += -std=c++11 
 CONFIG += object_with_source # put .o in same dir as source, so we can have sources with same names
 CONFIG += precompile_header
+CONFIG += debug
 
 # Extra libs 
 LIBS += -lpthread `pkg-config --cflags --libs opencv` -lOpenCL

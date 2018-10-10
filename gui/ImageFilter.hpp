@@ -57,11 +57,18 @@ class HoughFilter : public ImageFilter {
 		HoughFilter();
 		~HoughFilter();
 
+	public slots:
+		void setCannyHigherThreshold(int value);
+		void setCannyLowerThreshold(int value);
+		void setAngleGranularity(int value);
+		void setDistanceGranularity(int value);
+
 	private:
 		void process_frame_CL(Mat *);
 		void process_frame_C(Mat *);
 		int a_ammount, p_ammount;
 		char* counter;
+		int _canny_high, _canny_low;
 };
 
 

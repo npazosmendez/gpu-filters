@@ -40,7 +40,10 @@ private:
 	QVBoxLayout _main_layout;
 	QCheckBox _checkBox;
 
-	FancySlider _higher_slider;
+	FancySlider _higher_canny_slider;
+	FancySlider _lower_canny_slider;
+	FancySlider _angle_granularity_slider;
+	FancySlider _distance_granularity_slider;
 };
 
 class NoControls : public FilterControls {
