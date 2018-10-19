@@ -18,8 +18,9 @@ extern "C" {
 using namespace cv;
 using namespace std;
 
+#define LEVELS 2
 #define GRANULARITY 10
-#define FACTOR 1
+#define FACTOR 5
 
 #define LINEAR(x,y) (y)*width+(x)
 #define forn(i,n) for(int i=0; i<(n); i++)
@@ -75,7 +76,7 @@ int main(int argc, char** argv) {
 
         current_ptr = (char*)cameraFrame.ptr();
 
-        kanade(width, height, old_ptr, current_ptr, flow);
+        kanade(width, height, old_ptr, current_ptr, flow, LEVELS);
 
         drawnFrame = cameraFrame.clone();
         forn(y, height) forn(x, width) if (y % GRANULARITY == 0 && x % GRANULARITY == 0) {

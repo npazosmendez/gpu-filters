@@ -33,7 +33,7 @@
 #define LINEAR(x, y) (y)*width+(x)
 #define forn(i,n) for(int i=0; i<(n); i++)
 
-#define LEVELS 4
+static int LEVELS = 4;
 static int LK_WINDOW_RADIUS = 2;
 
 static float KERNEL_SOBEL_Y[] = {
@@ -128,11 +128,13 @@ int interest_x = 100;
 int interest_y = 100;
 
 
-void init(int in_width, int in_height) {
+void init(int in_width, int in_height, int levels) {
     // Flag
     initialized = true;
 
     // Pyramid buffers
+    LEVELS = levels;
+
     pyramidal_widths = (int *) malloc(LEVELS * sizeof(int));
     pyramidal_heights = (int *) malloc(LEVELS * sizeof(int));
     pyramidal_intensities_old = (float **) malloc(LEVELS * sizeof(float *));
@@ -202,6 +204,8 @@ void calculate_flow(int pi) {
 
         if (LINEAR(x + previous_guess_int.x, y + previous_guess_int.y) < height * width) { // TODO: Uh, maybe do this better
             gradient_t[LINEAR(x, y)] = intensity_new[LINEAR(x + previous_guess_int.x, y + previous_guess_int.y)] - intensity_old[LINEAR(x, y)];
+        } else {
+            gradient_t[LINEAR(x, y)] = intensity_new[LINEAR(x, y)] - intensity_old[LINEAR(x, y)]; // TODO: idk
         }
     }
 
@@ -249,9 +253,9 @@ void calculate_flow(int pi) {
 }
 
 
-void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * output_flow) {
+void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * output_flow, int levels) {
 
-    if (!initialized) init(in_width, in_height);
+    if (!initialized) init(in_width, in_height, levels);
 
     // Zero Flow
     forn(pi, LEVELS) {
@@ -346,22 +350,4 @@ void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * o
     forn(i, full_width * full_height) {
         output_flow[i] = (vec) { (int) full_flow[i].x, (int) full_flow[i].y };
     }
-
-
-    /*
-        printf("Gradient = <%.2f, %.2f>\n", gradient_x[LINEAR(interest_x, interest_y)], gradient_y[LINEAR(interest_x, interest_y)]);
-
-
-        flow[LINEAR(interest_x - 10, interest_y - 10)] = (vec) {10, 10};
-
-        printf("\n");
-
-        for(int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                if (y % 50 == 0 && x % 50 == 0) {
-                    flow[LINEAR(x, y)] = (vec) {10, 10};
-                }
-            }
-        }
-        */
 }
