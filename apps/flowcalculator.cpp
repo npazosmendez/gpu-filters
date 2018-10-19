@@ -18,12 +18,17 @@ extern "C" {
 using namespace cv;
 using namespace std;
 
-#define LEVELS 2
-#define GRANULARITY 10
-#define FACTOR 5
-
 #define LINEAR(x,y) (y)*width+(x)
 #define forn(i,n) for(int i=0; i<(n); i++)
+
+
+#define WIDTH 640
+#define HEIGHT 480
+
+#define LEVELS 3
+#define GRANULARITY 5
+#define FACTOR 1
+
 
 bool quit = false;
 
@@ -36,6 +41,9 @@ int main(int argc, char** argv) {
     // Initialize stuff
 
     VideoCapture stream = VideoCapture(0);
+    stream.set(CV_CAP_PROP_FRAME_WIDTH, WIDTH);
+    stream.set(CV_CAP_PROP_FRAME_HEIGHT, HEIGHT);
+
     width = stream.get(CV_CAP_PROP_FRAME_WIDTH);
     height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
 
