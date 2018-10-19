@@ -34,7 +34,7 @@
 #define forn(i,n) for(int i=0; i<(n); i++)
 
 
-static int THRESHOLD_CORNER = 100000000;
+static int THRESHOLD_CORNER = 100000000000;
 static int LK_WINDOW_RADIUS = 2;
 static int SOBEL_KERNEL_RADIUS = 1;
 
@@ -202,42 +202,50 @@ void calculate_flow(int pi, int levels) {
         previous_guess.x *= 2;
         previous_guess.y *= 2;
 
-        float IxIx = 0;
-        float IxIy = 0;
-        float IyIy = 0;
-        float IxIt = 0;
-        float IyIt = 0;
+        vecf iter_guess = {};
 
-        int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
-        forn(wy, window_diameter) forn(wx, window_diameter) {
-            int in_x = clamp(x + (wx - LK_WINDOW_RADIUS), 0, width - 1);
-            int in_y = clamp(y + (wy - LK_WINDOW_RADIUS), 0, height - 1);
+        for (int i = 0; i < 10; i++) {
 
-            int source_index = LINEAR(in_x, in_y);
-            int target_index = LINEAR(in_x + ((int)previous_guess.x), in_y + ((int)previous_guess.y));
+            float IxIx = 0;
+            float IxIy = 0;
+            float IyIy = 0;
+            float IxIt = 0;
+            float IyIt = 0;
 
-            float gradient_t = 0;
-            if (target_index < width * height) {
-                gradient_t = intensity_new[target_index] - intensity_old[source_index];
-            } // TODO: Uhh... Do something?
+            int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
+            forn(wy, window_diameter) forn(wx, window_diameter) {
+                int in_x = clamp(x + (wx - LK_WINDOW_RADIUS), 0, width - 1);
+                int in_y = clamp(y + (wy - LK_WINDOW_RADIUS), 0, height - 1);
 
-            IxIx += gradient_x[LINEAR(in_x, in_y)] * gradient_x[LINEAR(in_x, in_y)];
-            IxIy += gradient_x[LINEAR(in_x, in_y)] * gradient_y[LINEAR(in_x, in_y)];
-            IyIy += gradient_y[LINEAR(in_x, in_y)] * gradient_y[LINEAR(in_x, in_y)];
-            IxIt += gradient_x[LINEAR(in_x, in_y)] * gradient_t;
-            IyIt += gradient_y[LINEAR(in_x, in_y)] * gradient_t;
+                int source_index = LINEAR(in_x, in_y);
+                int target_index = LINEAR((int)(in_x + previous_guess.x + iter_guess.x), (int)(in_y + previous_guess.y + iter_guess.y));
+                float gradient_t = 0;
+                if (target_index < width * height) {
+                    gradient_t = intensity_new[target_index] - intensity_old[source_index];
+                } // TODO: Uhh... Do something?
+
+                // TODO: This can be factored out of the loop
+                IxIx += gradient_x[LINEAR(in_x, in_y)] * gradient_x[LINEAR(in_x, in_y)];
+                IxIy += gradient_x[LINEAR(in_x, in_y)] * gradient_y[LINEAR(in_x, in_y)];
+                IyIy += gradient_y[LINEAR(in_x, in_y)] * gradient_y[LINEAR(in_x, in_y)];
+                IxIt += gradient_x[LINEAR(in_x, in_y)] * gradient_t;
+                IyIt += gradient_y[LINEAR(in_x, in_y)] * gradient_t;
+            }
+
+            double A[2][2] = {IxIx, IxIy, IxIy, IyIy};
+            double b[2] = {-IxIt, -IyIt};
+            double d[2];
+
+            if (is_corner(A)) {
+                gauss_eliminate((double*)A, b, d, 2);
+                iter_guess = (vecf) { iter_guess.x + d[0], iter_guess.y + d[1] };
+            } else {
+                iter_guess = (vecf) {0, 0};
+            }
+
         }
 
-        double A[2][2] = {IxIx, IxIy, IxIy, IyIy};
-        double b[2] = {-IxIt, -IyIt};
-        double d[2];
-
-        if (is_corner(A)) {
-            gauss_eliminate((double*)A, b, d, 2);
-            flow[LINEAR(x, y)] = (vecf) { previous_guess.x + d[0], previous_guess.y + d[1] };
-        } else {
-            flow[LINEAR(x, y)] = (vecf) {0, 0};
-        }
+        flow[LINEAR(x, y)] = (vecf) { previous_guess.x + iter_guess.x, previous_guess.y + iter_guess.y };
     }
 }
 

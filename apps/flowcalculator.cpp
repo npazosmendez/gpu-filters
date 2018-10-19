@@ -25,9 +25,10 @@ using namespace std;
 #define WIDTH 640
 #define HEIGHT 480
 
-#define LEVELS 3
+#define LEVELS 4
 #define GRANULARITY 5
 #define FACTOR 1
+#define MIN_LENGTH 2
 
 
 bool quit = false;
@@ -91,7 +92,7 @@ int main(int argc, char** argv) {
             vec displacement = flow[LINEAR(x, y)];
             displacement.x *= FACTOR;
             displacement.y *= FACTOR;
-            if (displacement.x != 0 || displacement.y != 0) {
+            if (abs(displacement.x) > MIN_LENGTH || abs(displacement.y) > MIN_LENGTH) {
                 arrowedLine(drawnFrame, Point(x, y), Point(x + displacement.x, y + displacement.y), Scalar( 0, 200, 0 ), 1);
             }
         }
