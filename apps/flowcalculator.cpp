@@ -22,11 +22,11 @@ using namespace std;
 #define forn(i,n) for(int i=0; i<(n); i++)
 
 
-#define WIDTH 640
-#define HEIGHT 480
+#define WIDTH 320
+#define HEIGHT 240
 
 #define LEVELS 4
-#define GRANULARITY 5
+#define GRANULARITY 8
 #define FACTOR 1
 #define MIN_LENGTH 2
 

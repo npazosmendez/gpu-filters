@@ -44,7 +44,7 @@ $(EXEC): $(OBJECTS) main.o
 # Apps
 APPS := inpainter linedetector flowcalculator tests
 
-apps: CPPFLAGS += -O3
+apps: CPPFLAGS += -O3 -g
 apps: $(APPS)
 
 dapps: CPPFLAGS += -g

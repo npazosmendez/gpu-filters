@@ -34,7 +34,8 @@
 #define forn(i,n) for(int i=0; i<(n); i++)
 
 
-static int THRESHOLD_CORNER = 100000000000;
+static double THRESHOLD_CORNER = 100000000;
+static int LK_ITERATIONS = 8;
 static int LK_WINDOW_RADIUS = 2;
 static int SOBEL_KERNEL_RADIUS = 1;
 
@@ -204,7 +205,7 @@ void calculate_flow(int pi, int levels) {
 
         vecf iter_guess = {};
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < LK_ITERATIONS; i++) {
 
             float IxIx = 0;
             float IxIy = 0;
@@ -220,7 +221,7 @@ void calculate_flow(int pi, int levels) {
                 int source_index = LINEAR(in_x, in_y);
                 int target_index = LINEAR((int)(in_x + previous_guess.x + iter_guess.x), (int)(in_y + previous_guess.y + iter_guess.y));
                 float gradient_t = 0;
-                if (target_index < width * height) {
+                if (target_index >= 0 && target_index < width * height) {
                     gradient_t = intensity_new[target_index] - intensity_old[source_index];
                 } // TODO: Uhh... Do something?
 
