@@ -90,7 +90,7 @@ int main( int argc, char** argv ) {
         } else if (param == "-d") {
             /* device selection */
             if (i+1 == argc) {
-                cerr << "Filter name missing after '-d'." << endl;
+                cerr << "Device name missing after '-d'." << endl;
                 exit(1);
             }
             int device;

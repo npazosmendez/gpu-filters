@@ -82,7 +82,7 @@ static vecf ** pyramidal_flows;
 
 #define mat_elem(a, y, x, n) (a + ((y) * (n) + (x)))
 
-void swap_row(double *a, double *b, int r1, int r2, int n)
+static void swap_row(double *a, double *b, int r1, int r2, int n)
 {
     double tmp, *p1, *p2;
     int i;
@@ -96,7 +96,7 @@ void swap_row(double *a, double *b, int r1, int r2, int n)
     tmp = b[r1], b[r1] = b[r2], b[r2] = tmp;
 }
 
-void gauss_eliminate(double *a, double *b, double *x, int n)
+static void gauss_eliminate(double *a, double *b, double *x, int n)
 {
 #define A(y, x) (*mat_elem(a, y, x, n))
     int j, col, row, max_row,dia; // i
@@ -128,12 +128,7 @@ void gauss_eliminate(double *a, double *b, double *x, int n)
 #undef A
 }
 
-
-int interest_x = 100;
-int interest_y = 100;
-
-
-void init(int in_width, int in_height, int levels) {
+static void init(int in_width, int in_height, int levels) {
     // Flag
     initialized = true;
 
@@ -168,11 +163,11 @@ void init(int in_width, int in_height, int levels) {
     }
 }
 
-void finish() {
+static void finish() {
     // TODO free buffers
 }
 
-int is_corner(double tensor[2][2]) {
+static int is_corner(double tensor[2][2]) {
     double determinant = tensor[0][0] * tensor[1][1] - tensor[0][1] * tensor[1][0];
     double trace = tensor[0][0] + tensor[1][1];
     double magic_coefficient = 0.05;
@@ -182,7 +177,7 @@ int is_corner(double tensor[2][2]) {
     return cornerism > THRESHOLD_CORNER;
 }
 
-void calculate_flow(int pi, int levels) {
+static void calculate_flow(int pi, int levels) {
     // Matrices
     /*
      * A = [ sum IxIx  sum IxIy           b = [ - sum IxIt
@@ -249,7 +244,6 @@ void calculate_flow(int pi, int levels) {
         flow[LINEAR(x, y)] = (vecf) { previous_guess.x + iter_guess.x, previous_guess.y + iter_guess.y };
     }
 }
-
 
 void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * output_flow, int levels) {
 

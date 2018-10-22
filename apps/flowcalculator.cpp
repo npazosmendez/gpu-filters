@@ -39,6 +39,42 @@ Mat drawnFrame;
 
 int main(int argc, char** argv) {
 
+    // Params
+
+    void (*picked_kanade)(int, int, char*, char*, vec*, int) = kanade;
+
+    for (int i = 1; i < argc; i++) {
+        string param = argv[i];
+        if (param == "-cl") {
+            /* implementation selection */
+            cout << "Using OpenCL implementation..." << endl;
+            picked_kanade = CL_kanade;
+        } else if (param == "-d") {
+            /* device selection */
+            if (i+1 == argc) {
+                cerr << "Device name missing after '-d'." << endl;
+                exit(1);
+            }
+            int device;
+            try {
+                device = stoi(argv[i+1]);
+            } catch (int e) {
+                cerr << "Couldn't convert '-d' parameter to number" << endl;
+                return -1;
+            }
+            selectDevice(device);
+        } else if (param == "-h") {
+            cout << "Usage:\n";
+            cout << "  flowcalculator image_path [flags]\n";
+            cout << "Flags\n";
+            cout << "  -cl: Uses OpenCL implementation instead of the C implementation\n";
+            cout << "  -d <number>: Picks device to use for the computation\n";
+            cout << "\n";
+
+            return 0;
+        }
+    }
+
     // Initialize stuff
 
     VideoCapture stream = VideoCapture(0);
@@ -85,7 +121,7 @@ int main(int argc, char** argv) {
 
         current_ptr = (char*)cameraFrame.ptr();
 
-        kanade(width, height, old_ptr, current_ptr, flow, LEVELS);
+        picked_kanade(width, height, old_ptr, current_ptr, flow, LEVELS);
 
         drawnFrame = cameraFrame.clone();
         forn(y, height) forn(x, width) if (y % GRANULARITY == 0 && x % GRANULARITY == 0) {
