@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
             selectDevice(device);
         } else if (param == "-h") {
             cout << "Usage:\n";
-            cout << "  flowcalculator image_path [flags]\n";
+            cout << "  flowcalculator [flags]\n";
             cout << "Flags\n";
             cout << "  -cl: Uses OpenCL implementation instead of the C implementation\n";
             cout << "  -d <number>: Picks device to use for the computation\n";

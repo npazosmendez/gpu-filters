@@ -2,18 +2,27 @@
 // Created by Daro on 24/09/2018.
 //
 
+#include <cl2.hpp>
+#include <iostream>
 #include "stdio.h"
 #include "stdbool.h"
 #include "string.h"
 #include "math.h"
 #include "time.h"
 #include "float.h"
+#include <stdint.h>
 #include "assert.h"
-#include "opencl-filters.hpp"
+#include <chrono>
+#include <iomanip>
 extern "C" {
     #include "../c/cutils.h"
     #include "../c/c-filters.h"
 }
+#include "opencl-filters.hpp"
+
+using namespace std;
+using namespace std::chrono;
+using namespace cl;
 
 
 #define LINEAR(x, y) (y)*width+(x)
@@ -59,6 +68,31 @@ static float ** pyramidal_gradients_x;
 static float ** pyramidal_gradients_y;
 
 static vecf ** pyramidal_flows;
+
+
+
+// +++++++
+// CL CODE
+static Kernel k_calculate_flow;
+
+static Buffer ** b_pyramidal_intensities_old;
+static Buffer ** b_pyramidal_intensities_new;
+
+static Buffer ** b_pyramidal_blurs_old;
+static Buffer ** b_pyramidal_blurs_new;
+
+static Buffer ** b_pyramidal_gradients_x;
+static Buffer ** b_pyramidal_gradients_y;
+
+static Buffer ** b_pyramidal_flows;
+
+static cl_int err = 0;
+// CL CODE
+// +++++++
+
+
+
+
 
 
 // ROSETTA SNIPPET
@@ -115,6 +149,23 @@ static void gauss_eliminate(double *a, double *b, double *x, int n)
 }
 
 static void init(int in_width, int in_height, int levels) {
+
+    // +++++++
+    // CL CODE
+    cout << "Initializing OpenCL model for Optical Flow\n";
+
+    // OpenCL initialization
+    if(!openCL_initialized) initCL();
+
+    // Program object
+    createProgram("kanade.cl");
+
+    // Kernels
+    k_calculate_flow = Kernel(program, "calculate_flow");
+    // CL CODE
+    // +++++++
+
+
     // Flag
     initialized = true;
 
@@ -128,6 +179,22 @@ static void init(int in_width, int in_height, int levels) {
     pyramidal_blurs_old = (float **) malloc(levels * sizeof(float *));
     pyramidal_blurs_new = (float **) malloc(levels * sizeof(float *));
     pyramidal_flows = (vecf **) malloc(levels * sizeof(vecf *));
+
+
+
+    // +++++++
+    // CL CODE
+    b_pyramidal_intensities_old = (Buffer **) malloc(levels * sizeof(Buffer *));
+    b_pyramidal_intensities_new = (Buffer **) malloc(levels * sizeof(Buffer *));
+    b_pyramidal_gradients_x = (Buffer **) malloc(levels * sizeof(Buffer *));
+    b_pyramidal_gradients_y = (Buffer **) malloc(levels * sizeof(Buffer *));
+    b_pyramidal_blurs_old = (Buffer **) malloc(levels * sizeof(Buffer *));
+    b_pyramidal_blurs_new = (Buffer **) malloc(levels * sizeof(Buffer *));
+    b_pyramidal_flows = (Buffer **) malloc(levels * sizeof(Buffer *));
+    // CL CODE
+    // +++++++
+
+
 
     // Image buffers
     int current_width = in_width;
@@ -143,6 +210,29 @@ static void init(int in_width, int in_height, int levels) {
         pyramidal_blurs_old[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_blurs_new[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_flows[pi] = (vecf *) malloc(current_width * current_height * sizeof(vecf));
+
+
+
+        // +++++++
+        // CL CODE
+        b_pyramidal_intensities_old[pi] = new Buffer(context, CL_MEM_READ_WRITE, sizeof(float), NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
+        b_pyramidal_intensities_new[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
+        b_pyramidal_gradients_x[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
+        b_pyramidal_gradients_y[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
+        b_pyramidal_blurs_old[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
+        b_pyramidal_blurs_new[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
+        b_pyramidal_flows[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(vecf), NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
+        // CL CODE
+        // +++++++
+
+
 
         current_width /= 2;
         current_height /= 2;
@@ -177,6 +267,13 @@ static void calculate_flow(int pi, int levels) {
     float * intensity_old = pyramidal_intensities_old[pi];
     float * intensity_new = pyramidal_intensities_new[pi];
     vecf * flow = pyramidal_flows[pi];
+
+    // +++++++
+    // CL CODE
+
+
+    // CL CODE
+    // +++++++
 
     forn(y, height) forn(x, width) {
 
