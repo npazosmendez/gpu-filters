@@ -29,9 +29,6 @@ using namespace cl;
 #define forn(i,n) for(int i=0; i<(n); i++)
 
 
-static double THRESHOLD_CORNER = 100000000;
-static int LK_ITERATIONS = 8;
-static int LK_WINDOW_RADIUS = 2;
 static int SOBEL_KERNEL_RADIUS = 1;
 
 
@@ -94,59 +91,6 @@ static cl_int err = 0;
 
 
 
-
-// ROSETTA SNIPPET
-// https://rosettacode.org/wiki/Gaussian_elimination
-
-// Careful, modifies a and b!!
-
-#define mat_elem(a, y, x, n) (a + ((y) * (n) + (x)))
-
-static void swap_row(double *a, double *b, int r1, int r2, int n)
-{
-    double tmp, *p1, *p2;
-    int i;
-
-    if (r1 == r2) return;
-    for (i = 0; i < n; i++) {
-        p1 = mat_elem(a, r1, i, n);
-        p2 = mat_elem(a, r2, i, n);
-        tmp = *p1, *p1 = *p2, *p2 = tmp;
-    }
-    tmp = b[r1], b[r1] = b[r2], b[r2] = tmp;
-}
-
-static void gauss_eliminate(double *a, double *b, double *x, int n)
-{
-#define A(y, x) (*mat_elem(a, y, x, n))
-    int j, col, row, max_row,dia; // i
-    double max, tmp;
-
-    for (dia = 0; dia < n; dia++) {
-        max_row = dia, max = A(dia, dia);
-
-        for (row = dia + 1; row < n; row++)
-            if ((tmp = fabs(A(row, dia))) > max)
-                max_row = row, max = tmp;
-
-        swap_row(a, b, dia, max_row, n);
-
-        for (row = dia + 1; row < n; row++) {
-            tmp = A(row, dia) / A(dia, dia);
-            for (col = dia+1; col < n; col++)
-                A(row, col) -= tmp * A(dia, col);
-            A(row, dia) = 0;
-            b[row] -= tmp * b[dia];
-        }
-    }
-    for (row = n - 1; row >= 0; row--) {
-        tmp = b[row];
-        for (j = n - 1; j > row; j--)
-            tmp -= x[j] * A(row, j);
-        x[row] = tmp / A(row, row);
-    }
-#undef A
-}
 
 static void init(int in_width, int in_height, int levels) {
 
@@ -215,7 +159,7 @@ static void init(int in_width, int in_height, int levels) {
 
         // +++++++
         // CL CODE
-        b_pyramidal_intensities_old[pi] = new Buffer(context, CL_MEM_READ_WRITE, sizeof(float), NULL, &err);
+        b_pyramidal_intensities_old[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
         b_pyramidal_intensities_new[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
@@ -243,16 +187,6 @@ static void finish() {
     // TODO free buffers
 }
 
-static int is_corner(double tensor[2][2]) {
-    double determinant = tensor[0][0] * tensor[1][1] - tensor[0][1] * tensor[1][0];
-    double trace = tensor[0][0] + tensor[1][1];
-    double magic_coefficient = 0.05;
-
-    double cornerism = determinant - (magic_coefficient * trace * trace);
-
-    return cornerism > THRESHOLD_CORNER;
-}
-
 static void calculate_flow(int pi, int levels) {
     // Matrices
     /*
@@ -260,72 +194,65 @@ static void calculate_flow(int pi, int levels) {
      *       sum IyIx  sum IyIy ]               - sum IyIt ]
      */
 
-    int height = pyramidal_heights[pi];
     int width = pyramidal_widths[pi];
+    int height = pyramidal_heights[pi];
     float * gradient_x = pyramidal_gradients_x[pi];
     float * gradient_y = pyramidal_gradients_y[pi];
     float * intensity_old = pyramidal_intensities_old[pi];
     float * intensity_new = pyramidal_intensities_new[pi];
     vecf * flow = pyramidal_flows[pi];
 
+    vecf * previous_flow = pi < levels - 1 ? pyramidal_flows[pi+1] : NULL;
+    int previous_width = pi < levels - 1 ? pyramidal_widths[pi+1] : -1;
+    int previous_height = pi < levels - 1 ? pyramidal_heights[pi+1] : -1;
+
     // +++++++
     // CL CODE
+    Buffer * b_gradient_x = b_pyramidal_gradients_x[pi];
+    Buffer * b_gradient_y = b_pyramidal_gradients_y[pi];
+    Buffer * b_intensity_old = b_pyramidal_intensities_old[pi];
+    Buffer * b_intensity_new = b_pyramidal_intensities_new[pi];
+    Buffer * b_flow = b_pyramidal_flows[pi];
 
+    err = queue.enqueueWriteBuffer(*b_gradient_x, CL_TRUE, 0, sizeof(float)*width*height, gradient_x);
+        clHandleError(__FILE__,__LINE__,err);
+    err = queue.enqueueWriteBuffer(*b_gradient_y, CL_TRUE, 0, sizeof(float)*width*height, gradient_y);
+        clHandleError(__FILE__,__LINE__,err);
+    err = queue.enqueueWriteBuffer(*b_intensity_old, CL_TRUE, 0, sizeof(float)*width*height, intensity_old);
+        clHandleError(__FILE__,__LINE__,err);
+    err = queue.enqueueWriteBuffer(*b_intensity_new, CL_TRUE, 0, sizeof(float)*width*height, intensity_new);
+        clHandleError(__FILE__,__LINE__,err);
+    err = queue.enqueueWriteBuffer(*b_flow, CL_TRUE, 0, sizeof(vecf)*width*height, flow);
+        clHandleError(__FILE__,__LINE__,err);
 
-    // CL CODE
-    // +++++++
+    Buffer * b_previous_flow = NULL;
+    if (pi < levels - 1) {
+        b_previous_flow = b_pyramidal_flows[pi+1];
+        err = queue.enqueueWriteBuffer(*b_previous_flow, CL_TRUE, 0, sizeof(vecf)*previous_width*previous_height, previous_flow);
+            clHandleError(__FILE__,__LINE__,err);
+    }
 
-    forn(y, height) forn(x, width) {
+    k_calculate_flow.setArg(0, width);
+    k_calculate_flow.setArg(1, height);
+    k_calculate_flow.setArg(2, *b_gradient_x);
+    k_calculate_flow.setArg(3, *b_gradient_y);
+    k_calculate_flow.setArg(4, *b_intensity_old);
+    k_calculate_flow.setArg(5, *b_intensity_new);
+    k_calculate_flow.setArg(6, *b_flow);
+    k_calculate_flow.setArg(7, previous_width);
+    k_calculate_flow.setArg(8, previous_height);
+    k_calculate_flow.setArg(9, *b_previous_flow);
 
-            vecf previous_guess = pi < levels - 1 ? pyramidal_flows[pi+1][(y/2) * pyramidal_widths[pi+1] + (x/2)] : (vecf) {0};
-            previous_guess.x *= 2;
-            previous_guess.y *= 2;
+    err = queue.enqueueNDRangeKernel(
+            k_calculate_flow,
+            NullRange,
+            NDRange(width, height),
+            NullRange // default
+    );
+    clHandleError(__FILE__,__LINE__,err);
 
-            vecf iter_guess = {};
-
-            for (int i = 0; i < LK_ITERATIONS; i++) {
-
-                float IxIx = 0;
-                float IxIy = 0;
-                float IyIy = 0;
-                float IxIt = 0;
-                float IyIt = 0;
-
-                int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
-                forn(wy, window_diameter) forn(wx, window_diameter) {
-                        int in_x = clamp(x + (wx - LK_WINDOW_RADIUS), 0, width - 1);
-                        int in_y = clamp(y + (wy - LK_WINDOW_RADIUS), 0, height - 1);
-
-                        int source_index = LINEAR(in_x, in_y);
-                        int target_index = LINEAR((int)(in_x + previous_guess.x + iter_guess.x), (int)(in_y + previous_guess.y + iter_guess.y));
-                        float gradient_t = 0;
-                        if (target_index >= 0 && target_index < width * height) {
-                            gradient_t = intensity_new[target_index] - intensity_old[source_index];
-                        } // TODO: Uhh... Do something?
-
-                        // TODO: This can be factored out of the loop
-                        IxIx += gradient_x[LINEAR(in_x, in_y)] * gradient_x[LINEAR(in_x, in_y)];
-                        IxIy += gradient_x[LINEAR(in_x, in_y)] * gradient_y[LINEAR(in_x, in_y)];
-                        IyIy += gradient_y[LINEAR(in_x, in_y)] * gradient_y[LINEAR(in_x, in_y)];
-                        IxIt += gradient_x[LINEAR(in_x, in_y)] * gradient_t;
-                        IyIt += gradient_y[LINEAR(in_x, in_y)] * gradient_t;
-                    }
-
-                double A[2][2] = {IxIx, IxIy, IxIy, IyIy};
-                double b[2] = {-IxIt, -IyIt};
-                double d[2];
-
-                if (is_corner(A)) {
-                    gauss_eliminate((double*)A, b, d, 2);
-                    iter_guess = (vecf) { iter_guess.x + (float)d[0], iter_guess.y + (float)d[1] };
-                } else {
-                    iter_guess = (vecf) {0, 0};
-                }
-
-            }
-
-            flow[LINEAR(x, y)] = (vecf) { previous_guess.x + iter_guess.x, previous_guess.y + iter_guess.y };
-        }
+    err = queue.enqueueReadBuffer(*b_flow, CL_TRUE, 0, sizeof(vecf)*width*height, flow);
+        clHandleError(__FILE__,__LINE__,err);
 }
 
 void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec * output_flow, int levels) {
