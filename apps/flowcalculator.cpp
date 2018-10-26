@@ -22,11 +22,11 @@ using namespace std;
 #define forn(i,n) for(int i=0; i<(n); i++)
 
 
-#define WIDTH 320
-#define HEIGHT 240
+#define WIDTH 640
+#define HEIGHT 480
 
 #define LEVELS 4
-#define GRANULARITY 8
+#define GRANULARITY 10
 #define FACTOR 1
 #define MIN_LENGTH 2
 
@@ -129,7 +129,16 @@ int main(int argc, char** argv) {
             displacement.x *= FACTOR;
             displacement.y *= FACTOR;
             if (abs(displacement.x) > MIN_LENGTH || abs(displacement.y) > MIN_LENGTH) {
-                arrowedLine(drawnFrame, Point(x, y), Point(x + displacement.x, y + displacement.y), Scalar( 0, 200, 0 ), 1);
+                arrowedLine(
+                        drawnFrame,                                    // mat to draw into
+                        Point(x, y),                                   // origin position
+                        Point(x + displacement.x, y + displacement.y), // arrow tip position
+                        Scalar( 0, 200, 0 ),                           // color
+                        1.2,                                           // thickness
+                        8,                                             // line type (default=8)
+                        0,                                             // shift (default=0)
+                        0.4                                            // tip length (ratio)
+                );
             }
         }
 
