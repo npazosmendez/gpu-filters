@@ -297,7 +297,11 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         Buffer * b_blur_old = b_pyramidal_blurs_old[pi];
         Buffer * b_blur_new = b_pyramidal_blurs_new[pi];
 
-        /*
+        err = queue.enqueueWriteBuffer(*b_intensity_old, CL_TRUE, 0, sizeof(float)*width*height, intensity_old);
+        clHandleError(__FILE__,__LINE__,err);
+        err = queue.enqueueWriteBuffer(*b_intensity_new, CL_TRUE, 0, sizeof(float)*width*height, intensity_new);
+        clHandleError(__FILE__,__LINE__,err);
+
         k_convolution_blur.setArg(0, *b_intensity_old);
         k_convolution_blur.setArg(1, *b_blur_old);
         err = queue.enqueueNDRangeKernel(
@@ -317,8 +321,9 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
                 NullRange // default
         );
         clHandleError(__FILE__,__LINE__,err);
-         */
 
+        err = queue.enqueueReadBuffer(*b_blur_new, CL_TRUE, 0, sizeof(float)*width*height, blur_new);
+        err = queue.enqueueReadBuffer(*b_blur_old, CL_TRUE, 0, sizeof(float)*width*height, blur_old);
 
         // +++++++
         // CL CODE
