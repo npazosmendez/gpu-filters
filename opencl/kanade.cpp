@@ -55,13 +55,12 @@ static float * debug_gradient_x;
 static float * debug_gradient_y;
 
 
-// +++++++
-// CL CODE
 static Kernel k_calculate_flow;
 static Kernel k_convolution_x;
 static Kernel k_convolution_y;
 static Kernel k_convolution_blur;
 static Kernel k_subsample;
+static Kernel k_calculate_intensity;
 
 static Buffer ** b_pyramidal_intensities_old;
 static Buffer ** b_pyramidal_intensities_new;
@@ -75,11 +74,6 @@ static Buffer ** b_pyramidal_gradients_y;
 static Buffer ** b_pyramidal_flows;
 
 static cl_int err = 0;
-// CL CODE
-// +++++++
-
-
-
 
 
 
@@ -101,9 +95,7 @@ static void init(int in_width, int in_height, int levels) {
     k_convolution_y = Kernel(program, "convolution_y");
     k_convolution_blur = Kernel(program, "convolution_blur");
     k_subsample = Kernel(program, "subsample");
-    // CL CODE
-    // +++++++
-
+    k_calculate_intensity = Kernel(program, "calculate_intensity");
 
     // Flag
     initialized = true;
@@ -115,10 +107,6 @@ static void init(int in_width, int in_height, int levels) {
     pyramidal_intensities_new = (float **) malloc(levels * sizeof(float *));
     pyramidal_flows = (vecf **) malloc(levels * sizeof(vecf *));
 
-
-
-    // +++++++
-    // CL CODE
     b_pyramidal_intensities_old = (Buffer **) malloc(levels * sizeof(Buffer *));
     b_pyramidal_intensities_new = (Buffer **) malloc(levels * sizeof(Buffer *));
     b_pyramidal_gradients_x = (Buffer **) malloc(levels * sizeof(Buffer *));
@@ -126,13 +114,9 @@ static void init(int in_width, int in_height, int levels) {
     b_pyramidal_blurs_old = (Buffer **) malloc(levels * sizeof(Buffer *));
     b_pyramidal_blurs_new = (Buffer **) malloc(levels * sizeof(Buffer *));
     b_pyramidal_flows = (Buffer **) malloc(levels * sizeof(Buffer *));
-    // CL CODE
-    // +++++++
-
 
     debug_gradient_x = (float *) malloc(in_width * in_height * sizeof(float));
     debug_gradient_y = (float *) malloc(in_width * in_height * sizeof(float));
-
 
     // Image buffers
     int current_width = in_width;
@@ -145,8 +129,6 @@ static void init(int in_width, int in_height, int levels) {
         pyramidal_intensities_new[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_flows[pi] = (vecf *) malloc(current_width * current_height * sizeof(vecf));
 
-        // +++++++
-        // CL CODE
         b_pyramidal_intensities_old[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
         b_pyramidal_intensities_new[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
@@ -161,8 +143,6 @@ static void init(int in_width, int in_height, int levels) {
         clHandleError(__FILE__,__LINE__,err);
         b_pyramidal_flows[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(vecf), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
-        // CL CODE
-        // +++++++
 
         current_width /= 2;
         current_height /= 2;
@@ -190,18 +170,12 @@ static void calculate_flow(int pi, int levels) {
     int previous_width = pi < levels - 1 ? pyramidal_widths[pi+1] : -1;
     int previous_height = pi < levels - 1 ? pyramidal_heights[pi+1] : -1;
 
-    // +++++++
-    // CL CODE
     Buffer * b_gradient_x = b_pyramidal_gradients_x[pi];
     Buffer * b_gradient_y = b_pyramidal_gradients_y[pi];
     Buffer * b_intensity_old = b_pyramidal_intensities_old[pi];
     Buffer * b_intensity_new = b_pyramidal_intensities_new[pi];
     Buffer * b_flow = b_pyramidal_flows[pi];
 
-    err = queue.enqueueWriteBuffer(*b_intensity_old, CL_TRUE, 0, sizeof(float)*width*height, intensity_old);
-        clHandleError(__FILE__,__LINE__,err);
-    err = queue.enqueueWriteBuffer(*b_intensity_new, CL_TRUE, 0, sizeof(float)*width*height, intensity_new);
-        clHandleError(__FILE__,__LINE__,err);
     err = queue.enqueueWriteBuffer(*b_flow, CL_TRUE, 0, sizeof(vecf)*width*height, flow);
         clHandleError(__FILE__,__LINE__,err);
 
@@ -248,15 +222,11 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         memset(flow, 0, width * height * sizeof(vecf));
     }
 
-
     // Full Image Intensity
     int full_width = pyramidal_widths[0];
     int full_height = pyramidal_heights[0];
     float * full_intensity_old = pyramidal_intensities_old[0];
     float * full_intensity_new = pyramidal_intensities_new[0];
-
-    // Kernel 3
-    // Profile first to see if it's worth it
 
     forn(i, full_height * full_width) {
         unsigned char (*img_oldRGB)[3] = (unsigned char (*)[3])img_old;
@@ -268,6 +238,10 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         full_intensity_new[i] = (img_newRGB[i][0] + img_newRGB[i][1] + img_newRGB[i][2]) / 3;
     }
 
+    err = queue.enqueueWriteBuffer(*b_pyramidal_intensities_old[0], CL_TRUE, 0, sizeof(float)*full_width*full_height, pyramidal_intensities_old[0]);
+    clHandleError(__FILE__,__LINE__,err);
+    err = queue.enqueueWriteBuffer(*b_pyramidal_intensities_new[0], CL_TRUE, 0, sizeof(float)*full_width*full_height, pyramidal_intensities_new[0]);
+    clHandleError(__FILE__,__LINE__,err);
 
     // Pyramid Construction
     forn(pi, levels - 1) {
@@ -277,17 +251,10 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         float * intensity_old = pyramidal_intensities_old[pi];
         float * intensity_new = pyramidal_intensities_new[pi];
 
-        // CL CODE
-        // +++++++
         Buffer * b_intensity_old = b_pyramidal_intensities_old[pi];
         Buffer * b_intensity_new = b_pyramidal_intensities_new[pi];
         Buffer * b_blur_old = b_pyramidal_blurs_old[pi];
         Buffer * b_blur_new = b_pyramidal_blurs_new[pi];
-
-        err = queue.enqueueWriteBuffer(*b_intensity_old, CL_TRUE, 0, sizeof(float)*width*height, intensity_old);
-        clHandleError(__FILE__,__LINE__,err);
-        err = queue.enqueueWriteBuffer(*b_intensity_new, CL_TRUE, 0, sizeof(float)*width*height, intensity_new);
-        clHandleError(__FILE__,__LINE__,err);
 
         k_convolution_blur.setArg(0, *b_intensity_old);
         k_convolution_blur.setArg(1, *b_blur_old);
@@ -309,22 +276,12 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         );
         clHandleError(__FILE__,__LINE__,err);
 
-        // +++++++
-        // CL CODE
-
-        // Kernel 1: Convolution Gauss (width, height, intensity_old, intensity_new)
-        // Kernel 2: Subsample (previous_width, previous_height, previous_buffer,  next_width, next_height, next_buffer)
-        //   Alternative plus: Merge kernels together (sobel kernels, subsample kernels and convolution kernels)
-
         // Sub-sample
-
         int next_width = pyramidal_widths[pi+1];
         int next_height = pyramidal_heights[pi+1];
         float * next_intensity_old = pyramidal_intensities_old[pi+1];
         float * next_intensity_new = pyramidal_intensities_new[pi+1];
 
-        // CL CODE
-        // +++++++
         Buffer * b_next_intensity_old = b_pyramidal_intensities_old[pi+1];
         Buffer * b_next_intensity_new = b_pyramidal_intensities_new[pi+1];
 
@@ -351,13 +308,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
                 NullRange // default
         );
         clHandleError(__FILE__,__LINE__,err);
-
-        err = queue.enqueueReadBuffer(*b_next_intensity_new, CL_TRUE, 0, sizeof(float)*next_width*next_height, next_intensity_new);
-        err = queue.enqueueReadBuffer(*b_next_intensity_old, CL_TRUE, 0, sizeof(float)*next_width*next_height, next_intensity_old);
-
-        clHandleError(__FILE__,__LINE__,err);
-        // +++++++
-        // CL CODE
     }
 
     for (int pi = levels - 1; pi >= 0; pi--) {
@@ -370,11 +320,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         Buffer * b_gradient_y = b_pyramidal_gradients_y[pi];
         Buffer * b_intensity_old = b_pyramidal_intensities_old[pi];
 
-        err = queue.enqueueWriteBuffer(*b_intensity_old, CL_TRUE, 0, sizeof(float)*width*height, intensity_old);
-        clHandleError(__FILE__,__LINE__,err);
-
-        // +++++++
-        // CL CODE
         k_convolution_x.setArg(0, *b_intensity_old);
         k_convolution_x.setArg(1, *b_gradient_x);
         err = queue.enqueueNDRangeKernel(
@@ -394,9 +339,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
                 NullRange // default
         );
         clHandleError(__FILE__,__LINE__,err);
-
-        // CL CODE
-        // +++++++
 
         // LK algorithm (+ corner detection)
         calculate_flow(pi, levels);
