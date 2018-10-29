@@ -34,16 +34,6 @@ static int SOBEL_KERNEL_RADIUS = 1;
 
 #define SOBEL_KERNEL_DIAMETER (2*SOBEL_KERNEL_RADIUS+1)
 
-static float KERNEL_SOBEL_Y[] = {
-        -1,-2,-1,
-        0,0,0,
-        1,2,1
-};
-static float KERNEL_SOBEL_X[] = {
-        -1,0,1,
-        -2,0,2,
-        -1,0,1
-};
 static float KERNEL_GAUSSIAN_BLUR[] = {
         1/16.0, 1/8.0 , 1/16.0,
         1/8.0 , 1/4.0 , 1/8.0 ,
@@ -73,6 +63,8 @@ static float * debug_gradient_y;
 static Kernel k_calculate_flow;
 static Kernel k_convolution_x;
 static Kernel k_convolution_y;
+static Kernel k_convolution_blur;
+static Kernel k_subsample;
 
 static Buffer ** b_pyramidal_intensities_old;
 static Buffer ** b_pyramidal_intensities_new;
@@ -110,6 +102,8 @@ static void init(int in_width, int in_height, int levels) {
     k_calculate_flow = Kernel(program, "calculate_flow");
     k_convolution_x = Kernel(program, "convolution_x");
     k_convolution_y = Kernel(program, "convolution_y");
+    k_convolution_blur = Kernel(program, "convolution_blur");
+    k_subsample = Kernel(program, "subsample");
     // CL CODE
     // +++++++
 
@@ -158,8 +152,6 @@ static void init(int in_width, int in_height, int levels) {
         pyramidal_blurs_new[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_flows[pi] = (vecf *) malloc(current_width * current_height * sizeof(vecf));
 
-
-
         // +++++++
         // CL CODE
         b_pyramidal_intensities_old[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
@@ -178,8 +170,6 @@ static void init(int in_width, int in_height, int levels) {
         clHandleError(__FILE__,__LINE__,err);
         // CL CODE
         // +++++++
-
-
 
         current_width /= 2;
         current_height /= 2;
@@ -272,6 +262,9 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
     float * full_intensity_old = pyramidal_intensities_old[0];
     float * full_intensity_new = pyramidal_intensities_new[0];
 
+    // Kernel 3
+    // Profile first to see if it's worth it
+
     forn(i, full_height * full_width) {
         unsigned char (*img_oldRGB)[3] = (unsigned char (*)[3])img_old;
         full_intensity_old[i] = (img_oldRGB[i][0] + img_oldRGB[i][1] + img_oldRGB[i][2]) / 3;
@@ -284,7 +277,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
 
 
     // Pyramid Construction
-    // TODO: I could abstract these steps into two for the old and new buffers
     forn(pi, levels - 1) {
         // Sub-image
         int width = pyramidal_widths[pi];
@@ -298,15 +290,90 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         convoluion2D(intensity_old, width, height, KERNEL_GAUSSIAN_BLUR, 3, blur_old);
         convoluion2D(intensity_new, width, height, KERNEL_GAUSSIAN_BLUR, 3, blur_new);
 
+        // CL CODE
+        // +++++++
+        Buffer * b_intensity_old = b_pyramidal_intensities_old[pi];
+        Buffer * b_intensity_new = b_pyramidal_intensities_new[pi];
+        Buffer * b_blur_old = b_pyramidal_blurs_old[pi];
+        Buffer * b_blur_new = b_pyramidal_blurs_new[pi];
+
+        /*
+        k_convolution_blur.setArg(0, *b_intensity_old);
+        k_convolution_blur.setArg(1, *b_blur_old);
+        err = queue.enqueueNDRangeKernel(
+                k_convolution_blur,
+                NullRange,
+                NDRange(width, height),
+                NullRange // default
+        );
+        clHandleError(__FILE__,__LINE__,err);
+
+        k_convolution_blur.setArg(0, *b_intensity_new);
+        k_convolution_blur.setArg(1, *b_blur_new);
+        err = queue.enqueueNDRangeKernel(
+                k_convolution_blur,
+                NullRange,
+                NDRange(width, height),
+                NullRange // default
+        );
+        clHandleError(__FILE__,__LINE__,err);
+         */
+
+
+        // +++++++
+        // CL CODE
+
+        // Kernel 1: Convolution Gauss (width, height, intensity_old, intensity_new)
+        // Kernel 2: Subsample (previous_width, previous_height, previous_buffer,  next_width, next_height, next_buffer)
+        //   Alternative plus: Merge kernels together (sobel kernels, subsample kernels and convolution kernels)
+
         // Sub-sample
+
         int next_width = pyramidal_widths[pi+1];
         int next_height = pyramidal_heights[pi+1];
         float * next_intensity_old = pyramidal_intensities_old[pi+1];
         float * next_intensity_new = pyramidal_intensities_new[pi+1];
-        forn(y, next_height) forn(x, next_width) {
-            next_intensity_old[y * next_width + x] = blur_old[LINEAR(2*x, 2*y)]; // TODO: Dangerous macro yo
-            next_intensity_new[y * next_width + x] = blur_new[LINEAR(2*x, 2*y)]; // TODO: Dangerous macro yo
-        }
+
+        // CL CODE
+        // +++++++
+        err = queue.enqueueWriteBuffer(*b_blur_new, CL_TRUE, 0, sizeof(float)*width*height, blur_new);
+        clHandleError(__FILE__,__LINE__,err);
+        err = queue.enqueueWriteBuffer(*b_blur_old, CL_TRUE, 0, sizeof(float)*width*height, blur_old);
+        clHandleError(__FILE__,__LINE__,err);
+
+        Buffer * b_next_intensity_old = b_pyramidal_intensities_old[pi+1];
+        Buffer * b_next_intensity_new = b_pyramidal_intensities_new[pi+1];
+
+        k_subsample.setArg(0, width);
+        k_subsample.setArg(1, height);
+        k_subsample.setArg(2, *b_blur_old);
+        k_subsample.setArg(3, *b_next_intensity_old);
+        err = queue.enqueueNDRangeKernel(
+                k_subsample,
+                NullRange,
+                NDRange(next_width, next_height),
+                NullRange // default
+        );
+        clHandleError(__FILE__,__LINE__,err);
+
+        k_subsample.setArg(0, width);
+        k_subsample.setArg(1, height);
+        k_subsample.setArg(2, *b_blur_new);
+        k_subsample.setArg(3, *b_next_intensity_new);
+        err = queue.enqueueNDRangeKernel(
+                k_subsample,
+                NullRange,
+                NDRange(next_width, next_height),
+                NullRange // default
+        );
+        clHandleError(__FILE__,__LINE__,err);
+
+        err = queue.enqueueReadBuffer(*b_next_intensity_new, CL_TRUE, 0, sizeof(float)*next_width*next_height, next_intensity_new);
+        err = queue.enqueueReadBuffer(*b_next_intensity_old, CL_TRUE, 0, sizeof(float)*next_width*next_height, next_intensity_old);
+
+        clHandleError(__FILE__,__LINE__,err);
+        // +++++++
+        // CL CODE
     }
 
     for (int pi = levels - 1; pi >= 0; pi--) {
