@@ -61,9 +61,6 @@ static float ** pyramidal_intensities_new;
 static float ** pyramidal_blurs_old;
 static float ** pyramidal_blurs_new;
 
-static float ** pyramidal_gradients_x;
-static float ** pyramidal_gradients_y;
-
 static vecf ** pyramidal_flows;
 
 
@@ -125,8 +122,6 @@ static void init(int in_width, int in_height, int levels) {
     pyramidal_heights = (int *) malloc(levels * sizeof(int));
     pyramidal_intensities_old = (float **) malloc(levels * sizeof(float *));
     pyramidal_intensities_new = (float **) malloc(levels * sizeof(float *));
-    pyramidal_gradients_x = (float **) malloc(levels * sizeof(float *));
-    pyramidal_gradients_y = (float **) malloc(levels * sizeof(float *));
     pyramidal_blurs_old = (float **) malloc(levels * sizeof(float *));
     pyramidal_blurs_new = (float **) malloc(levels * sizeof(float *));
     pyramidal_flows = (vecf **) malloc(levels * sizeof(vecf *));
@@ -159,8 +154,6 @@ static void init(int in_width, int in_height, int levels) {
         pyramidal_heights[pi] = current_height;
         pyramidal_intensities_old[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_intensities_new[pi] = (float *) malloc(current_width * current_height * sizeof(float));
-        pyramidal_gradients_x[pi] = (float *) malloc(current_width * current_height * sizeof(float));
-        pyramidal_gradients_y[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_blurs_old[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_blurs_new[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_flows[pi] = (vecf *) malloc(current_width * current_height * sizeof(vecf));
@@ -206,8 +199,6 @@ static void calculate_flow(int pi, int levels) {
 
     int width = pyramidal_widths[pi];
     int height = pyramidal_heights[pi];
-    float * gradient_x = pyramidal_gradients_x[pi];
-    float * gradient_y = pyramidal_gradients_y[pi];
     float * intensity_old = pyramidal_intensities_old[pi];
     float * intensity_new = pyramidal_intensities_new[pi];
     vecf * flow = pyramidal_flows[pi];
@@ -224,10 +215,6 @@ static void calculate_flow(int pi, int levels) {
     Buffer * b_intensity_new = b_pyramidal_intensities_new[pi];
     Buffer * b_flow = b_pyramidal_flows[pi];
 
-    //err = queue.enqueueWriteBuffer(*b_gradient_x, CL_TRUE, 0, sizeof(float)*width*height, gradient_x);
-    //    clHandleError(__FILE__,__LINE__,err);
-    //err = queue.enqueueWriteBuffer(*b_gradient_y, CL_TRUE, 0, sizeof(float)*width*height, gradient_y);
-    //    clHandleError(__FILE__,__LINE__,err);
     err = queue.enqueueWriteBuffer(*b_intensity_old, CL_TRUE, 0, sizeof(float)*width*height, intensity_old);
         clHandleError(__FILE__,__LINE__,err);
     err = queue.enqueueWriteBuffer(*b_intensity_new, CL_TRUE, 0, sizeof(float)*width*height, intensity_new);
@@ -326,8 +313,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         // Sub-image
         int width = pyramidal_widths[pi];
         int height = pyramidal_heights[pi];
-        float * gradient_x = pyramidal_gradients_x[pi];
-        float * gradient_y = pyramidal_gradients_y[pi];
         float * intensity_old = pyramidal_intensities_old[pi];
 
         Buffer * b_gradient_x = b_pyramidal_gradients_x[pi];
@@ -336,10 +321,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
 
         err = queue.enqueueWriteBuffer(*b_intensity_old, CL_TRUE, 0, sizeof(float)*width*height, intensity_old);
         clHandleError(__FILE__,__LINE__,err);
-
-        // Gradients
-        convoluion2D(intensity_old, width, height, KERNEL_SOBEL_Y, SOBEL_KERNEL_DIAMETER, gradient_y);
-        convoluion2D(intensity_old, width, height, KERNEL_SOBEL_X, SOBEL_KERNEL_DIAMETER, gradient_x);
 
         // +++++++
         // CL CODE
@@ -365,28 +346,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
 
         // CL CODE
         // +++++++
-        memcpy(debug_gradient_x, gradient_x, width*height*sizeof(float));
-        memcpy(debug_gradient_y, gradient_y, width*height*sizeof(float));
-        //err = queue.enqueueReadBuffer(*b_gradient_x, CL_TRUE, 0, sizeof(float)*width*height, gradient_x);
-        //err = queue.enqueueReadBuffer(*b_gradient_y, CL_TRUE, 0, sizeof(float)*width*height, gradient_y);
-        clHandleError(__FILE__,__LINE__,err);
-
-        forn(x, width) forn(y, height) {
-            float cl_gradient_x = gradient_x[LINEAR(x, y)];
-            float c_gradient_x = debug_gradient_x[LINEAR(x, y)];
-            float cl_gradient_y = gradient_y[LINEAR(x, y)];
-            float c_gradient_y = debug_gradient_y[LINEAR(x, y)];
-            if (c_gradient_x != cl_gradient_x || c_gradient_y != cl_gradient_y) {
-                printf("At (%d, %d)\n", x, y);
-                printf(" C Gradient Y = %f\n", c_gradient_y);
-                printf(" CL Gradient Y = %f\n", cl_gradient_y);
-                printf(" Img\n");
-                printf("  %f %f %f\n", intensity_old[LINEAR(x-1,y-1)], intensity_old[LINEAR(x,y-1)], intensity_old[LINEAR(x+1,y-1)]);
-                printf("  %f %f %f\n", intensity_old[LINEAR(x-1,y)], intensity_old[LINEAR(x,y)], intensity_old[LINEAR(x+1,y)]);
-                printf("  %f %f %f\n", intensity_old[LINEAR(x-1,y+1)], intensity_old[LINEAR(x,y+1)], intensity_old[LINEAR(x+1,y+1)]);
-                printf("\n");
-            }
-        }
 
         // LK algorithm (+ corner detection)
         calculate_flow(pi, levels);
