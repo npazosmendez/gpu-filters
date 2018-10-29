@@ -67,10 +67,15 @@ static float ** pyramidal_gradients_y;
 static vecf ** pyramidal_flows;
 
 
+static float * debug_gradient_x;
+static float * debug_gradient_y;
+
 
 // +++++++
 // CL CODE
 static Kernel k_calculate_flow;
+static Kernel k_convolution_x;
+static Kernel k_convolution_y;
 
 static Buffer ** b_pyramidal_intensities_old;
 static Buffer ** b_pyramidal_intensities_new;
@@ -106,6 +111,8 @@ static void init(int in_width, int in_height, int levels) {
 
     // Kernels
     k_calculate_flow = Kernel(program, "calculate_flow");
+    k_convolution_x = Kernel(program, "convolution_x");
+    k_convolution_y = Kernel(program, "convolution_y");
     // CL CODE
     // +++++++
 
@@ -138,6 +145,9 @@ static void init(int in_width, int in_height, int levels) {
     // CL CODE
     // +++++++
 
+
+    debug_gradient_x = (float *) malloc(in_width * in_height * sizeof(float));
+    debug_gradient_y = (float *) malloc(in_width * in_height * sizeof(float));
 
 
     // Image buffers
@@ -214,10 +224,10 @@ static void calculate_flow(int pi, int levels) {
     Buffer * b_intensity_new = b_pyramidal_intensities_new[pi];
     Buffer * b_flow = b_pyramidal_flows[pi];
 
-    err = queue.enqueueWriteBuffer(*b_gradient_x, CL_TRUE, 0, sizeof(float)*width*height, gradient_x);
-        clHandleError(__FILE__,__LINE__,err);
-    err = queue.enqueueWriteBuffer(*b_gradient_y, CL_TRUE, 0, sizeof(float)*width*height, gradient_y);
-        clHandleError(__FILE__,__LINE__,err);
+    //err = queue.enqueueWriteBuffer(*b_gradient_x, CL_TRUE, 0, sizeof(float)*width*height, gradient_x);
+    //    clHandleError(__FILE__,__LINE__,err);
+    //err = queue.enqueueWriteBuffer(*b_gradient_y, CL_TRUE, 0, sizeof(float)*width*height, gradient_y);
+    //    clHandleError(__FILE__,__LINE__,err);
     err = queue.enqueueWriteBuffer(*b_intensity_old, CL_TRUE, 0, sizeof(float)*width*height, intensity_old);
         clHandleError(__FILE__,__LINE__,err);
     err = queue.enqueueWriteBuffer(*b_intensity_new, CL_TRUE, 0, sizeof(float)*width*height, intensity_new);
@@ -307,9 +317,9 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         float * next_intensity_old = pyramidal_intensities_old[pi+1];
         float * next_intensity_new = pyramidal_intensities_new[pi+1];
         forn(y, next_height) forn(x, next_width) {
-                next_intensity_old[y * next_width + x] = blur_old[LINEAR(2*x, 2*y)]; // TODO: Dangerous macro yo
-                next_intensity_new[y * next_width + x] = blur_new[LINEAR(2*x, 2*y)]; // TODO: Dangerous macro yo
-            }
+            next_intensity_old[y * next_width + x] = blur_old[LINEAR(2*x, 2*y)]; // TODO: Dangerous macro yo
+            next_intensity_new[y * next_width + x] = blur_new[LINEAR(2*x, 2*y)]; // TODO: Dangerous macro yo
+        }
     }
 
     for (int pi = levels - 1; pi >= 0; pi--) {
@@ -320,9 +330,63 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         float * gradient_y = pyramidal_gradients_y[pi];
         float * intensity_old = pyramidal_intensities_old[pi];
 
+        Buffer * b_gradient_x = b_pyramidal_gradients_x[pi];
+        Buffer * b_gradient_y = b_pyramidal_gradients_y[pi];
+        Buffer * b_intensity_old = b_pyramidal_intensities_old[pi];
+
+        err = queue.enqueueWriteBuffer(*b_intensity_old, CL_TRUE, 0, sizeof(float)*width*height, intensity_old);
+        clHandleError(__FILE__,__LINE__,err);
+
         // Gradients
         convoluion2D(intensity_old, width, height, KERNEL_SOBEL_Y, SOBEL_KERNEL_DIAMETER, gradient_y);
         convoluion2D(intensity_old, width, height, KERNEL_SOBEL_X, SOBEL_KERNEL_DIAMETER, gradient_x);
+
+        // +++++++
+        // CL CODE
+        k_convolution_x.setArg(0, *b_intensity_old);
+        k_convolution_x.setArg(1, *b_gradient_x);
+        err = queue.enqueueNDRangeKernel(
+                k_convolution_x,
+                NullRange,
+                NDRange(width, height),
+                NullRange // default
+        );
+        clHandleError(__FILE__,__LINE__,err);
+
+        k_convolution_y.setArg(0, *b_intensity_old);
+        k_convolution_y.setArg(1, *b_gradient_y);
+        err = queue.enqueueNDRangeKernel(
+                k_convolution_y,
+                NullRange,
+                NDRange(width, height),
+                NullRange // default
+        );
+        clHandleError(__FILE__,__LINE__,err);
+
+        // CL CODE
+        // +++++++
+        memcpy(debug_gradient_x, gradient_x, width*height*sizeof(float));
+        memcpy(debug_gradient_y, gradient_y, width*height*sizeof(float));
+        //err = queue.enqueueReadBuffer(*b_gradient_x, CL_TRUE, 0, sizeof(float)*width*height, gradient_x);
+        //err = queue.enqueueReadBuffer(*b_gradient_y, CL_TRUE, 0, sizeof(float)*width*height, gradient_y);
+        clHandleError(__FILE__,__LINE__,err);
+
+        forn(x, width) forn(y, height) {
+            float cl_gradient_x = gradient_x[LINEAR(x, y)];
+            float c_gradient_x = debug_gradient_x[LINEAR(x, y)];
+            float cl_gradient_y = gradient_y[LINEAR(x, y)];
+            float c_gradient_y = debug_gradient_y[LINEAR(x, y)];
+            if (c_gradient_x != cl_gradient_x || c_gradient_y != cl_gradient_y) {
+                printf("At (%d, %d)\n", x, y);
+                printf(" C Gradient Y = %f\n", c_gradient_y);
+                printf(" CL Gradient Y = %f\n", cl_gradient_y);
+                printf(" Img\n");
+                printf("  %f %f %f\n", intensity_old[LINEAR(x-1,y-1)], intensity_old[LINEAR(x,y-1)], intensity_old[LINEAR(x+1,y-1)]);
+                printf("  %f %f %f\n", intensity_old[LINEAR(x-1,y)], intensity_old[LINEAR(x,y)], intensity_old[LINEAR(x+1,y)]);
+                printf("  %f %f %f\n", intensity_old[LINEAR(x-1,y+1)], intensity_old[LINEAR(x,y+1)], intensity_old[LINEAR(x+1,y+1)]);
+                printf("\n");
+            }
+        }
 
         // LK algorithm (+ corner detection)
         calculate_flow(pi, levels);

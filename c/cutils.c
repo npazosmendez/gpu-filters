@@ -35,6 +35,8 @@ float squared_distance3(char p[3], char q[3]) {
            (p[2] - q[2]) * (p[2] - q[2]);
 }
 
+#define LINEAR(x, y) (y)*width+(x)
+
 void convoluion2D(float * src, int width, int height, float * kernel, int ksize, float * dst){
     /*
     Computes 2d convolution between the image stored in 'src' and 'kernel'.
@@ -50,26 +52,22 @@ void convoluion2D(float * src, int width, int height, float * kernel, int ksize,
     // Rewrite assert in C
     // assert(ksize % 2 == 1);
 
-    float  (*src_img)[width] = (float  (*)[width])src; // no sabía que esto compilaba jojo
-    float (*dst_img)[width] = (float (*)[width])dst;
-    float (*kern_img)[ksize] = (float (*)[ksize])kernel;
-
     /* image loop*/
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            if ((i - ksize/2 ) < 0 || (i + ksize/2) > (height-1) ||
-                (j - ksize/2 ) < 0 || (j + ksize/2) > (width-1)){
-                dst_img[i][j] = 0;
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            if (((y - ksize/2 ) < 0) || ((y + ksize/2) > (height-1)) ||
+                ((x - ksize/2 ) < 0) || ((x + ksize/2) > (width-1))){
+                dst[LINEAR(x, y)] = 0;
                 continue; // TODO: handle boundaries
             }
             /* kernel loop */
             float temp = 0;
-            for (int ik = 0; ik < ksize; ik++) {
-                for (int jk = 0; jk < ksize; jk++) {
-                    temp += src_img[i+ik-ksize/2][j+jk-ksize/2]*kern_img[ik][jk];
+            for (int yk = 0; yk < ksize; yk++) {
+                for (int xk = 0; xk < ksize; xk++) {
+                    temp += src[LINEAR(x+xk-ksize/2, y+yk-ksize/2)]*kernel[yk*ksize+xk];
                 }
             }
-            dst_img[i][j] = temp;
+            dst[LINEAR(x, y)] = temp;
         }
     }
 }
