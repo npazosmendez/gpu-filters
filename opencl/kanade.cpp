@@ -48,9 +48,6 @@ static int * pyramidal_heights;
 static float ** pyramidal_intensities_old;
 static float ** pyramidal_intensities_new;
 
-static float ** pyramidal_blurs_old;
-static float ** pyramidal_blurs_new;
-
 static vecf ** pyramidal_flows;
 
 
@@ -116,8 +113,6 @@ static void init(int in_width, int in_height, int levels) {
     pyramidal_heights = (int *) malloc(levels * sizeof(int));
     pyramidal_intensities_old = (float **) malloc(levels * sizeof(float *));
     pyramidal_intensities_new = (float **) malloc(levels * sizeof(float *));
-    pyramidal_blurs_old = (float **) malloc(levels * sizeof(float *));
-    pyramidal_blurs_new = (float **) malloc(levels * sizeof(float *));
     pyramidal_flows = (vecf **) malloc(levels * sizeof(vecf *));
 
 
@@ -148,8 +143,6 @@ static void init(int in_width, int in_height, int levels) {
         pyramidal_heights[pi] = current_height;
         pyramidal_intensities_old[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_intensities_new[pi] = (float *) malloc(current_width * current_height * sizeof(float));
-        pyramidal_blurs_old[pi] = (float *) malloc(current_width * current_height * sizeof(float));
-        pyramidal_blurs_new[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_flows[pi] = (vecf *) malloc(current_width * current_height * sizeof(vecf));
 
         // +++++++
@@ -283,12 +276,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         int height = pyramidal_heights[pi];
         float * intensity_old = pyramidal_intensities_old[pi];
         float * intensity_new = pyramidal_intensities_new[pi];
-        float * blur_old = pyramidal_blurs_old[pi];
-        float * blur_new = pyramidal_blurs_new[pi];
-
-        // Gaussian blur
-        convoluion2D(intensity_old, width, height, KERNEL_GAUSSIAN_BLUR, 3, blur_old);
-        convoluion2D(intensity_new, width, height, KERNEL_GAUSSIAN_BLUR, 3, blur_new);
 
         // CL CODE
         // +++++++
@@ -322,9 +309,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         );
         clHandleError(__FILE__,__LINE__,err);
 
-        err = queue.enqueueReadBuffer(*b_blur_new, CL_TRUE, 0, sizeof(float)*width*height, blur_new);
-        err = queue.enqueueReadBuffer(*b_blur_old, CL_TRUE, 0, sizeof(float)*width*height, blur_old);
-
         // +++++++
         // CL CODE
 
@@ -341,11 +325,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
 
         // CL CODE
         // +++++++
-        err = queue.enqueueWriteBuffer(*b_blur_new, CL_TRUE, 0, sizeof(float)*width*height, blur_new);
-        clHandleError(__FILE__,__LINE__,err);
-        err = queue.enqueueWriteBuffer(*b_blur_old, CL_TRUE, 0, sizeof(float)*width*height, blur_old);
-        clHandleError(__FILE__,__LINE__,err);
-
         Buffer * b_next_intensity_old = b_pyramidal_intensities_old[pi+1];
         Buffer * b_next_intensity_new = b_pyramidal_intensities_new[pi+1];
 
