@@ -47,11 +47,6 @@ static int * pyramidal_heights;
 
 static vecf * flow_output;
 
-
-static float * debug_gradient_x;
-static float * debug_gradient_y;
-
-
 static Kernel k_calculate_flow;
 static Kernel k_convolution_x;
 static Kernel k_convolution_y;
@@ -79,8 +74,6 @@ static cl_int err = 0;
 
 static void init(int in_width, int in_height, int levels) {
 
-    // +++++++
-    // CL CODE
     cout << "Initializing OpenCL model for Optical Flow\n";
 
     // OpenCL initialization
@@ -101,9 +94,9 @@ static void init(int in_width, int in_height, int levels) {
     initialized = true;
 
     // Img buffers
-    b_img_new = new Buffer(context, CL_MEM_READ_WRITE, 3 * in_width * in_height* sizeof(char), NULL, &err);
+    b_img_new = new Buffer(context, CL_MEM_READ_WRITE, 3 * in_width * in_height * sizeof(char), NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
-    b_img_old = new Buffer(context, CL_MEM_READ_WRITE, 3 * in_width * in_height* sizeof(char), NULL, &err);
+    b_img_old = new Buffer(context, CL_MEM_READ_WRITE, 3 * in_width * in_height * sizeof(char), NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 
     // Output buffer
@@ -120,9 +113,6 @@ static void init(int in_width, int in_height, int levels) {
     b_pyramidal_blurs_old = (Buffer **) malloc(levels * sizeof(Buffer *));
     b_pyramidal_blurs_new = (Buffer **) malloc(levels * sizeof(Buffer *));
     b_pyramidal_flows = (Buffer **) malloc(levels * sizeof(Buffer *));
-
-    debug_gradient_x = (float *) malloc(in_width * in_height * sizeof(float));
-    debug_gradient_y = (float *) malloc(in_width * in_height * sizeof(float));
 
     // Image buffers
     int current_width = in_width;
