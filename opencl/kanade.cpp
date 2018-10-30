@@ -45,9 +45,6 @@ static bool initialized = false;
 static int * pyramidal_widths;
 static int * pyramidal_heights;
 
-static float ** pyramidal_intensities_old;
-static float ** pyramidal_intensities_new;
-
 static vecf ** pyramidal_flows;
 
 
@@ -61,6 +58,9 @@ static Kernel k_convolution_y;
 static Kernel k_convolution_blur;
 static Kernel k_subsample;
 static Kernel k_calculate_intensity;
+
+static Buffer * b_img_old;
+static Buffer * b_img_new;
 
 static Buffer ** b_pyramidal_intensities_old;
 static Buffer ** b_pyramidal_intensities_new;
@@ -100,11 +100,15 @@ static void init(int in_width, int in_height, int levels) {
     // Flag
     initialized = true;
 
+    // Img buffers
+    b_img_new = new Buffer(context, CL_MEM_READ_WRITE, 3 * in_width * in_height* sizeof(char), NULL, &err);
+    clHandleError(__FILE__,__LINE__,err);
+    b_img_old = new Buffer(context, CL_MEM_READ_WRITE, 3 * in_width * in_height* sizeof(char), NULL, &err);
+    clHandleError(__FILE__,__LINE__,err);
+
     // Pyramid buffers
     pyramidal_widths = (int *) malloc(levels * sizeof(int));
     pyramidal_heights = (int *) malloc(levels * sizeof(int));
-    pyramidal_intensities_old = (float **) malloc(levels * sizeof(float *));
-    pyramidal_intensities_new = (float **) malloc(levels * sizeof(float *));
     pyramidal_flows = (vecf **) malloc(levels * sizeof(vecf *));
 
     b_pyramidal_intensities_old = (Buffer **) malloc(levels * sizeof(Buffer *));
@@ -125,8 +129,6 @@ static void init(int in_width, int in_height, int levels) {
     forn(pi, levels) {
         pyramidal_widths[pi] = current_width;
         pyramidal_heights[pi] = current_height;
-        pyramidal_intensities_old[pi] = (float *) malloc(current_width * current_height * sizeof(float));
-        pyramidal_intensities_new[pi] = (float *) malloc(current_width * current_height * sizeof(float));
         pyramidal_flows[pi] = (vecf *) malloc(current_width * current_height * sizeof(vecf));
 
         b_pyramidal_intensities_old[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
@@ -162,8 +164,6 @@ static void calculate_flow(int pi, int levels) {
 
     int width = pyramidal_widths[pi];
     int height = pyramidal_heights[pi];
-    float * intensity_old = pyramidal_intensities_old[pi];
-    float * intensity_new = pyramidal_intensities_new[pi];
     vecf * flow = pyramidal_flows[pi];
 
     vecf * previous_flow = pi < levels - 1 ? pyramidal_flows[pi+1] : NULL;
@@ -225,22 +225,33 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
     // Full Image Intensity
     int full_width = pyramidal_widths[0];
     int full_height = pyramidal_heights[0];
-    float * full_intensity_old = pyramidal_intensities_old[0];
-    float * full_intensity_new = pyramidal_intensities_new[0];
 
-    forn(i, full_height * full_width) {
-        unsigned char (*img_oldRGB)[3] = (unsigned char (*)[3])img_old;
-        full_intensity_old[i] = (img_oldRGB[i][0] + img_oldRGB[i][1] + img_oldRGB[i][2]) / 3;
-    }
+    Buffer * b_full_intensity_old = b_pyramidal_intensities_old[0];
+    Buffer * b_full_intensity_new = b_pyramidal_intensities_new[0];
 
-    forn(i, full_height * full_width) {
-        unsigned char (*img_newRGB)[3] = (unsigned char (*)[3])img_new;
-        full_intensity_new[i] = (img_newRGB[i][0] + img_newRGB[i][1] + img_newRGB[i][2]) / 3;
-    }
-
-    err = queue.enqueueWriteBuffer(*b_pyramidal_intensities_old[0], CL_TRUE, 0, sizeof(float)*full_width*full_height, pyramidal_intensities_old[0]);
+    err = queue.enqueueWriteBuffer(*b_img_old, CL_TRUE, 0, 3 * full_width * full_height * sizeof(char), img_old);
     clHandleError(__FILE__,__LINE__,err);
-    err = queue.enqueueWriteBuffer(*b_pyramidal_intensities_new[0], CL_TRUE, 0, sizeof(float)*full_width*full_height, pyramidal_intensities_new[0]);
+    err = queue.enqueueWriteBuffer(*b_img_new, CL_TRUE, 0, 3 * full_width * full_height * sizeof(char), img_new);
+    clHandleError(__FILE__,__LINE__,err);
+
+    k_calculate_intensity.setArg(0, *b_img_old);
+    k_calculate_intensity.setArg(1, *b_full_intensity_old);
+    err = queue.enqueueNDRangeKernel(
+            k_calculate_intensity,
+            NullRange,
+            NDRange(full_height * full_width, 1),
+            NullRange // default
+    );
+    clHandleError(__FILE__,__LINE__,err);
+
+    k_calculate_intensity.setArg(0, *b_img_new);
+    k_calculate_intensity.setArg(1, *b_full_intensity_new);
+    err = queue.enqueueNDRangeKernel(
+            k_calculate_intensity,
+            NullRange,
+            NDRange(full_height * full_width, 1),
+            NullRange // default
+    );
     clHandleError(__FILE__,__LINE__,err);
 
     // Pyramid Construction
@@ -248,8 +259,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         // Sub-image
         int width = pyramidal_widths[pi];
         int height = pyramidal_heights[pi];
-        float * intensity_old = pyramidal_intensities_old[pi];
-        float * intensity_new = pyramidal_intensities_new[pi];
 
         Buffer * b_intensity_old = b_pyramidal_intensities_old[pi];
         Buffer * b_intensity_new = b_pyramidal_intensities_new[pi];
@@ -279,8 +288,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         // Sub-sample
         int next_width = pyramidal_widths[pi+1];
         int next_height = pyramidal_heights[pi+1];
-        float * next_intensity_old = pyramidal_intensities_old[pi+1];
-        float * next_intensity_new = pyramidal_intensities_new[pi+1];
 
         Buffer * b_next_intensity_old = b_pyramidal_intensities_old[pi+1];
         Buffer * b_next_intensity_new = b_pyramidal_intensities_new[pi+1];
@@ -314,7 +321,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         // Sub-image
         int width = pyramidal_widths[pi];
         int height = pyramidal_heights[pi];
-        float * intensity_old = pyramidal_intensities_old[pi];
 
         Buffer * b_gradient_x = b_pyramidal_gradients_x[pi];
         Buffer * b_gradient_y = b_pyramidal_gradients_y[pi];
