@@ -8,6 +8,10 @@ typedef struct t_vec {
     int x, y;
 } vec;
 
+typedef struct t_vecf {
+    float x, y;
+} vecf;
+
 void canny(char * src, int width, int height, float uthreshold, float lthreshold);
 void hough(char * src, int width, int height, int a_ammount, int p_ammount, char* counter);
 void inpainting(char * ptr, int width, int height, bool * mask, int * debug);
