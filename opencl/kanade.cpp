@@ -45,7 +45,7 @@ static bool initialized = false;
 static int * pyramidal_widths;
 static int * pyramidal_heights;
 
-static vecf ** pyramidal_flows;
+static vecf * flow_output;
 
 
 static float * debug_gradient_x;
@@ -106,10 +106,12 @@ static void init(int in_width, int in_height, int levels) {
     b_img_old = new Buffer(context, CL_MEM_READ_WRITE, 3 * in_width * in_height* sizeof(char), NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 
+    // Output buffer
+    flow_output = (vecf *) malloc(in_width * in_height * sizeof(vecf));
+
     // Pyramid buffers
     pyramidal_widths = (int *) malloc(levels * sizeof(int));
     pyramidal_heights = (int *) malloc(levels * sizeof(int));
-    pyramidal_flows = (vecf **) malloc(levels * sizeof(vecf *));
 
     b_pyramidal_intensities_old = (Buffer **) malloc(levels * sizeof(Buffer *));
     b_pyramidal_intensities_new = (Buffer **) malloc(levels * sizeof(Buffer *));
@@ -129,7 +131,6 @@ static void init(int in_width, int in_height, int levels) {
     forn(pi, levels) {
         pyramidal_widths[pi] = current_width;
         pyramidal_heights[pi] = current_height;
-        pyramidal_flows[pi] = (vecf *) malloc(current_width * current_height * sizeof(vecf));
 
         b_pyramidal_intensities_old[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
@@ -164,9 +165,7 @@ static void calculate_flow(int pi, int levels) {
 
     int width = pyramidal_widths[pi];
     int height = pyramidal_heights[pi];
-    vecf * flow = pyramidal_flows[pi];
 
-    vecf * previous_flow = pi < levels - 1 ? pyramidal_flows[pi+1] : NULL;
     int previous_width = pi < levels - 1 ? pyramidal_widths[pi+1] : -1;
     int previous_height = pi < levels - 1 ? pyramidal_heights[pi+1] : -1;
 
@@ -176,14 +175,9 @@ static void calculate_flow(int pi, int levels) {
     Buffer * b_intensity_new = b_pyramidal_intensities_new[pi];
     Buffer * b_flow = b_pyramidal_flows[pi];
 
-    err = queue.enqueueWriteBuffer(*b_flow, CL_TRUE, 0, sizeof(vecf)*width*height, flow);
-        clHandleError(__FILE__,__LINE__,err);
-
     Buffer * b_previous_flow = NULL;
     if (pi < levels - 1) {
         b_previous_flow = b_pyramidal_flows[pi+1];
-        err = queue.enqueueWriteBuffer(*b_previous_flow, CL_TRUE, 0, sizeof(vecf)*previous_width*previous_height, previous_flow);
-            clHandleError(__FILE__,__LINE__,err);
     }
 
     k_calculate_flow.setArg(0, width);
@@ -204,9 +198,6 @@ static void calculate_flow(int pi, int levels) {
             NullRange // default
     );
     clHandleError(__FILE__,__LINE__,err);
-
-    err = queue.enqueueReadBuffer(*b_flow, CL_TRUE, 0, sizeof(vecf)*width*height, flow);
-        clHandleError(__FILE__,__LINE__,err);
 }
 
 void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec * output_flow, int levels) {
@@ -217,9 +208,11 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
     forn(pi, levels) {
         int width = pyramidal_widths[pi];
         int height = pyramidal_heights[pi];
-        vecf * flow = pyramidal_flows[pi];
 
-        memset(flow, 0, width * height * sizeof(vecf));
+        Buffer * b_flow = b_pyramidal_flows[pi];
+
+        err = queue.enqueueFillBuffer(*b_flow, (int)0, 0, width * height * sizeof(vecf));
+        clHandleError(__FILE__,__LINE__,err);
     }
 
     // Full Image Intensity
@@ -351,9 +344,10 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
     }
 
     // Output
-    vecf * full_flow = pyramidal_flows[0];
+    err = queue.enqueueReadBuffer(*b_pyramidal_flows[0], CL_TRUE, 0, sizeof(vecf)*full_width*full_height, flow_output);
+    clHandleError(__FILE__,__LINE__,err);
 
     forn(i, full_width * full_height) {
-        output_flow[i] = (vec) { (int) full_flow[i].x, (int) full_flow[i].y };
+        output_flow[i] = (vec) { (int) flow_output[i].x, (int) flow_output[i].y };
     }
 }
