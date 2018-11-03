@@ -2,6 +2,9 @@
 #define OPENCLFILTERS_H
 
 #include <string>
+extern "C" {
+    #include "../c/c-filters.h"
+}
 
 /* Image filters */
 
@@ -12,6 +15,8 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
 
 void CL_inpaint_init(int width, int height, char * ptr, bool * mask_ptr, int * debug);
 bool CL_inpaint_step(int width, int height, char * ptr, bool * mask_ptr, int * debug);
+
+void CL_kanade(int width, int height, char * imgA, char * imgB, vec * flow, int levels);
 
 /* OpenCL setup and config */
 

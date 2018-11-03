@@ -18,11 +18,18 @@ extern "C" {
 using namespace cv;
 using namespace std;
 
-#define GRANULARITY 10
-#define FACTOR 1
-
 #define LINEAR(x,y) (y)*width+(x)
 #define forn(i,n) for(int i=0; i<(n); i++)
+
+
+#define WIDTH 640
+#define HEIGHT 480
+
+#define LEVELS 4
+#define GRANULARITY 10
+#define FACTOR 1
+#define MIN_LENGTH 2
+
 
 bool quit = false;
 
@@ -32,9 +39,48 @@ Mat drawnFrame;
 
 int main(int argc, char** argv) {
 
+    // Params
+
+    void (*picked_kanade)(int, int, char*, char*, vec*, int) = kanade;
+
+    for (int i = 1; i < argc; i++) {
+        string param = argv[i];
+        if (param == "-cl") {
+            /* implementation selection */
+            cout << "Using OpenCL implementation..." << endl;
+            picked_kanade = CL_kanade;
+        } else if (param == "-d") {
+            /* device selection */
+            if (i+1 == argc) {
+                cerr << "Device name missing after '-d'." << endl;
+                exit(1);
+            }
+            int device;
+            try {
+                device = stoi(argv[i+1]);
+            } catch (int e) {
+                cerr << "Couldn't convert '-d' parameter to number" << endl;
+                return -1;
+            }
+            selectDevice(device);
+        } else if (param == "-h") {
+            cout << "Usage:\n";
+            cout << "  flowcalculator [flags]\n";
+            cout << "Flags\n";
+            cout << "  -cl: Uses OpenCL implementation instead of the C implementation\n";
+            cout << "  -d <number>: Picks device to use for the computation\n";
+            cout << "\n";
+
+            return 0;
+        }
+    }
+
     // Initialize stuff
 
     VideoCapture stream = VideoCapture(0);
+    stream.set(CV_CAP_PROP_FRAME_WIDTH, WIDTH);
+    stream.set(CV_CAP_PROP_FRAME_HEIGHT, HEIGHT);
+
     width = stream.get(CV_CAP_PROP_FRAME_WIDTH);
     height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
 
@@ -75,15 +121,24 @@ int main(int argc, char** argv) {
 
         current_ptr = (char*)cameraFrame.ptr();
 
-        kanade(width, height, old_ptr, current_ptr, flow);
+        picked_kanade(width, height, old_ptr, current_ptr, flow, LEVELS);
 
         drawnFrame = cameraFrame.clone();
         forn(y, height) forn(x, width) if (y % GRANULARITY == 0 && x % GRANULARITY == 0) {
             vec displacement = flow[LINEAR(x, y)];
             displacement.x *= FACTOR;
             displacement.y *= FACTOR;
-            if (displacement.x != 0 || displacement.y != 0) {
-                arrowedLine(drawnFrame, Point(x, y), Point(x + displacement.x, y + displacement.y), Scalar( 0, 200, 0 ), 1);
+            if (abs(displacement.x) > MIN_LENGTH || abs(displacement.y) > MIN_LENGTH) {
+                arrowedLine(
+                        drawnFrame,                                    // mat to draw into
+                        Point(x, y),                                   // origin position
+                        Point(x + displacement.x, y + displacement.y), // arrow tip position
+                        Scalar( 0, 200, 0 ),                           // color
+                        1.2,                                           // thickness
+                        8,                                             // line type (default=8)
+                        0,                                             // shift (default=0)
+                        0.4                                            // tip length (ratio)
+                );
             }
         }
 
