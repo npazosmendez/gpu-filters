@@ -55,7 +55,7 @@ void ControlsWindow::setCamera(){
 
 }
 void ControlsWindow::setFile(QString file_name_){
-	const char * file_name = file_name_.toStdString().c_str();;
+	string file_name = file_name_.toStdString().c_str();
 	debug_print("Video file set to %s\n", file_name );
 	disassemble();
 
