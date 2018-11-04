@@ -1,6 +1,6 @@
 #if defined __cplusplus
 #include <opencv2/imgproc/imgproc.hpp>
-#include "../opencl/headers/cl2.hpp"
+#include "../include/cl2.hpp"
 
 #include <QFileDialog>
 #include <QPushButton>
