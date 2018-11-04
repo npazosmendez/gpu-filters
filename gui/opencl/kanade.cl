@@ -245,6 +245,6 @@ __kernel void calculate_intensity(
 
     int i = (int)(get_global_id(0));
 
-    dst[i] = (src[i+0] + src[i+1] + src[i+2]) / 3;
+    dst[i] = (src[3*i+0] + src[3*i+1] + src[3*i+2]) / 3;
 
 }
