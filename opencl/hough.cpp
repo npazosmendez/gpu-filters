@@ -21,6 +21,9 @@ Kernel k_count_edges;
 Kernel k_draw_counter;
 Kernel k_find_peaks;
 
+#define MAX_WIDTH 2000
+#define MAX_HEIGHT 1200
+
 void initCLHough(int width, int height, int a_ammount, int p_ammount){
     /* 1. Build PROGRAM from source, for specific context */
     ifstream sourceFile("opencl/hough.cl");
@@ -60,7 +63,9 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
 
     float uthreshold = 70;
     float lthreshold = 20;
-    CL_canny(src, width, height, uthreshold, lthreshold);
+    char canny_edges[MAX_WIDTH * MAX_HEIGHT];
+    memcpy(canny_edges, src, 3 * sizeof(char) * width * height);
+    CL_canny(canny_edges, width, height, uthreshold, lthreshold);
 
     if(!openCL_initialized) initCL();
     if(!CL_hough_initialized) initCLHough(width, height, a_ammount, p_ammount);
@@ -68,7 +73,7 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
 
     cl_int err = 0;
     // 1. Transfer image to GPU
-    err = queue.enqueueWriteBuffer(cl_charImage_, CL_TRUE, 0, 3*height*width, src);
+    err = queue.enqueueWriteBuffer(cl_charImage_, CL_TRUE, 0, 3*height*width, canny_edges);
     clHandleError(__FILE__,__LINE__,err);
 
     err = queue.enqueueFillBuffer(cl_hough_counter, (int)0, 0, a_ammount*p_ammount*sizeof(int));
@@ -101,6 +106,8 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
     );
     clHandleError(__FILE__,__LINE__,err);
 
+    err = queue.enqueueWriteBuffer(cl_charImage_, CL_TRUE, 0, 3*height*width, src);
+    clHandleError(__FILE__,__LINE__,err);
     /* find peakds in counter */
     k_find_peaks.setArg(0, cl_hough_counter);
     k_find_peaks.setArg(1, cl_image_counter);
