@@ -28,7 +28,7 @@ extern cl::CommandQueue queue;
 extern cl::Program program;
 extern bool openCL_initialized;
 
-void initCL();
+void initCL(bool verbose = true);
 void selectDevice(int i);
 char *getCLErrorString(cl_int err);
 void printImageFormat(cl::ImageFormat format);

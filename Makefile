@@ -30,7 +30,7 @@ ifeq ($(shell uname -s),Linux)
 endif
 
 # Apps
-APPS := inpainter linedetector flowcalculator tests
+APPS := inpainter linedetector flowcalculator tests timer
 
 apps: CPPFLAGS += -O3 -g
 apps: $(APPS)
@@ -39,7 +39,7 @@ dapps: CPPFLAGS += -g
 dapps: $(APPS)
 
 $(APPS): % : $(OBJECTS) $(addprefix apps/, %.o)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LIBS) -o $@
+	$(CXX) $(CPPFLAGS) -g $(CXXFLAGS) $^ $(LIBS) -o $@
 
 clean:
 	rm -f $(OBJECTS) $(APPS) $(addprefix apps/, $(APPS:=.o))

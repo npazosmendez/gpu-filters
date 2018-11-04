@@ -15,21 +15,25 @@ cl::Program program;
 bool openCL_initialized = false;
 int device_index = 0;
 
-void initCL(){
+void initCL(bool verbose){
     /* Find PLATFORM */
     cl::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
-    cout << "Available platforms:" << endl;
-    for (unsigned int i = 0; i < platforms.size(); i++)
-    cout << "\t* " << platforms[i].getInfo<CL_PLATFORM_NAME>() << ", " << platforms[i].getInfo<CL_PLATFORM_VENDOR>() << endl;
+    if (verbose){
+        cout << "Available platforms:" << endl;
+        for (unsigned int i = 0; i < platforms.size(); i++)
+        cout << "\t* " << platforms[i].getInfo<CL_PLATFORM_NAME>() << ", " << platforms[i].getInfo<CL_PLATFORM_VENDOR>() << endl;
+    }
     platform = platforms[0]; // la primera platform
 
     /* Find available DEVICES */
     cl::vector<Device> devices;
     platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
-    cout << "Available devices:" << endl;
-    for (unsigned int i = 0; i < devices.size(); i++)
-    cout << "\t* " << devices[i].getInfo<CL_DEVICE_NAME>() << ", " << devices[i].getInfo<CL_DEVICE_VENDOR>() << endl;
+    if (verbose){
+        cout << "Available devices:" << endl;
+        for (unsigned int i = 0; i < devices.size(); i++)
+        cout << "\t* " << devices[i].getInfo<CL_DEVICE_NAME>() << ", " << devices[i].getInfo<CL_DEVICE_VENDOR>() << endl;
+    }
     device = devices[device_index]; // el primer device
 
     /* Create CONTEXT on that platform */
@@ -39,8 +43,10 @@ void initCL(){
     /* Create COMMAND QUEUE for a device */
     queue = CommandQueue(context, device);
 
-    cout << "Using platform: " << platform.getInfo<CL_PLATFORM_NAME>() << endl;
-    cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << endl;
+    if (verbose){
+        cout << "Using platform: " << platform.getInfo<CL_PLATFORM_NAME>() << endl;
+        cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << endl;
+    }
     openCL_initialized = true;
 }
 
