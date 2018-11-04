@@ -18,7 +18,7 @@ CONFIG += debug
 
 # Extra libs 
 LIBS += -lpthread -lOpenCL
-LIBS += /usr/local/lib/libopencv_*.3.4
+LIBS += `pkg-config --cflags --libs opencv`
 
 # Image processing sources
 SOURCES += ../opencl/*.cpp

@@ -115,7 +115,12 @@ void KanadeFilter::overlay_flow(Mat* frame){
         displacement.y *= FACTOR;
         if (displacement.x != 0 || displacement.y != 0) {
             debug_print("drawing line at %d %d\n", x, y);
-            cv::arrowedLine(*frame, Point(x, y), Point(x + displacement.x, y + displacement.y), Scalar( 0, 200, 0 ), 1);
+            cv::line(
+                *frame,
+                Point(x, y),
+                Point(x + displacement.x, y + displacement.y),
+                Scalar( 0, 200, 0 ),
+                1);
         }
     }
 }
