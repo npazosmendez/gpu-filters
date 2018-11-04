@@ -7,7 +7,9 @@
 #include <iostream>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "FilterControls.hpp"
-
+extern "C" {
+    #include <c/c-filters.h>
+}
 using namespace cv;
 using namespace std;
 
@@ -32,6 +34,19 @@ class ImageFilter : public QThread {
 		void filtered_frame(Mat* frame);
 };
 
+
+class KanadeFilter : public ImageFilter {
+    Q_OBJECT
+	public:
+		FilterControls * controls();
+
+	private:
+		Mat _last_frame;
+		vec _flow[2000*2000];
+		void process_frame_CL(Mat *);
+		void process_frame_C(Mat *);
+		void overlay_flow(Mat* frame);
+};
 
 class CannyFilter : public ImageFilter {
     Q_OBJECT

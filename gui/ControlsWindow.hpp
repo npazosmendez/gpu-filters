@@ -20,7 +20,7 @@ private:
 	VideoWindow * _video_window;
 	VideoStreamer * _camera;
 	ImageFilter * _current_filter;
-	ImageFilter * _filters[3];
+	ImageFilter * _filters[4];
 	FilterControls* _controls;
 
 	QPushButton _camera_button;

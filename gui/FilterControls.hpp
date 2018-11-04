@@ -46,6 +46,16 @@ private:
 	FancySlider _distance_granularity_slider;
 };
 
+class KanadeControls : public FilterControls {
+	Q_OBJECT
+public:
+	KanadeControls(ImageFilter*, QWidget *parent = 0);
+private:
+	ImageFilter* _filter;
+	QVBoxLayout _main_layout;
+	QCheckBox _checkBox;
+};
+
 class NoControls : public FilterControls {
 	Q_OBJECT
 public:

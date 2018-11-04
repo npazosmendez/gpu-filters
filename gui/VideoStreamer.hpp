@@ -4,11 +4,13 @@
 #include <QtGui>
 #include <QLabel>
 #include <QObject>
+#include <string>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <QAtomicInt>
 
 using namespace cv;
+using namespace std;
 
 extern QAtomicInt frame_processed;
 

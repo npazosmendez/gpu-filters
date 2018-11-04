@@ -73,6 +73,57 @@ void CannyFilter::setLowerThreshold(int value){
     _lowerThreshold = value;
 }
 
+// Kanade Filter
+#define GRANULARITY 10
+#define FACTOR 1
+
+#define LINEAR(x,y) (y)*_width+(x)
+#define forn(i,n) for(int i=0; i<(n); i++)
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+void KanadeFilter::process_frame_CL(Mat *frame){
+    if (frame->size() != _last_frame.size()){
+        _last_frame = *frame;
+        return;
+    }
+    CL_kanade(frame->size().width, frame->size().height, (char*)_last_frame.ptr(), (char*)frame->ptr(), _flow, 3);
+
+    _last_frame = *frame;
+    overlay_flow(frame);
+}
+
+void KanadeFilter::process_frame_C(Mat *frame){
+    if (frame->size() != _last_frame.size()){
+        _last_frame = *frame;
+        return;
+    }
+    kanade(frame->size().width, frame->size().height, (char*)_last_frame.ptr(), (char*)frame->ptr(), _flow, 3);
+
+    _last_frame = *frame;
+    overlay_flow(frame);
+}
+
+void KanadeFilter::overlay_flow(Mat* frame){
+    int _width = frame->size().width;
+    int _height = frame->size().height;
+    
+    forn(y, _height) forn(x, _width) if (y % GRANULARITY == 0 && x % GRANULARITY == 0) {
+        vec displacement = _flow[LINEAR(x, y)];
+        displacement.x *= FACTOR;
+        displacement.y *= FACTOR;
+        if (displacement.x != 0 || displacement.y != 0) {
+            debug_print("drawing line at %d %d\n", x, y);
+            cv::arrowedLine(*frame, Point(x, y), Point(x + displacement.x, y + displacement.y), Scalar( 0, 200, 0 ), 1);
+        }
+    }
+}
+
+FilterControls* KanadeFilter::controls(){
+    return new KanadeControls(this);
+}
+
 // Hough Filter
 
 void HoughFilter::process_frame_CL(Mat *frame){

@@ -31,6 +31,17 @@ HoughControls::HoughControls(ImageFilter* filter, QWidget *parent)
 	setLayout(&_main_layout);
 }
 
+KanadeControls::KanadeControls(ImageFilter* filter, QWidget *parent) 
+	: FilterControls(parent), _filter(filter), _checkBox("OpenCL")
+	 {
+
+	_main_layout.addWidget(&_checkBox);
+
+	QObject::connect(&_checkBox, SIGNAL(stateChanged(int)), filter, SLOT(toggle_CL(int)));
+
+	setLayout(&_main_layout);
+}
+
 CannyControls::CannyControls(CannyFilter* filter, QWidget *parent) 
 	: FilterControls(parent), _filter(filter), _checkBox("OpenCL"),
 	_higher_slider("Higher Threshold", 0 , 100), _lower_slider("Lower Threshold", 0 , 50){

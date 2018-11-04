@@ -16,6 +16,7 @@ ControlsWindow::ControlsWindow(QWidget *parent) :
 	_comboBox.addItem("No Filter");
 	_comboBox.addItem("Canny");
 	_comboBox.addItem("Hough");
+	_comboBox.addItem("Kanade");
 
 	_main_layout.addWidget(&_comboBox);
 	_main_layout.addWidget(&_browser);
@@ -32,6 +33,7 @@ ControlsWindow::ControlsWindow(QWidget *parent) :
     _filters[0] = new NoFilter;
     _filters[1] = new CannyFilter;
     _filters[2] = new HoughFilter;
+    _filters[3] = new KanadeFilter;
 	_current_filter = _filters[0];
 	_controls = _current_filter->controls();
 	assemble();
@@ -63,7 +65,8 @@ void ControlsWindow::setFile(QString file_name){
 	assemble();
 
 }
-void ControlsWindow::setFilter(QString filterName){
+void ControlsWindow::setFilter(QString filterName_){
+	const char * filterName = filterName_.toStdString().c_str();;
 	debug_print("Filter set to %s\n",filterName);
 	disassemble();
 
@@ -71,12 +74,35 @@ void ControlsWindow::setFilter(QString filterName){
 	_controls->deleteLater();
 	QObject::disconnect(this, SIGNAL(yyy()),_current_filter, SLOT(xxx()));
 
-	if (filterName == "No Filter") _current_filter = _filters[0];
-	if (filterName == "Canny") _current_filter = _filters[1];
-	if (filterName == "Hough") _current_filter = _filters[2];
+	if (strcmp(filterName, "No Filter") == 0 ){
+		 _current_filter = _filters[0];
+		 debug_print("Just set No Filter\n");
+	}else{
+		debug_print("Not No\n");
+	}
+	if (strcmp(filterName, "Canny") == 0 ){
+		 _current_filter = _filters[1];
+		 debug_print("Just set Canny\n");
+	}else{
+		debug_print("Not Canny\n");
+	}
+	if (strcmp(filterName, "Hough") == 0 ){
+		 _current_filter = _filters[2];
+		 debug_print("Just set Hough\n");
+	}else{
+		debug_print("Not Hough\n");
+	}
+	if (strcmp(filterName, "Kanade") == 0 ){
+		 _current_filter = _filters[3];
+		 debug_print("Just set Kanade\n");
+	}else{
+		debug_print("Not Kanade\n");
+	}
+	debug_print("Done choosing filter\n");
 
 	_controls = _current_filter->controls();
 	_main_layout.addWidget(_controls);
+
 	this->adjustSize();
 	QObject::connect(this, SIGNAL(yyy()),_current_filter, SLOT(xxx()), Qt::QueuedConnection);
 
