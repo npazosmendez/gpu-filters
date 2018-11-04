@@ -40,7 +40,20 @@ private:
 	QVBoxLayout _main_layout;
 	QCheckBox _checkBox;
 
-	FancySlider _higher_slider;
+	FancySlider _higher_canny_slider;
+	FancySlider _lower_canny_slider;
+	FancySlider _angle_granularity_slider;
+	FancySlider _distance_granularity_slider;
+};
+
+class KanadeControls : public FilterControls {
+	Q_OBJECT
+public:
+	KanadeControls(ImageFilter*, QWidget *parent = 0);
+private:
+	ImageFilter* _filter;
+	QVBoxLayout _main_layout;
+	QCheckBox _checkBox;
 };
 
 class NoControls : public FilterControls {

@@ -4,6 +4,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "cutils.h"
+#include "debug.h"
 
 #define M_PI 3.14159265358979323846
 
@@ -15,24 +16,32 @@
 #define LINEAR(y,x) (y)*width+(x)
 
 // Global Canny variables
-bool C_canny_initialized = false;
 float * img_inten;
 float * img_smooth;
 float * Gx;
 float * Gy;
-
 /* ******************* */
 /* Auxiliary Functions */
 /* ******************* */
 
 void initCannyC(int width, int height){
+    static int _width = -1, _height = -1;
+    debug_print("initing Canny in C\n");
     // Initialize buffers for Canny algorithm
-    img_inten = (float *)malloc(width*height*sizeof(float));
-    img_smooth = (float*)malloc(width*height*sizeof(float));
-    Gx = (float *)malloc(width*height*sizeof(float));
-    Gy = (float *)malloc(width*height*sizeof(float));
-
-    C_canny_initialized = true;
+    if (width != _width || height != _height){
+        if (_width != -1 || _height != -1){
+            free(img_inten);
+            free(img_smooth);
+            free(Gx);
+            free(Gy);
+        }
+        img_inten = (float *)malloc(width*height*sizeof(float));
+        img_smooth = (float*)malloc(width*height*sizeof(float));
+        Gx = (float *)malloc(width*height*sizeof(float));
+        Gy = (float *)malloc(width*height*sizeof(float));
+        _width = width;
+        _height = height;
+    }
 }
 
 int roundDirection(float x, float y){
@@ -122,7 +131,7 @@ void canny(char * src, int width, int height, float uthreshold, float lthreshold
     - lthreshold: lower-threshhold for Canny's method
     */
 
-    if(!C_canny_initialized) initCannyC(width, height);
+    initCannyC(width, height);
 
     unsigned char (*imgRGB)[3] = (unsigned char (*)[3])src;
     src = NULL;

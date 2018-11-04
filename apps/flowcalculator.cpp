@@ -129,15 +129,12 @@ int main(int argc, char** argv) {
             displacement.x *= FACTOR;
             displacement.y *= FACTOR;
             if (abs(displacement.x) > MIN_LENGTH || abs(displacement.y) > MIN_LENGTH) {
-                arrowedLine(
+                line(
                         drawnFrame,                                    // mat to draw into
                         Point(x, y),                                   // origin position
                         Point(x + displacement.x, y + displacement.y), // arrow tip position
                         Scalar( 0, 200, 0 ),                           // color
-                        1.2,                                           // thickness
-                        8,                                             // line type (default=8)
-                        0,                                             // shift (default=0)
-                        0.4                                            // tip length (ratio)
+                        1.2                                           // thickness
                 );
             }
         }

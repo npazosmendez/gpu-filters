@@ -4,8 +4,8 @@
 #include <iostream>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "ImageFilter.hpp"
-#include "camera.hpp"
 #include "VideoWindow.hpp"
+#include "debug.h"
 using namespace cv;
 using namespace std;
 
@@ -30,7 +30,7 @@ QImage VideoWindow::MatToQImage(const Mat& mat){
         QImage img(qImageBuffer, mat.cols, mat.rows, mat.step, QImage::Format_RGB888);
         return img.rgbSwapped();
     }else{
-        qDebug() << "ERROR: Mat could not be converted to QImage.";
+        debug_print("ERROR: Mat could not be converted to QImage.\n");
         return QImage();
     }
 }
@@ -43,39 +43,30 @@ inline void VideoWindow::overlay_frame_rate(QPixmap* pixmap){
     painter.drawText( QPoint(0 + 5, pixmap->height() - 5), QString::number(fps) );
 }
     
-void VideoWindow::show_frame(Mat *cameraFrame){
+void VideoWindow::show_frame(Mat *frame){
+    debug_print("Showing frame at %p\n", frame);
     hitcounter.hit();
-    //_currentFilter.process_frame(cameraFrame);
-    image = MatToQImage(*cameraFrame);
+    image = MatToQImage(*frame);
     pixmap.convertFromImage(image);
     overlay_frame_rate(&pixmap);
+    _label->resize(image.size());
     _label->setPixmap(pixmap);
     _label->show();
-    frameReady = 0;
+    this->show();
+    this->adjustSize();
+    debug_print("Done showing frame\n");
 }
 
-void VideoWindow::setFilter(ImageFilter * filter){
-    assert(filter != NULL);
-    if (_currentFilter != NULL){
-        QObject::disconnect(&cam, SIGNAL(new_frame(Mat*)), _currentFilter, SLOT(process_frame(Mat*)) );
-        QObject::disconnect(_currentFilter, SIGNAL(frame_ready(Mat*)), this, SLOT(show_frame(Mat*)) );
-        _currentFilter->quit();
-    }
-    _currentFilter = filter;
-    _currentFilter->start();
 
-    // It's important to keep the order of these two lines below
-    QObject::connect(_currentFilter, SIGNAL(frame_ready(Mat*)), this, SLOT(show_frame(Mat*)), Qt::QueuedConnection );
-    QObject::connect(&cam, SIGNAL(new_frame(Mat*)), _currentFilter, SLOT(process_frame(Mat*)), Qt::QueuedConnection );
-    frameReady = 0;
-}
-
-VideoWindow::VideoWindow() : _label(new QLabel), _currentFilter(NULL) {
+VideoWindow::VideoWindow() : _label(new QLabel) {
+    // _label->setMinimumSize(1, 1);
     setCentralWidget(_label);
-    setFilter(&_noFilter);
-    cam.start();
 };
 
 VideoWindow::~VideoWindow() {
     delete _label;
+}
+
+void VideoWindow::xxx() {
+    debug_print("xxx\n");
 }

@@ -11,19 +11,18 @@ using namespace std;
 #include "FancySlider.hpp"
 #include "FilterControls.hpp"
 #include "ControlsWindow.hpp"
+#include "debug.h"
 
 int main(int argc, char** argv) {
-    
+	debug_print("Creating QApplication\n");
 	QApplication app(argc, argv);
 
+	debug_print("Creating controls window\n");
 	ControlsWindow controlsWindow;
 
-	//VideoWindow videoWindow(comboBox.currentText(), checkBox.checkState());
-	VideoWindow videoWindow;
-
-	QObject::connect(&controlsWindow, SIGNAL(filterChanged(ImageFilter*)), &videoWindow, SLOT(setFilter(ImageFilter*)));
 	controlsWindow.show();
-	videoWindow.show();
+
+	debug_print("Event loop executing\n");
 
     return app.exec();
 }

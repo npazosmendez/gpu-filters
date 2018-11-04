@@ -9,12 +9,35 @@ NoControls::NoControls(ImageFilter*, QWidget *parent) : FilterControls(parent) {
 
 HoughControls::HoughControls(ImageFilter* filter, QWidget *parent) 
 	: FilterControls(parent), _filter(filter), _checkBox("OpenCL"),
-	_higher_slider("Unkown", 0 , 100) {
+	_higher_canny_slider("Canny's H.T.", 0 , 100),
+	_lower_canny_slider("Canny's L.T.", 0 , 100),
+	_angle_granularity_slider("Angle granularity", 0 , 100),
+	_distance_granularity_slider("Distance granularity", 0 , 100)
+	 {
 
 	_main_layout.addWidget(&_checkBox);
-	_main_layout.addWidget(&_higher_slider);
+	_main_layout.addWidget(&_higher_canny_slider);
+	_main_layout.addWidget(&_lower_canny_slider);
+	_main_layout.addWidget(&_angle_granularity_slider);
+	_main_layout.addWidget(&_distance_granularity_slider);
 
-	QObject::connect(&_checkBox, SIGNAL(stateChanged(int)), filter, SLOT(toggleCL(int)));
+	QObject::connect(&_checkBox, SIGNAL(stateChanged(int)), filter, SLOT(toggle_CL(int)));
+
+	QObject::connect(&_higher_canny_slider, SIGNAL(valueChanged(int)), _filter, SLOT(setCannyHigherThreshold(int)));
+	QObject::connect(&_lower_canny_slider, SIGNAL(valueChanged(int)), _filter, SLOT(setCannyLowerThreshold(int)));
+	QObject::connect(&_angle_granularity_slider, SIGNAL(valueChanged(int)), _filter, SLOT(setAngleGranularity(int)));
+	QObject::connect(&_distance_granularity_slider, SIGNAL(valueChanged(int)), _filter, SLOT(setDistanceGranularity(int)));
+
+	setLayout(&_main_layout);
+}
+
+KanadeControls::KanadeControls(ImageFilter* filter, QWidget *parent) 
+	: FilterControls(parent), _filter(filter), _checkBox("OpenCL")
+	 {
+
+	_main_layout.addWidget(&_checkBox);
+
+	QObject::connect(&_checkBox, SIGNAL(stateChanged(int)), filter, SLOT(toggle_CL(int)));
 
 	setLayout(&_main_layout);
 }
@@ -35,7 +58,7 @@ CannyControls::CannyControls(CannyFilter* filter, QWidget *parent)
 	_higher_slider.setValue(70);
 	_lower_slider.setValue(30);
 
-	QObject::connect(&_checkBox, SIGNAL(stateChanged(int)), filter, SLOT(toggleCL(int)));
+	QObject::connect(&_checkBox, SIGNAL(stateChanged(int)), filter, SLOT(toggle_CL(int)));
 
 	setLayout(&_main_layout);
 }
