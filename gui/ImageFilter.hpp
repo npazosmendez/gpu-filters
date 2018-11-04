@@ -75,8 +75,6 @@ class HoughFilter : public ImageFilter {
 	public slots:
 		void setCannyHigherThreshold(int value);
 		void setCannyLowerThreshold(int value);
-		void setAngleGranularity(int value);
-		void setDistanceGranularity(int value);
 
 	private:
 		void process_frame_CL(Mat *);

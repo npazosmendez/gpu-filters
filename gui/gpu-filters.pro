@@ -11,7 +11,8 @@ INCLUDEPATH += .. ../opencl/headers/ ../include
 DEFINES += "CL_HPP_TARGET_OPENCL_VERSION=120"
 DEFINES += "CL_HPP_MINIMUM_OPENCL_VERSION=120"
 DEFINES += "DEBUG=1"
-QMAKE_CXXFLAGS += -std=c++11 
+IGNORE_WARN = -Wno-reorder
+QMAKE_CXXFLAGS += -std=c++11 $${IGNORE_WARN}
 CONFIG += object_with_source # put .o in same dir as source, so we can have sources with same names
 CONFIG += precompile_header
 CONFIG += debug

@@ -70,7 +70,7 @@ Camera::Camera(){
 	height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
 	if (!stream.isOpened()) {
 	    cerr << "Failed to open stream." << endl;
-	    int a = 1/0;
+	    abort();
 	}
     stream.read(_buffer[0]);
     stream.read(_buffer[1]);

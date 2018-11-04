@@ -42,8 +42,6 @@ private:
 
 	FancySlider _higher_canny_slider;
 	FancySlider _lower_canny_slider;
-	FancySlider _angle_granularity_slider;
-	FancySlider _distance_granularity_slider;
 };
 
 class KanadeControls : public FilterControls {

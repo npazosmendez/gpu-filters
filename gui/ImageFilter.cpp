@@ -161,15 +161,6 @@ void HoughFilter::setCannyLowerThreshold(int value){
     _canny_low = value;
 }
 
-void HoughFilter::setAngleGranularity(int value){
-    // TODO
-    // a_ammount = max(0, min(value, 300));
-}
-void HoughFilter::setDistanceGranularity(int value){
-    // TODO
-    // p_ammount = max(0, min(value, 300));
-}
-
 // No Filter
 
 FilterControls* NoFilter::controls(){

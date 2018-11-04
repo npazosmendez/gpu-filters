@@ -54,12 +54,13 @@ void ControlsWindow::setCamera(){
 	assemble();
 
 }
-void ControlsWindow::setFile(QString file_name){
+void ControlsWindow::setFile(QString file_name_){
+	const char * file_name = file_name_.toStdString().c_str();;
 	debug_print("Video file set to %s\n", file_name );
 	disassemble();
 
 	_camera->deleteLater();
-	_camera = new VideoFileStreamer(file_name.toStdString());
+	_camera = new VideoFileStreamer(file_name);
 	_camera_is_on = false;
 
 	assemble();
