@@ -5,8 +5,10 @@ extern "C" {
 #include "opencl/opencl-filters.hpp"
 #include <chrono>
 #include <TextTable.h>
-#include <iomanip> // setprecision
-#include <sstream> // stringstream
+#include <iomanip>
+#include <sstream>
+#include <set>
+#include <map>
 
 #define REPEAT(N) for(int _i=0; _i<(N); _i++)
 
@@ -98,22 +100,56 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
     CL_miliseconds_duration = CL_microsec_duration / time_iterations / 1000.0;
 }
 
-int main(int argc, char** argv) {
-    initCL(false);
 
-    TextTable text_table( '-', '|', '+' );
+map<string, string> parse_args(int argc, const char** argv){
+    map<string, string> result;
+    for (int i = 0; i < argc; ++i){
+        string key = argv[i];
+        if (key.size() > 1 and key[0] == '-' and key[1] == '-'){
+            if (i+1 < argc){
+                result[key] = argv[i+1];
+            }else{
+                result[key] = "";
+            }
+        }
+    }
+    return result;
+}
 
-    text_table.add( "Filter" );
-    text_table.add("");
-    text_table.add( "Frame time (C)" );
-    text_table.add( "FPS (C)" );
-    text_table.add( "Frame time (OpenCL)" );
-    text_table.add( "FPS (OpenCL)" );
-    text_table.add( "x" );
-    text_table.endOfRow();
+int main(int argc, const char** argv) {
 
-    text_table.setAlignment( 2, TextTable::Alignment::RIGHT );
-    text_table.setAlignment( 4, TextTable::Alignment::RIGHT );
+    map<string, string> arguments = parse_args(argc, argv);
+
+    if (arguments.count("--help")){
+        cout << "Timing application for the filters. For custom timing try:" << endl;
+        cout << "\t--filter <filter_name> (canny/hough/kanade)" << endl;
+        cout << "\t--iterations <#iterations>" << endl;
+        cout << "\t--help" << endl;
+        return 0;
+    }
+
+    set<string> all_filters = {"canny", "hough", "kanade"};
+    set<string> selected_filters;
+    if (arguments.count("--filter")){
+        string filter = arguments["--filter"];
+        if(not all_filters.count(filter)){
+            cerr << "Unkown filter '" << filter << "'" << endl;
+            abort();
+        }
+        selected_filters.insert(filter);
+    }else{
+        selected_filters = all_filters;
+    }
+
+    int warmup_iterations = 10;
+    int time_iterations = 10;
+    if (arguments.count("--iterations")){
+        time_iterations = stoi(arguments["--iterations"]);
+        if (time_iterations <= 0){
+            cerr << "Number of iterations should be positive" << endl;
+            abort();
+        }
+    }
 
     width = 640;
     height = 360;
@@ -125,21 +161,29 @@ int main(int argc, char** argv) {
     p_ammount = 100;
     counter = (char*)malloc(a_ammount*p_ammount*3*sizeof(char));
 
-    
 
-    int warmup_iterations = 10;
-    int time_iterations = 10;
+    TextTable text_table( '-', '|', '+' );
+    text_table.add( "Filter" );
+    text_table.add("");
+    text_table.add( "Frame time (C)" );
+    text_table.add( "FPS (C)" );
+    text_table.add( "Frame time (OpenCL)" );
+    text_table.add( "FPS (OpenCL)" );
+    text_table.add( "x" );
+    text_table.endOfRow();
+    text_table.setAlignment( 2, TextTable::Alignment::RIGHT );
+    text_table.setAlignment( 4, TextTable::Alignment::RIGHT );
+    
+    initCL(false);
+
     double C_miliseconds_duration;
     double CL_miliseconds_duration;
 
-    time_filter("canny", warmup_iterations, time_iterations, C_miliseconds_duration, CL_miliseconds_duration);
-    print_filter_measurements("Canny", CL_miliseconds_duration, C_miliseconds_duration, text_table);
+    for(string filter_name : selected_filters){
+        time_filter(filter_name, warmup_iterations, time_iterations, C_miliseconds_duration, CL_miliseconds_duration);
+        print_filter_measurements(filter_name, CL_miliseconds_duration, C_miliseconds_duration, text_table);
+    }
 
-    time_filter("hough", warmup_iterations, time_iterations, C_miliseconds_duration, CL_miliseconds_duration);
-    print_filter_measurements("Hough", CL_miliseconds_duration, C_miliseconds_duration, text_table);
-
-    time_filter("kanade", warmup_iterations, time_iterations, C_miliseconds_duration, CL_miliseconds_duration);
-    print_filter_measurements("Kanade", CL_miliseconds_duration, C_miliseconds_duration, text_table);
     cout << text_table;
     return 0;
 }
