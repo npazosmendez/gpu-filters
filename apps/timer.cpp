@@ -67,6 +67,7 @@ void print_filter_measurements(string filter_name, double CL_miliseconds, double
 
 
 void time_filter(string filter_name, int warmup_iterations, int time_iterations, double &C_miliseconds_duration, double &CL_miliseconds_duration){
+    // TODO: every call should be done with the same image, not the filtered one
     cout << "Timing " << filter_name << "..." << endl;
     auto begin = chrono::high_resolution_clock::now();
     auto end = chrono::high_resolution_clock::now();
