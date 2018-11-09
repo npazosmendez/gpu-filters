@@ -20,8 +20,6 @@ extern "C" {
 }
 #include "opencl-filters.hpp"
 
-#define MAX_BUFFER_SIZE 2560*1440
-
 using namespace std;
 using namespace std::chrono;
 using namespace cl;

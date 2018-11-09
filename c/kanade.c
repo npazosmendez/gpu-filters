@@ -146,20 +146,22 @@ static void init(int in_width, int in_height, int levels) {
     // Image buffers
     int current_width = in_width;
     int current_height = in_height;
+    int current_bufsize = MAX_BUFFER_SIZE;
 
     forn(pi, levels) {
         pyramidal_widths[pi] = current_width;
         pyramidal_heights[pi] = current_height;
-        pyramidal_intensities_old[pi] = (float *) malloc(current_width * current_height * sizeof(float));
-        pyramidal_intensities_new[pi] = (float *) malloc(current_width * current_height * sizeof(float));
-        pyramidal_gradients_x[pi] = (float *) malloc(current_width * current_height * sizeof(float));
-        pyramidal_gradients_y[pi] = (float *) malloc(current_width * current_height * sizeof(float));
-        pyramidal_blurs_old[pi] = (float *) malloc(current_width * current_height * sizeof(float));
-        pyramidal_blurs_new[pi] = (float *) malloc(current_width * current_height * sizeof(float));
-        pyramidal_flows[pi] = (vecf *) malloc(current_width * current_height * sizeof(vecf));
+        pyramidal_intensities_old[pi] = (float *) malloc(current_bufsize * sizeof(float));
+        pyramidal_intensities_new[pi] = (float *) malloc(current_bufsize * sizeof(float));
+        pyramidal_gradients_x[pi] = (float *) malloc(current_bufsize * sizeof(float));
+        pyramidal_gradients_y[pi] = (float *) malloc(current_bufsize * sizeof(float));
+        pyramidal_blurs_old[pi] = (float *) malloc(current_bufsize * sizeof(float));
+        pyramidal_blurs_new[pi] = (float *) malloc(current_bufsize * sizeof(float));
+        pyramidal_flows[pi] = (vecf *) malloc(current_bufsize * sizeof(vecf));
 
         current_width /= 2;
         current_height /= 2;
+        current_bufsize /= 2;
     }
 }
 
