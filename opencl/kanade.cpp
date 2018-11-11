@@ -94,13 +94,13 @@ static void init(int in_width, int in_height, int levels) {
     initialized = true;
 
     // Img buffers
-    b_img_new = new Buffer(context, CL_MEM_READ_WRITE, 3 * in_width * in_height * sizeof(char), NULL, &err);
+    b_img_new = new Buffer(context, CL_MEM_READ_WRITE, MAX_BUFFER_SIZE * sizeof(char), NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
-    b_img_old = new Buffer(context, CL_MEM_READ_WRITE, 3 * in_width * in_height * sizeof(char), NULL, &err);
+    b_img_old = new Buffer(context, CL_MEM_READ_WRITE, MAX_BUFFER_SIZE * sizeof(char), NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 
     // Output buffer
-    flow_output = (vecf *) malloc(in_width * in_height * sizeof(vecf));
+    flow_output = (vecf *) malloc(MAX_BUFFER_SIZE * sizeof(vecf));
 
     // Pyramid buffers
     pyramidal_widths = (int *) malloc(levels * sizeof(int));
@@ -117,33 +117,35 @@ static void init(int in_width, int in_height, int levels) {
     // Image buffers
     int current_width = in_width;
     int current_height = in_height;
+    int current_bufsize = MAX_BUFFER_SIZE;
 
     forn(pi, levels) {
         pyramidal_widths[pi] = current_width;
         pyramidal_heights[pi] = current_height;
 
-        b_pyramidal_intensities_old[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
+        b_pyramidal_intensities_old[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_bufsize * sizeof(float), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
-        b_pyramidal_intensities_new[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
+        b_pyramidal_intensities_new[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_bufsize * sizeof(float), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
-        b_pyramidal_gradients_x[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
+        b_pyramidal_gradients_x[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_bufsize * sizeof(float), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
-        b_pyramidal_gradients_y[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
+        b_pyramidal_gradients_y[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_bufsize * sizeof(float), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
-        b_pyramidal_blurs_old[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
+        b_pyramidal_blurs_old[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_bufsize * sizeof(float), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
-        b_pyramidal_blurs_new[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(float), NULL, &err);
+        b_pyramidal_blurs_new[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_bufsize * sizeof(float), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
-        b_pyramidal_flows[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_width * current_height * sizeof(vecf), NULL, &err);
+        b_pyramidal_flows[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_bufsize * sizeof(vecf), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
 
         current_width /= 2;
         current_height /= 2;
+        current_bufsize /= 2;
     }
 }
 
-static void finish() {
-    // TODO free buffers
+static void clear() {
+    // TODO deletes?! where we're going we don't need deletes!
 }
 
 static void calculate_flow(int pi, int levels) {

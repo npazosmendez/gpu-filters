@@ -12,6 +12,8 @@ typedef struct t_vecf {
     float x, y;
 } vecf;
 
+#define MAX_BUFFER_SIZE 2560*1440
+
 void canny(char * src, int width, int height, float uthreshold, float lthreshold);
 void hough(char * src, int width, int height, int a_ammount, int p_ammount, char* counter);
 void inpainting(char * ptr, int width, int height, bool * mask, int * debug);

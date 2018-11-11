@@ -25,23 +25,16 @@ float * Gy;
 /* ******************* */
 
 void initCannyC(int width, int height){
-    static int _width = -1, _height = -1;
+    static bool initialized = false;
     debug_print("initing Canny in C\n");
-    // Initialize buffers for Canny algorithm
-    if (width != _width || height != _height){
-        if (_width != -1 || _height != -1){
-            free(img_inten);
-            free(img_smooth);
-            free(Gx);
-            free(Gy);
-        }
-        img_inten = (float *)malloc(width*height*sizeof(float));
-        img_smooth = (float*)malloc(width*height*sizeof(float));
-        Gx = (float *)malloc(width*height*sizeof(float));
-        Gy = (float *)malloc(width*height*sizeof(float));
-        _width = width;
-        _height = height;
+    if (initialized == false) {
+        // Initialize buffers for Canny algorithm
+        img_inten = (float *)malloc(MAX_BUFFER_SIZE*sizeof(float));
+        img_smooth = (float*)malloc(MAX_BUFFER_SIZE*sizeof(float));
+        Gx = (float *)malloc(MAX_BUFFER_SIZE*sizeof(float));
+        Gy = (float *)malloc(MAX_BUFFER_SIZE*sizeof(float));
     }
+    initialized = true;
 }
 
 int roundDirection(float x, float y){
