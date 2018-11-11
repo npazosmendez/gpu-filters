@@ -63,7 +63,7 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
 
     float uthreshold = 70;
     float lthreshold = 20;
-    char canny_edges[MAX_WIDTH * MAX_HEIGHT];
+    char canny_edges[MAX_WIDTH * MAX_HEIGHT * 3];
     memcpy(canny_edges, src, 3 * sizeof(char) * width * height);
     CL_canny(canny_edges, width, height, uthreshold, lthreshold);
 
