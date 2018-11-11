@@ -148,8 +148,19 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
                 float b = p / (sin_alfas[ai] + 0.00001);
                 for (int xx = 0; xx < width; ++xx){
                     int yy = b+xx*m1;
-                    if (yy < height && yy >= 0)
+                    if (yy < height && yy >= 0){
+                        imgRGB[LINEAR(yy,xx)][0] = 0;
+                        imgRGB[LINEAR(yy,xx)][1] = 0;
                         imgRGB[LINEAR(yy,xx)][2] = 255;
+                    }
+                }
+                for (int yy = 0; yy < height; ++yy){
+                    int xx = (yy-b)/m1;
+                    if (xx < width && xx >= 0){
+                        imgRGB[LINEAR(yy,xx)][0] = 0;
+                        imgRGB[LINEAR(yy,xx)][1] = 0;
+                        imgRGB[LINEAR(yy,xx)][2] = 255;
+                    }
                 }
             }
             not_local_max:
