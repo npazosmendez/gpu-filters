@@ -81,30 +81,36 @@ bool isLocalmax(float* data, int width, int height, int y, int x, int direction)
 
 }
 
-bool isConnected(unsigned char* data, int width, int height, int y, int x, int direction){
+bool isConnected(unsigned char (*data)[3], int width, int height, int y, int x, int direction){
     // Returns true iff 'data' at (x,y) has an EDGE neighbour in 'direction' direction
     /* Pre-condition:
     y+-1, x+-1 are in 'data' range
     'direction' is one of these: -90, -45, 0, 45
     */
     bool res;
+    /*
     switch (direction) {
         case 90:
-        res = (data[LINEAR(y,x+1)] == EDGE) | (data[LINEAR(y,x-1)] == EDGE);
+        res = (data[LINEAR(y,x+1)][0] == EDGE) | (data[LINEAR(y,x-1)][0] == EDGE);
         break;
         case 135:
-        res = (data[LINEAR(y+1,x+1)] == EDGE) | (data[LINEAR(y-1,x-1)] == EDGE);
+        res = (data[LINEAR(y+1,x+1)][0] == EDGE) | (data[LINEAR(y-1,x-1)][0] == EDGE);
         break;
         case 0:
-        res = (data[LINEAR(y+1,x)] == EDGE) | (data[LINEAR(y-1,x)] == EDGE);
+        res = (data[LINEAR(y+1,x)][0] == EDGE) | (data[LINEAR(y-1,x)][0] == EDGE);
         break;
         case 45:
-        res = (data[LINEAR(y+1,x-1)] == EDGE) | (data[LINEAR(y-1,x+1)] == EDGE);
+        res = (data[LINEAR(y+1,x-1)][0] == EDGE) | (data[LINEAR(y-1,x+1)][0] == EDGE);
         break;
         default:
         fprintf(stderr, "Unknown direction at %d %d. Got %d\n",y,x,direction);
         exit(1);
     }
+    */
+    res = (data[LINEAR(y,x+1)][0] == EDGE) || (data[LINEAR(y,x-1)][0] == EDGE);
+    res |= (data[LINEAR(y+1,x+1)][0] == EDGE) | (data[LINEAR(y-1,x-1)][0] == EDGE);
+    res |= (data[LINEAR(y+1,x)][0] == EDGE) | (data[LINEAR(y-1,x)][0] == EDGE);
+    res |= (data[LINEAR(y+1,x-1)][0] == EDGE) | (data[LINEAR(y-1,x+1)][0] == EDGE);
     return res;
 
 }
@@ -204,7 +210,7 @@ void canny(char * src, int width, int height, float uthreshold, float lthreshold
                 if (imgRGB[LINEAR(y,x)][0] == EDGE || imgRGB[LINEAR(y,x)][0] == NOT_EDGE) continue;
                 int gradient_direction = (int)Go[LINEAR(y,x)];
                 int edge_direction = (gradient_direction + 90) % 180;
-                if (isConnected((unsigned char *)imgRGB, width, height, y, x, edge_direction)) {
+                if (isConnected(imgRGB, width, height, y, x, edge_direction)) {
                     imgRGB[LINEAR(y,x)][0] = EDGE;
                     imgRGB[LINEAR(y,x)][1] = EDGE;
                     imgRGB[LINEAR(y,x)][2] = EDGE;
@@ -218,9 +224,9 @@ void canny(char * src, int width, int height, float uthreshold, float lthreshold
     for (int y = 1; y < height-1; y++) {
         for (int x = 1; x < width-1; x++) {
             if (imgRGB[LINEAR(y,x)][0] == CANDIDATE){
-                imgRGB[LINEAR(y,x)][0] = EDGE;
-                imgRGB[LINEAR(y,x)][1] = EDGE;
-                imgRGB[LINEAR(y,x)][2] = EDGE;
+                imgRGB[LINEAR(y,x)][0] = NOT_EDGE;
+                imgRGB[LINEAR(y,x)][1] = NOT_EDGE;
+                imgRGB[LINEAR(y,x)][2] = NOT_EDGE;
             }
        }
     }
