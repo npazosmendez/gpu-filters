@@ -16,13 +16,12 @@ __kernel void find_peaks(
         int p_ammount,
         __global uchar * img,
         int width,
-        int height
+        int height,
+        int threshold
     ) {
     /* TODO: explain kernel functionality */
 
-    /* TODO: make these customizable */
-    const int threshold = 250;
-    const int window = 16;
+    const int window = a_ammount*0.1;
 
     const int i = get_global_id(0);
     const int j = get_global_id(1);
@@ -99,7 +98,8 @@ __kernel void edges_counter(
         __global const uchar * src,
         __global int * counter,
         int a_ammount,
-        int p_ammount
+        int p_ammount,
+        __global int * max_count
     ) {
 
     /* TODO: explain kernel functionality */
@@ -128,8 +128,10 @@ __kernel void edges_counter(
             int p_index = round((p-p_min)/p_step);
             int index = ai+p_index*a_ammount;
             atomic_inc(counter+index);
+            atomic_max(max_count, *(counter+index));
         }
     }
+
 
 
 }
