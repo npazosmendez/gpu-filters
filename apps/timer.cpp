@@ -125,6 +125,7 @@ int main(int argc, const char** argv) {
         cout << "Timing application for the filters. For custom timing try:" << endl;
         cout << "\t--filter <filter_name> (canny/hough/kanade)" << endl;
         cout << "\t--iterations <#iterations>" << endl;
+        cout << "\t--device <device_nr>" << endl;
         cout << "\t--help" << endl;
         return 0;
     }
@@ -152,6 +153,16 @@ int main(int argc, const char** argv) {
         }
     }
 
+    int selected_device = 0;
+    if (arguments.count("--device")) {
+        selected_device = stoi(arguments["--device"]);
+        if (selected_device < 0) {
+            cerr << "Device number should be non negative" << endl;
+            abort();
+        }
+    }
+    selectDevice(selected_device);
+
     width = 640;
     height = 360;
     image = (char*)malloc(width*height*3*sizeof(char));
@@ -175,7 +186,8 @@ int main(int argc, const char** argv) {
     text_table.setAlignment( 2, TextTable::Alignment::RIGHT );
     text_table.setAlignment( 4, TextTable::Alignment::RIGHT );
     
-    initCL(false);
+    initCL(true);
+    cout << "\n";
 
     double C_miliseconds_duration;
     double CL_miliseconds_duration;

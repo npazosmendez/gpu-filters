@@ -230,13 +230,8 @@ __kernel void subsample(
     int2 size = (int2)(get_global_size(0), get_global_size(1));
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
 
-    int x = pos.x;
-    int y = pos.y;
-    int width = size.x;
-    int height = size.y;
-
-    dst[y * width + x] = src[2*y * src_width + 2*x];
-    dst[y * width + x] = src[2*y * src_width + 2*x];
+    dst[pos.y * size.x + pos.x] = src[2*pos.y * src_width + 2*pos.x];
+    dst[pos.y * size.x + pos.x] = src[2*pos.y * src_width + 2*pos.x];
 }
 
 __kernel void calculate_intensity(
@@ -245,6 +240,7 @@ __kernel void calculate_intensity(
 
     int i = (int)(get_global_id(0));
 
-    dst[i] = (src[3*i+0] + src[3*i+1] + src[3*i+2]) / 3;
+    char3 pixel = vload3(i, src);
 
+    dst[i] = (pixel.x + pixel.y + pixel.z) / 3.0f;
 }
