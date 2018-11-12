@@ -54,11 +54,11 @@ void ImageFilter::toggle_CL(int val){
 // Canny Filter
 
 void CannyFilter::process_frame_CL(Mat *frame){
-    CL_canny((char*)frame->ptr(), frame->size().width, frame->size().height, _lowerThreshold, _higherThreshold);
+    CL_canny((char*)frame->ptr(), frame->size().width, frame->size().height, _higherThreshold, _lowerThreshold);
 }
 
 void CannyFilter::process_frame_C(Mat *frame){
-    canny((char*)frame->ptr(), frame->size().width, frame->size().height, _lowerThreshold, _higherThreshold);
+    canny((char*)frame->ptr(), frame->size().width, frame->size().height, _higherThreshold, _lowerThreshold);
 }
 
 FilterControls* CannyFilter::controls(){

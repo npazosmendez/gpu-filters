@@ -38,7 +38,7 @@ KanadeControls::KanadeControls(ImageFilter* filter, QWidget *parent)
 
 CannyControls::CannyControls(CannyFilter* filter, QWidget *parent) 
 	: FilterControls(parent), _filter(filter), _checkBox("OpenCL"),
-	_higher_slider("Higher Threshold", 0 , 100), _lower_slider("Lower Threshold", 0 , 50){
+	_higher_slider("Higher Threshold", 0 , 300), _lower_slider("Lower Threshold", 0 , 100){
 
 	_main_layout.addWidget(&_checkBox);
 	_main_layout.addWidget(&_higher_slider);
@@ -49,8 +49,8 @@ CannyControls::CannyControls(CannyFilter* filter, QWidget *parent)
 	_filter->setHigherThreshold(_higher_slider.value());
 	_filter->setLowerThreshold(_lower_slider.value());
 
-	_higher_slider.setValue(70);
-	_lower_slider.setValue(30);
+	_higher_slider.setValue(170);
+	_lower_slider.setValue(70);
 
 	QObject::connect(&_checkBox, SIGNAL(stateChanged(int)), filter, SLOT(toggle_CL(int)));
 
