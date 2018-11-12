@@ -12,6 +12,7 @@ gpu-filters
 inpainter
 linedetector
 flowcalculator
+tests
 
 # Directories
 docs/

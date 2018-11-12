@@ -67,14 +67,14 @@ int main(int argc, char** argv) {
     /* Main window */
     namedWindow("counter", WINDOW_NORMAL);
     namedWindow("video", WINDOW_NORMAL);
-    resizeWindow("counter", 400,400);
-    resizeWindow("video", 400,400);
+    resizeWindow("counter", 800,800);
+    resizeWindow("video", 800,800);
     moveWindow("video",0,0);
     moveWindow("counter",0,500);
 
     int a_ammount, p_ammount;
-    a_ammount = 150;
-    p_ammount = 150;
+    a_ammount = 300;
+    p_ammount = 300;
     Mat counter(Size(a_ammount, p_ammount), CV_8UC3);
     pthread_t thread;
     if (!image){

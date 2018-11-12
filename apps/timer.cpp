@@ -9,16 +9,19 @@ extern "C" {
 #include <sstream>
 #include <set>
 #include <map>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 #define REPEAT(N) for(int _i=0; _i<(N); _i++)
 
+using namespace cv;
 using namespace std;
 
 
 int width;
 int height;
-char * image;
-char * image2;
+Mat image1;
+Mat image2;
 
 int a_ammount;
 int p_ammount;
@@ -27,24 +30,24 @@ char * counter;
 vec * flow;
 
 void run_canny_CL(){
-    CL_canny(image, width, height, 60, 30);
+    CL_canny((char*)image1.ptr(), width, height, 60, 30);
 }
 void run_canny_C(){
-    canny(image, width, height, 60, 30);
+    canny((char*)image1.ptr(), width, height, 60, 30);
 }
 
 void run_hough_C(){
-    hough(image, width, height, a_ammount, p_ammount, counter);
+    hough((char*)image1.ptr(), width, height, a_ammount, p_ammount, counter);
 }
 void run_hough_CL(){
-    CL_hough(image, width, height, a_ammount, p_ammount, counter);
+    CL_hough((char*)image1.ptr(), width, height, a_ammount, p_ammount, counter);
 }
 
 void run_kanade_C(){
-    kanade(width, height, image, image2, flow, 2);
+    kanade(width, height, (char*)image1.ptr(), (char*)image2.ptr(), flow, 2);
 }
 void run_kanade_CL(){
-    CL_kanade(width, height, image, image2, flow, 2);
+    CL_kanade(width, height, (char*)image1.ptr(), (char*)image2.ptr(), flow, 2);
 }
 
 string double_to_string(double val){
@@ -71,8 +74,8 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
     cout << "Timing " << filter_name << "..." << endl;
     auto begin = chrono::high_resolution_clock::now();
     auto end = chrono::high_resolution_clock::now();
-    long int C_microsec_duration;
-    long int CL_microsec_duration;
+    long int C_microsec_duration = 0;
+    long int CL_microsec_duration = 0;
     void (*C_function)();
     void (*CL_function)();
     if (filter_name == "canny"){
@@ -85,17 +88,24 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
         C_function = run_kanade_C;
         CL_function = run_kanade_CL;
     }
+    Mat backup = image1;
     REPEAT(warmup_iterations) C_function();
-    begin = chrono::high_resolution_clock::now();
-    REPEAT(time_iterations) C_function();
-    end = chrono::high_resolution_clock::now();
-    C_microsec_duration = chrono::duration_cast<chrono::microseconds>(end-begin).count();
+    for (int i = 0; i < time_iterations; ++i){
+        image1 = backup;
+        begin = chrono::high_resolution_clock::now();
+        C_function();
+        end = chrono::high_resolution_clock::now();
+        C_microsec_duration += chrono::duration_cast<chrono::microseconds>(end-begin).count();
+    }
 
     REPEAT(warmup_iterations) CL_function();
-    begin = chrono::high_resolution_clock::now();
-    REPEAT(time_iterations) CL_function();
-    end = chrono::high_resolution_clock::now();
-    CL_microsec_duration = chrono::duration_cast<chrono::microseconds>(end-begin).count();
+    for (int i = 0; i < time_iterations; ++i){
+        image1 = backup;
+        begin = chrono::high_resolution_clock::now();
+        CL_function();
+        end = chrono::high_resolution_clock::now();
+        CL_microsec_duration += chrono::duration_cast<chrono::microseconds>(end-begin).count();
+    }
 
     C_miliseconds_duration = C_microsec_duration / time_iterations / 1000.0;
     CL_miliseconds_duration = CL_microsec_duration / time_iterations / 1000.0;
@@ -126,6 +136,7 @@ int main(int argc, const char** argv) {
         cout << "\t--filter <filter_name> (canny/hough/kanade)" << endl;
         cout << "\t--iterations <#iterations>" << endl;
         cout << "\t--device <device_nr>" << endl;
+        cout << "\t--image <image_path> (needed)" << endl;
         cout << "\t--help" << endl;
         return 0;
     }
@@ -163,16 +174,19 @@ int main(int argc, const char** argv) {
     }
     selectDevice(selected_device);
 
-    width = 640;
-    height = 360;
-    image = (char*)malloc(width*height*3*sizeof(char));
-    image2 = (char*)malloc(width*height*3*sizeof(char));
-    flow = (vec*) malloc(sizeof(vec) * width * height);
-    
+    if (not arguments.count("--image")){
+        cerr << "Need an image path through '--image'"<<endl;
+        abort();
+    }
+    image1 = imread(arguments["--image"], CV_LOAD_IMAGE_COLOR);
+    image2 = image1;
+    width = image1.size().width;
+    height = image1.size().height;
+
     a_ammount = 100;
     p_ammount = 100;
     counter = (char*)malloc(a_ammount*p_ammount*3*sizeof(char));
-
+    flow = (vec*) malloc(sizeof(vec) * width * height);
 
     TextTable text_table( '-', '|', '+' );
     text_table.add( "Filter" );

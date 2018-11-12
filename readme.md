@@ -55,10 +55,10 @@ For an advanced GUI only, not actually needed to run the bascis. More informatio
 
 # What is left
 - [x] Better line drawing algorithm
-- [ ] Lucas-Kanade C version
-- [ ] Lucas-Kanade OpenCL version
+- [x] Lucas-Kanade C version
+- [x] Lucas-Kanade OpenCL version
 - [x] Hough line-detection OpenCL version
-- [ ] Inpainting OpenCL version
+- [x] Inpainting OpenCL version
 - [ ] Handle boundaries (image borders) in all algorithms
 - [ ] Optimize all OpenCL code
 - [ ] Test / validate current implementations

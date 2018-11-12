@@ -16,6 +16,7 @@ bool CL_hough_initialized = false;
 Buffer cl_hough_counter;
 Buffer cl_image_counter;
 Buffer cl_charImage_;
+Buffer cl_max;
 
 Kernel k_count_edges;
 Kernel k_draw_counter;
@@ -23,6 +24,7 @@ Kernel k_find_peaks;
 
 #define MAX_WIDTH 2000
 #define MAX_HEIGHT 1200
+int threshold = 0;
 
 void initCLHough(int width, int height, int a_ammount, int p_ammount){
     /* 1. Build PROGRAM from source, for specific context */
@@ -55,15 +57,19 @@ void initCLHough(int width, int height, int a_ammount, int p_ammount){
     cl_charImage_ = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
     clHandleError(__FILE__,__LINE__,err);
 
+    cl_max = Buffer(context, CL_MEM_USE_HOST_PTR, sizeof(int), &threshold, &err);
+    clHandleError(__FILE__,__LINE__,err);
+
+
     CL_hough_initialized = true;
     return;
 }
 
 void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, char* counter){
 
-    float uthreshold = 70;
-    float lthreshold = 20;
-    char canny_edges[MAX_WIDTH * MAX_HEIGHT];
+    float uthreshold = 150;
+    float lthreshold = 100;
+    char canny_edges[MAX_WIDTH * MAX_HEIGHT * 3];
     memcpy(canny_edges, src, 3 * sizeof(char) * width * height);
     CL_canny(canny_edges, width, height, uthreshold, lthreshold);
 
@@ -79,6 +85,9 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
     err = queue.enqueueFillBuffer(cl_hough_counter, (int)0, 0, a_ammount*p_ammount*sizeof(int));
     clHandleError(__FILE__,__LINE__,err);
 
+    err = queue.enqueueFillBuffer(cl_max, (int)0, 0, sizeof(int));
+    clHandleError(__FILE__,__LINE__,err);
+
     // 2. Run kernels
 
     /* count edges using hough transform */
@@ -86,6 +95,7 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
     k_count_edges.setArg(1, cl_hough_counter);
     k_count_edges.setArg(2, (cl_int)a_ammount);
     k_count_edges.setArg(3, (cl_int)p_ammount);
+    k_count_edges.setArg(4, cl_max);
     err = queue.enqueueNDRangeKernel(
         k_count_edges,
         NullRange,
@@ -93,7 +103,11 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
         NullRange // default
     );
     clHandleError(__FILE__,__LINE__,err);
-    
+
+    err = queue.enqueueReadBuffer(cl_max, CL_TRUE, 0, sizeof(int), &threshold);
+    clHandleError(__FILE__,__LINE__,err);
+
+    threshold = threshold * 0.5;
 
     /* draw counter in buffer */
     k_draw_counter.setArg(0, cl_hough_counter);
@@ -106,6 +120,8 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
     );
     clHandleError(__FILE__,__LINE__,err);
 
+
+
     err = queue.enqueueWriteBuffer(cl_charImage_, CL_TRUE, 0, 3*height*width, src);
     clHandleError(__FILE__,__LINE__,err);
     /* find peakds in counter */
@@ -116,6 +132,7 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
     k_find_peaks.setArg(4, cl_charImage_);   
     k_find_peaks.setArg(5, (cl_int)width);   
     k_find_peaks.setArg(6, (cl_int)height);   
+    k_find_peaks.setArg(7, (cl_int)threshold);
     err = queue.enqueueNDRangeKernel(
         k_find_peaks,
         NullRange,
