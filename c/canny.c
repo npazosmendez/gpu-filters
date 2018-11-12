@@ -218,9 +218,9 @@ void canny(char * src, int width, int height, float uthreshold, float lthreshold
     for (int y = 1; y < height-1; y++) {
         for (int x = 1; x < width-1; x++) {
             if (imgRGB[LINEAR(y,x)][0] == CANDIDATE){
-                imgRGB[LINEAR(y,x)][0] = NOT_EDGE;
-                imgRGB[LINEAR(y,x)][1] = NOT_EDGE;
-                imgRGB[LINEAR(y,x)][2] = NOT_EDGE;
+                imgRGB[LINEAR(y,x)][0] = EDGE;
+                imgRGB[LINEAR(y,x)][1] = EDGE;
+                imgRGB[LINEAR(y,x)][2] = EDGE;
             }
        }
     }
