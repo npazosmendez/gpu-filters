@@ -83,7 +83,7 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
 
     memcpy(edgesRGB, imgRGB, width*height*3 );
 
-    canny((char*)edgesRGB, width, height, 60, 30);
+    canny((char*)edgesRGB, width, height, 150, 100);
     
     int contador[a_ammount][p_ammount];
     memset(contador, 0, a_ammount*p_ammount*sizeof(int));
@@ -117,8 +117,8 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
     }
     
     /* find peaks in counter */
-    int window = 10;
-    int threshold = max/2;
+    const int window = a_ammount*0.1;
+    int threshold = max*0.5;
     for (int y = 1; y < p_ammount-1; ++y){
         for (int x = 1; x < a_ammount-1; ++x){
             int val = contador[y][x];
