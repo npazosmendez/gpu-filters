@@ -110,16 +110,17 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
     threshold = threshold * 0.5;
 
     /* draw counter in buffer */
-    k_draw_counter.setArg(0, cl_hough_counter);
-    k_draw_counter.setArg(1, cl_image_counter);
-    err = queue.enqueueNDRangeKernel(
-        k_draw_counter,
-        NullRange,
-        NDRange(a_ammount, p_ammount),
-        NullRange // default
-    );
-    clHandleError(__FILE__,__LINE__,err);
-
+    if (counter != NULL){
+        k_draw_counter.setArg(0, cl_hough_counter);
+        k_draw_counter.setArg(1, cl_image_counter);
+        err = queue.enqueueNDRangeKernel(
+            k_draw_counter,
+            NullRange,
+            NDRange(a_ammount, p_ammount),
+            NullRange // default
+        );
+        clHandleError(__FILE__,__LINE__,err);
+    }
 
 
     err = queue.enqueueWriteBuffer(cl_charImage_, CL_TRUE, 0, 3*height*width, src);

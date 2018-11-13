@@ -101,7 +101,7 @@ void KanadeFilter::process_frame_C(Mat *frame){
     }
     kanade(frame->size().width, frame->size().height, (char*)_last_frame.ptr(), (char*)frame->ptr(), _flow, 3);
 
-    _last_frame = *frame;
+    _last_frame = frame->clone();
     overlay_flow(frame);
 }
 
