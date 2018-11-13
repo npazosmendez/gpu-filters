@@ -113,7 +113,7 @@ void KanadeFilter::overlay_flow(Mat* frame){
         vec displacement = _flow[LINEAR(x, y)];
         displacement.x *= FACTOR;
         displacement.y *= FACTOR;
-        if (displacement.x > 2 || displacement.y > 2) {
+        if (abs(displacement.x) > 2 || abs(displacement.y) > 2) {
             cv::line(
                 *frame,
                 Point(x, y),
