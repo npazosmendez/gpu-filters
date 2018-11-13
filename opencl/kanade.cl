@@ -2,10 +2,6 @@
 #define forn(i,n) for(int i=0; i<(n); i++)
 #define LINEAR(x, y) (y)*width+(x)
 
-typedef struct t_vecf {
-    float x, y;
-} vecf;
-
 __constant int2 ZERO = (int2) (0, 0);
 
 __constant int LK_ITERATIONS = 8;
@@ -108,18 +104,15 @@ __kernel void calculate_flow(
         __global float * gradient_y,
         __global float * intensity_old,
         __global float * intensity_new,
-        __global vecf * flow,
+        __global float2 * flow,
         int previous_width,
         int previous_height,
-        __global vecf * previous_flow) {
+        __global float2 * previous_flow) {
 
     int2 size = (int2)(get_global_size(0), get_global_size(1));
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
 
-    vecf previous_guess_vecf = previous_flow ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] : (vecf) {0};
-    float2 previous_guess = (float2) ( previous_guess_vecf.x, previous_guess_vecf.y );
-    previous_guess *= 2;
-
+    float2 previous_guess = previous_flow ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2: (float2) ( 0, 0 );
     float2 iter_guess = (float2) ( 0, 0 );
 
     for (int i = 0; i < LK_ITERATIONS; i++) {
@@ -136,15 +129,16 @@ __kernel void calculate_flow(
             int2 window_offset = (int2) (wx, wy);
 
             int2 in_pos = clamp(pos + (window_offset - LK_WINDOW_RADIUS), ZERO, size - 1);
+            int2 in_guessed_pos = in_pos + convert_int2(previous_guess + iter_guess);
 
             int source_index = LINEAR(in_pos.x, in_pos.y);
-            int target_index = LINEAR((int)(in_pos.x + previous_guess.x + iter_guess.x), (int)(in_pos.y + previous_guess.y + iter_guess.y));
+            int target_index = LINEAR(in_guessed_pos.x, in_guessed_pos.y);
+
             float gradient_t = 0;
             if (target_index >= 0 && target_index < width * height) {
                 gradient_t = intensity_new[target_index] - intensity_old[source_index];
-            } // TODO: Uhh... Do something?
+            }
 
-            // TODO: This can be factored out of the loop
             IxIx += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_x[LINEAR(in_pos.x, in_pos.y)];
             IxIy += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
             IyIy += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
@@ -169,9 +163,7 @@ __kernel void calculate_flow(
         }
     }
 
-    float2 result = previous_guess + iter_guess;
-
-    flow[LINEAR(pos.x, pos.y)] = (vecf) { result.x, result.y };
+    flow[LINEAR(pos.x, pos.y)] = previous_guess + iter_guess;
 
 }
 

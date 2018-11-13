@@ -9,6 +9,9 @@ CXXSOURCES = $(wildcard opencl/*.cpp)
 
 OBJECTS = $(CSOURCES:.c=.o) $(CXXSOURCES:.cpp=.o)
 
+# https://stackoverflow.com/questions/44942225/opencl-vector-types-cant-access-unioned-components-x-y-z-with-c11-enabled
+CPPFLAGS += -U__STRICT_ANSI__
+
 ifeq ($(shell uname -s),Darwin)
 LIBS = `pkg-config --cflags --libs opencv` \
 	-lpthread

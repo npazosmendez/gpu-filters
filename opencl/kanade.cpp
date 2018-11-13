@@ -45,7 +45,7 @@ static bool initialized = false;
 static int * pyramidal_widths;
 static int * pyramidal_heights;
 
-static vecf * flow_output;
+static cl_float2 * flow_output;
 
 static Kernel k_calculate_flow;
 static Kernel k_convolution_x;
@@ -100,7 +100,7 @@ static void init(int in_width, int in_height, int levels) {
     clHandleError(__FILE__,__LINE__,err);
 
     // Output buffer
-    flow_output = (vecf *) malloc(MAX_BUFFER_SIZE * sizeof(vecf));
+    flow_output = (cl_float2 *) malloc(MAX_BUFFER_SIZE * sizeof(cl_float2));
 
     // Pyramid buffers
     pyramidal_widths = (int *) malloc(levels * sizeof(int));
@@ -135,7 +135,7 @@ static void init(int in_width, int in_height, int levels) {
         clHandleError(__FILE__,__LINE__,err);
         b_pyramidal_blurs_new[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_bufsize * sizeof(float), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
-        b_pyramidal_flows[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_bufsize * sizeof(vecf), NULL, &err);
+        b_pyramidal_flows[pi] = new Buffer(context, CL_MEM_READ_WRITE, current_bufsize * sizeof(cl_float2), NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
 
         current_width /= 2;
@@ -203,7 +203,7 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
 
         Buffer * b_flow = b_pyramidal_flows[pi];
 
-        err = queue.enqueueFillBuffer(*b_flow, (int)0, 0, width * height * sizeof(vecf));
+        err = queue.enqueueFillBuffer(*b_flow, (int)0, 0, width * height * sizeof(cl_float2));
         clHandleError(__FILE__,__LINE__,err);
     }
 
@@ -336,10 +336,10 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
     }
 
     // Output
-    err = queue.enqueueReadBuffer(*b_pyramidal_flows[0], CL_TRUE, 0, sizeof(vecf)*full_width*full_height, flow_output);
+    err = queue.enqueueReadBuffer(*b_pyramidal_flows[0], CL_TRUE, 0, sizeof(cl_float2)*full_width*full_height, flow_output);
     clHandleError(__FILE__,__LINE__,err);
 
     forn(i, full_width * full_height) {
-        output_flow[i] = (vec) { (int) flow_output[i].x, (int) flow_output[i].y };
+        output_flow[i] = (vec) { (int) flow_output[i].x, (int) flow_output[i].y }; // TODO: Erase ifs in header 'https://forums.khronos.org/showthread.php/7489-y-is-not-a-member-of-cl_float2'
     }
 }
