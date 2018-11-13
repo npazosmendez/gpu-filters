@@ -24,16 +24,10 @@ inline float buff_rgb_intensity(__global const uchar * src, int i, int j) {
     return (float)(rgb.x + rgb.y + rgb.z)/3;
 }
 
-inline float clipf(float x, float L, float H){
-    // Clips float value in range [L,H]
-    float res = (x < L) ? L : x;
-    res = (res > H) ? H : res;
-    return res;
-}
 
 inline float norm2(float x, float y){
     // Returns norm2 of vector (x,y)
-    return native_sqrt(pow(x,2) + pow(y,2));
+    return native_sqrt(x*x + y*y);
 }
 
 inline float x_gradient(__read_only image2d_t image, int x, int y){
@@ -130,8 +124,8 @@ inline int2 gradient_neighbour2(int x, int y, int angle){
 inline int roundDirection(float x, float y){
     // Gets direction of vector (x,y) rounded to 0/45/90/135
     float arctan = atan2(y,x);
-    float degrees = arctan * 180.0 / PI;
-    int res = (int)round(degrees / 360 * 8) * 360 / 8;
+    float degr = arctan * 180.0 / PI;
+    int res = (int)round(degr / 360 * 8) * 360 / 8;
     res = (res + 360) % 180;
 
     return res;
@@ -175,6 +169,7 @@ __kernel void intensity_gauss_filter(
 
     /* ********* 5x5 gaussian kernel ******** */
     // NOTE: too much global memory accesses. Definitely optimizable.
+
     intensity += 41*buff_rgb_intensity(src,i,j);
 
     intensity += 26*buff_rgb_intensity(src,i-1,j);
