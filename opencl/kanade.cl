@@ -6,9 +6,30 @@ typedef struct t_vecf {
     float x, y;
 } vecf;
 
+__constant int2 ZERO = (int2) (0, 0);
+
 __constant int LK_ITERATIONS = 8;
 __constant int LK_WINDOW_RADIUS = 2;
 __constant double THRESHOLD_CORNER = 1e7;
+
+__constant int KSIZE = 3;
+
+__constant float KERNEL_SOBEL_Y[] = {
+        -1,-2,-1,
+        0,0,0,
+        1,2,1
+};
+__constant float KERNEL_SOBEL_X[] = {
+        -1,0,1,
+        -2,0,2,
+        -1,0,1
+};
+
+__constant float KERNEL_GAUSSIAN_BLUR[] = {
+        1/16.0, 1/8.0 , 1/16.0,
+        1/8.0 , 1/4.0 , 1/8.0 ,
+        1/16.0, 1/8.0 , 1/16.0
+};
 
 
 // AUXILIARS
@@ -92,17 +113,14 @@ __kernel void calculate_flow(
         int previous_height,
         __global vecf * previous_flow) {
 
-    //int2 size = (int2)(get_global_size(0), get_global_size(1));
+    int2 size = (int2)(get_global_size(0), get_global_size(1));
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
 
-    int x = pos.x;
-    int y = pos.y;
+    vecf previous_guess_vecf = previous_flow ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] : (vecf) {0};
+    float2 previous_guess = (float2) ( previous_guess_vecf.x, previous_guess_vecf.y );
+    previous_guess *= 2;
 
-    vecf previous_guess = previous_flow ? previous_flow[(y/2) * previous_width + (x/2)] : (vecf) {0};
-    previous_guess.x *= 2;
-    previous_guess.y *= 2;
-
-    vecf iter_guess = {};
+    float2 iter_guess = (float2) ( 0, 0 );
 
     for (int i = 0; i < LK_ITERATIONS; i++) {
 
@@ -114,22 +132,24 @@ __kernel void calculate_flow(
 
         int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
         forn(wy, window_diameter) forn(wx, window_diameter) {
-            int in_x = clamp(x + (wx - LK_WINDOW_RADIUS), 0, width - 1);
-            int in_y = clamp(y + (wy - LK_WINDOW_RADIUS), 0, height - 1);
 
-            int source_index = LINEAR(in_x, in_y);
-            int target_index = LINEAR((int)(in_x + previous_guess.x + iter_guess.x), (int)(in_y + previous_guess.y + iter_guess.y));
+            int2 window_offset = (int2) (wx, wy);
+
+            int2 in_pos = clamp(pos + (window_offset - LK_WINDOW_RADIUS), ZERO, size - 1);
+
+            int source_index = LINEAR(in_pos.x, in_pos.y);
+            int target_index = LINEAR((int)(in_pos.x + previous_guess.x + iter_guess.x), (int)(in_pos.y + previous_guess.y + iter_guess.y));
             float gradient_t = 0;
             if (target_index >= 0 && target_index < width * height) {
                 gradient_t = intensity_new[target_index] - intensity_old[source_index];
             } // TODO: Uhh... Do something?
 
             // TODO: This can be factored out of the loop
-            IxIx += gradient_x[LINEAR(in_x, in_y)] * gradient_x[LINEAR(in_x, in_y)];
-            IxIy += gradient_x[LINEAR(in_x, in_y)] * gradient_y[LINEAR(in_x, in_y)];
-            IyIy += gradient_y[LINEAR(in_x, in_y)] * gradient_y[LINEAR(in_x, in_y)];
-            IxIt += gradient_x[LINEAR(in_x, in_y)] * gradient_t;
-            IyIt += gradient_y[LINEAR(in_x, in_y)] * gradient_t;
+            IxIx += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_x[LINEAR(in_pos.x, in_pos.y)];
+            IxIy += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
+            IyIy += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
+            IxIt += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
+            IyIt += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
         }
 
         double A[2][2];
@@ -142,35 +162,18 @@ __kernel void calculate_flow(
 
         if (is_corner(A)) {
             gauss_eliminate((double*)A, b, d, 2);
-            iter_guess = (vecf) { iter_guess.x + (float)d[0], iter_guess.y + (float)d[1] };
+            iter_guess.x += d[0];
+            iter_guess.y += d[1];
         } else {
-            iter_guess = (vecf) {0, 0};
+            iter_guess = (float2) ( 0, 0 );
         }
-
     }
 
-    flow[LINEAR(x, y)] = (vecf) { previous_guess.x + iter_guess.x, previous_guess.y + iter_guess.y };
+    float2 result = previous_guess + iter_guess;
+
+    flow[LINEAR(pos.x, pos.y)] = (vecf) { result.x, result.y };
 
 }
-
-__constant int KSIZE = 3;
-
-__constant float KERNEL_SOBEL_Y[] = {
-        -1,-2,-1,
-        0,0,0,
-        1,2,1
-};
-__constant float KERNEL_SOBEL_X[] = {
-        -1,0,1,
-        -2,0,2,
-        -1,0,1
-};
-
-__constant float KERNEL_GAUSSIAN_BLUR[] = {
-        1/16.0, 1/8.0 , 1/16.0,
-        1/8.0 , 1/4.0 , 1/8.0 ,
-        1/16.0, 1/8.0 , 1/16.0
-};
 
 void convolution(
         __global float * src,
@@ -180,27 +183,22 @@ void convolution(
     int2 size = (int2)(get_global_size(0), get_global_size(1));
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
 
-    int x = pos.x;
-    int y = pos.y;
-    int width = size.x;
-    int height = size.y;
-    int ksize = KSIZE;
-
-    if (((y - ksize/2 ) < 0) || ((y + ksize/2) > (height-1)) ||
-        ((x - ksize/2 ) < 0) || ((x + ksize/2) > (width-1))){
-        dst[LINEAR(x, y)] = 0;
-        return; // TODO: handle boundaries
+    if (((pos.y - KSIZE/2 ) < 0) || ((pos.y + KSIZE/2) > (size.y-1)) ||
+        ((pos.x - KSIZE/2 ) < 0) || ((pos.x + KSIZE/2) > (size.x-1))){
+        dst[pos.y * size.x + pos.x] = 0;
+        return;
     }
 
-    /* kernel loop */
     float temp = 0;
-    for (int yk = 0; yk < ksize; yk++) {
-        for (int xk = 0; xk < ksize; xk++) {
-            temp += src[LINEAR(x+xk-ksize/2, y+yk-ksize/2)]*(kern[yk*ksize+xk]);
+    for (int yk = 0; yk < KSIZE; yk++) {
+        for (int xk = 0; xk < KSIZE; xk++) {
+            float intensity = src[(pos.y + yk - KSIZE/2) * size.x + (pos.x + xk - KSIZE/2)];
+            float factor = kern[yk * KSIZE + xk];
+            temp += intensity * factor;
         }
     }
 
-    dst[LINEAR(x, y)] = temp;
+    dst[pos.y * size.x + pos.x] = temp;
 }
 
 __kernel void convolution_x(
