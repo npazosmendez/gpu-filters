@@ -88,9 +88,9 @@ void KanadeFilter::process_frame_CL(Mat *frame){
         _last_frame = *frame;
         return;
     }
-    CL_kanade(frame->size().width, frame->size().height, (char*)_last_frame.ptr(), (char*)frame->ptr(), _flow, 3);
+    CL_kanade(frame->size().width, frame->size().height, (char*)_last_frame.ptr(), (char*)frame->ptr(), _flow, 4);
 
-    _last_frame = *frame;
+    _last_frame = frame->clone();
     overlay_flow(frame);
 }
 
@@ -99,7 +99,7 @@ void KanadeFilter::process_frame_C(Mat *frame){
         _last_frame = *frame;
         return;
     }
-    kanade(frame->size().width, frame->size().height, (char*)_last_frame.ptr(), (char*)frame->ptr(), _flow, 3);
+    kanade(frame->size().width, frame->size().height, (char*)_last_frame.ptr(), (char*)frame->ptr(), _flow, 4);
 
     _last_frame = frame->clone();
     overlay_flow(frame);
@@ -113,7 +113,7 @@ void KanadeFilter::overlay_flow(Mat* frame){
         vec displacement = _flow[LINEAR(x, y)];
         displacement.x *= FACTOR;
         displacement.y *= FACTOR;
-        if (displacement.x != 0 || displacement.y != 0) {
+        if (displacement.x > 2 || displacement.y > 2) {
             cv::line(
                 *frame,
                 Point(x, y),
