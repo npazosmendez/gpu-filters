@@ -16,17 +16,15 @@
 #define LINEAR(y,x) (y)*width+(x)
 
 // Global Canny variables
-float * img_inten;
-float * img_smooth;
-float * Gx;
-float * Gy;
+float * img_inten, * img_smooth, * Gx, * Gy;
+
 /* ******************* */
 /* Auxiliary Functions */
 /* ******************* */
 
 void initCannyC(int width, int height){
     static bool initialized = false;
-    debug_print("initing Canny in C\n");
+    debug_print("Initializing Canny in C\n");
     if (initialized == false) {
         // Initialize buffers for Canny algorithm
         img_inten = (float *)malloc(MAX_BUFFER_SIZE*sizeof(float));

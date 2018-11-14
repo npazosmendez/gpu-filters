@@ -12,8 +12,21 @@
 unsigned char (*edgesRGB)[3] = NULL;
 float* alfas, *cos_alfas, *sin_alfas, *pp;
 
+#define MAX_DST_GRANULARITY 1000
+#define MAX_DGR_GRANULARITY 1000
+
 void initHoughC(int width, int height, int a_ammount, int p_ammount){
     debug_print("Initializing C Hough\n");
+
+    static bool initialized = false;
+    if (initialized == false){
+        // Initialize buffers for Hough line detection algorithm
+        edgesRGB = malloc(MAX_BUFFER_SIZE*sizeof(char)*3);
+        cos_alfas = malloc(MAX_DGR_GRANULARITY * sizeof(float));
+        sin_alfas =  malloc(MAX_DGR_GRANULARITY * sizeof(float));
+        pp = malloc(MAX_DST_GRANULARITY* sizeof(int));
+        initialized = true;
+    }
 
     static int _width = -1, _height = -1, _a_ammount = -1, _p_ammount = -1;
 
@@ -23,16 +36,7 @@ void initHoughC(int width, int height, int a_ammount, int p_ammount){
         _height = height;
         _a_ammount = a_ammount;
         _p_ammount = p_ammount;
-        if (_width != -1){
-            free(edgesRGB);
-            free(alfas);
-            free(cos_alfas);
-            free(sin_alfas);
-            free(pp);
-        }
 
-        // Initialize buffers for Hough line detection algorithm
-        edgesRGB = malloc(width*height*3);
         float p_max = sqrt(width*width + height*height);
         float p_min = -p_max;
         float p_step = (p_max-p_min)/p_ammount;
@@ -40,23 +44,18 @@ void initHoughC(int width, int height, int a_ammount, int p_ammount){
         float a_min = 0;
         float a_step = (a_max-a_min)/a_ammount;
 
-        alfas = malloc(a_ammount * sizeof(float));
         /* NOTE: second optimization that made a really big difference,
         having cos a sin precomputed
         */
-        cos_alfas = malloc(a_ammount * sizeof(float));
-        sin_alfas =  malloc(a_ammount * sizeof(float));
         for (int i = 0; i < a_ammount; ++i){
-            alfas[i] = a_min+a_step*i;
-            cos_alfas[i] = cos(alfas[i]);
-            sin_alfas[i] = sin(alfas[i]);
+            float alfa = a_min+a_step*i;
+            cos_alfas[i] = cos(alfa);
+            sin_alfas[i] = sin(alfa);
         }
-        pp = malloc(p_ammount* sizeof(int));
         for (int i = 0; i < p_ammount; ++i){
             pp[i] = p_min+p_step*i;
-
         }
-    
+
     }
 }
 
@@ -167,8 +166,6 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
             continue;
         }
     }
-
-    //canny((char*)imgRGB, width, height, 60, 30);
 
 }
 
