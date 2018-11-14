@@ -38,24 +38,24 @@ void initCLCanny(int width, int height){
         cl_intbool = Buffer(context, CL_MEM_USE_HOST_PTR, sizeof(int), &intbool, &err);
         clHandleError(__FILE__,__LINE__,err);
 
-
         canny_initialized = true;
     }
 
-    if (_width == width or _height == height) return;
+    if (_width != width or _height != height){
+        /* 3. Buffers setup */
+        // OpenCL Image / texture to store image intensity
+        clImage = Image2D(context, CL_MEM_READ_WRITE, ImageFormat(CL_INTENSITY, CL_FLOAT), width, height, 0, NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
 
-    /* 3. Buffers setup */
-    // OpenCL Image / texture to store image intensity
-    clImage = Image2D(context, CL_MEM_READ_WRITE, ImageFormat(CL_INTENSITY, CL_FLOAT), width, height, 0, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
+        // Buffer for the temp float result
+        clResult_float = Buffer(context, CL_MEM_READ_WRITE, sizeof(float)*width*height, NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
 
-    // Buffer for the temp float result
-    clResult_float = Buffer(context, CL_MEM_READ_WRITE, sizeof(float)*width*height, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
+        // Buffer for input/output image in rgb (uchar3)
+        cl_charImage = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
+    }
 
-    // Buffer for input/output image in rgb (uchar3)
-    cl_charImage = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
     return;
 }
 
