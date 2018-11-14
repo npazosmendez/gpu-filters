@@ -73,6 +73,8 @@ void CL_canny(char * src_c, int width, int height, float uthreshold, float lthre
     // Compute intensity as rgb average and smooth with gaussian kernel
     k_intensity_gauss.setArg(0, cl_charImage);
     k_intensity_gauss.setArg(1, clImage);
+    k_intensity_gauss.setArg(2, (cl_int)width);
+    k_intensity_gauss.setArg(3, (cl_int)height);
     err = queue.enqueueNDRangeKernel(
         k_intensity_gauss,
         NullRange,
@@ -97,6 +99,8 @@ void CL_canny(char * src_c, int width, int height, float uthreshold, float lthre
     // Hysteresis
     k_hysteresis.setArg(0, cl_intbool);
     k_hysteresis.setArg(1, clResult_float);
+    k_hysteresis.setArg(2, (cl_int)width);
+    k_hysteresis.setArg(3, (cl_int)height);
     int changes = 1;
     while (changes) {
         changes = 0;
