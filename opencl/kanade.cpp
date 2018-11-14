@@ -144,8 +144,13 @@ static void init(int in_width, int in_height, int levels) {
     }
 }
 
-static void clear() {
-    // TODO deletes?! where we're going we don't need deletes!
+static void refresh_size(int width, int height, int levels) {
+    forn(pi, levels) {
+        pyramidal_widths[pi] = width;
+        pyramidal_heights[pi] = height;
+        width /= 2;
+        height /= 2;
+    }
 }
 
 static void calculate_flow(int pi, int levels) {
@@ -195,6 +200,7 @@ static void calculate_flow(int pi, int levels) {
 void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec * output_flow, int levels) {
 
     if (!initialized) init(in_width, in_height, levels);
+    if (in_width != pyramidal_widths[0]) refresh_size(in_width, in_height, levels);
 
     // Zero Flow
     forn(pi, levels) {
@@ -340,6 +346,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
     clHandleError(__FILE__,__LINE__,err);
 
     forn(i, full_width * full_height) {
-        output_flow[i] = (vec) { (int) flow_output[i].x, (int) flow_output[i].y }; // TODO: Erase ifs in header 'https://forums.khronos.org/showthread.php/7489-y-is-not-a-member-of-cl_float2'
+        output_flow[i] = (vec) { (int) flow_output[i].x, (int) flow_output[i].y };
     }
 }
