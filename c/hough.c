@@ -7,7 +7,7 @@
 #include "debug.h"
 
 #define M_PI 3.14159265358979323846
-#define LINEAR(y,x) (y)*width+(x)
+#define LINEAR(x,y) (y)*width+(x)
 
 unsigned char (*edgesRGB)[3] = NULL;
 float* alfas, *cos_alfas, *sin_alfas, *pp;
@@ -92,7 +92,7 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
     // so we ignore them. should be fixed in the future 
     for (int y = 10; y < height-10; ++y){
         for (int x = 10; x < width-10; ++x){
-            if (edgesRGB[LINEAR(y,x)][0] > 100){
+            if (edgesRGB[LINEAR(x,y)][0] > 100){
                 for (int ai = 0; ai < a_ammount; ++ai){
                     float p = x*cos_alfas[ai]+y*sin_alfas[ai];
                     int p_index = round((p-p_min)/p_step);
@@ -148,17 +148,17 @@ void hough(char * src, int width, int height, int a_ammount, int p_ammount, char
                 for (int xx = 0; xx < width; ++xx){
                     int yy = b+xx*m1;
                     if (yy < height && yy >= 0){
-                        imgRGB[LINEAR(yy,xx)][0] = 0;
-                        imgRGB[LINEAR(yy,xx)][1] = 0;
-                        imgRGB[LINEAR(yy,xx)][2] = 255;
+                        imgRGB[LINEAR(xx,yy)][0] = 0;
+                        imgRGB[LINEAR(xx,yy)][1] = 0;
+                        imgRGB[LINEAR(xx,yy)][2] = 255;
                     }
                 }
                 for (int yy = 0; yy < height; ++yy){
                     int xx = (yy-b)/m1;
                     if (xx < width && xx >= 0){
-                        imgRGB[LINEAR(yy,xx)][0] = 0;
-                        imgRGB[LINEAR(yy,xx)][1] = 0;
-                        imgRGB[LINEAR(yy,xx)][2] = 255;
+                        imgRGB[LINEAR(xx,yy)][0] = 0;
+                        imgRGB[LINEAR(xx,yy)][1] = 0;
+                        imgRGB[LINEAR(xx,yy)][2] = 255;
                     }
                 }
             }
