@@ -7,11 +7,13 @@
 #include "debug.h"
 
 
-ControlsWindow::ControlsWindow(QWidget *parent) : 
+ControlsWindow::ControlsWindow(QApplication * app, QWidget *parent) :
 	QDialog(parent), _browser("Browse video"), _camera_button("Camera", this){
 
 	debug_print("Initializing controls window\n");
 	
+	_app = app;
+
 	debug_print("Setting layout\n");
 	_comboBox.addItem("No Filter");
 	_comboBox.addItem("Canny");
@@ -27,7 +29,7 @@ ControlsWindow::ControlsWindow(QWidget *parent) :
 	setLayout(&_main_layout);
 
 	debug_print("Initializing processing pipeline\n");
-	_video_window = new VideoWindow;
+	_video_window = new VideoWindow(app);
 	_camera = new Camera;
 	_camera_is_on = true;
     _filters[0] = new NoFilter;
@@ -147,4 +149,10 @@ void ControlsWindow::assemble(){
 
 void ControlsWindow::empty_pipe(){
 	emit yyy();
+}
+
+void ControlsWindow::keyPressEvent(QKeyEvent * e){
+	if (e->key() == Qt::Key_Escape){
+		_app->quit();
+	}
 }

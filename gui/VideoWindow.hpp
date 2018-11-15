@@ -20,6 +20,7 @@ class VideoWindow : public QMainWindow  {
     Q_OBJECT
 
 	private:
+		QApplication * _app;
 		QLabel * _label;
 		QPixmap pixmap;
 		QImage image;
@@ -29,8 +30,11 @@ class VideoWindow : public QMainWindow  {
 		inline void overlay_frame_rate(QPixmap* pixmap);
 
     public:
-    	VideoWindow();
-    	~VideoWindow();
+		VideoWindow(QApplication * _app);
+		~VideoWindow();
+
+	protected:
+		void keyPressEvent(QKeyEvent * e);
 
 	public slots:
 		void show_frame(Mat *frame);
