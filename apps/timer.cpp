@@ -29,6 +29,9 @@ char * counter;
 
 vec * flow;
 
+bool * mask_ptr;
+int * debug; // TODO: sacar esto. no es tan directo, porque se usa si #ifdef DEBUG
+
 void run_canny_CL(){
     CL_canny((char*)image1.ptr(), width, height, 60, 30);
 }
@@ -49,6 +52,30 @@ void run_kanade_C(){
 void run_kanade_CL(){
     CL_kanade(width, height, (char*)image1.ptr(), (char*)image2.ptr(), flow, 2);
 }
+
+void run_inpainting_C(){
+    inpainting((char*)image1.ptr(), width, height, mask_ptr, debug);
+}
+void run_inpainting_CL(){
+    CL_inpainting((char*)image1.ptr(), width, height, mask_ptr, debug);
+}
+
+void initialize_mask(){
+    int x = width/2;
+    int y = height/2;
+    int side = width/8;
+    for (int i = -side; i <= side; i++ ) {
+        for (int j = -side; j <= side; j++) {
+            int yi = y + i;
+            int xj = x + j;
+            // int yi = clamp(y + i, 0, height);
+            // int xj = clamp(x + j, 0, width);
+            mask_ptr[yi*width+xj] = true;
+        }
+    }
+}
+
+
 
 string double_to_string(double val){
     stringstream stream;
@@ -87,6 +114,9 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
     }else if(filter_name == "kanade"){
         C_function = run_kanade_C;
         CL_function = run_kanade_CL;
+    }else if(filter_name == "inpainting"){
+        C_function = run_inpainting_CL;
+        CL_function = run_inpainting_CL;
     }
     Mat backup = image1;
     REPEAT(warmup_iterations) C_function();
@@ -141,7 +171,7 @@ int main(int argc, const char** argv) {
         return 0;
     }
 
-    set<string> all_filters = {"canny", "hough", "kanade"};
+    set<string> all_filters = {"canny", "hough", "kanade", "inpainting"};
     set<string> selected_filters;
     if (arguments.count("--filter")){
         string filter = arguments["--filter"];
@@ -187,6 +217,12 @@ int main(int argc, const char** argv) {
     p_ammount = 100;
     counter = (char*)malloc(a_ammount*p_ammount*3*sizeof(char));
     flow = (vec*) malloc(sizeof(vec) * width * height);
+    mask_ptr = (bool*) malloc(width * height * sizeof(bool));
+    memset(mask_ptr, 0, height * width * sizeof(bool));
+    initialize_mask();
+
+    debug = (int*) malloc(width * height * sizeof(int));
+    memset(debug, 0, width * height * sizeof(int));
 
     TextTable text_table( '-', '|', '+' );
     text_table.add( "Filter" );
