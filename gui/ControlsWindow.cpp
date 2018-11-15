@@ -57,7 +57,6 @@ void ControlsWindow::setCamera(){
 void ControlsWindow::setFile(QString file_name_){
 	string file_name = file_name_.toStdString();
 	debug_print("Video file set to %s\n", file_name.c_str());
-	abort();
 	disassemble();
 
 	_camera->deleteLater();
