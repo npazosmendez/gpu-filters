@@ -12,7 +12,7 @@ extern uint qGlobalPostedEventsCount();// from qapplication.cpp
 QAtomicInt frame_processed = 1;
 
 VideoFileStreamer::VideoFileStreamer(string filename){
-	debug_print("Attempting to create stream from %s\n",filename);
+	debug_print("Attempting to create stream from %s\n",filename.c_str());
 	/* open webcam */
 	_filename = filename;
     stream = VideoCapture(filename);
