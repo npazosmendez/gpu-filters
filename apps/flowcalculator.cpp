@@ -128,6 +128,17 @@ int main(int argc, char** argv) {
             vec displacement = flow[LINEAR(x, y)];
             displacement.x *= FACTOR;
             displacement.y *= FACTOR;
+            if (abs(displacement.x) > MIN_LENGTH || abs(displacement.y) > MIN_LENGTH) {
+                line(
+                        drawnFrame,                                    // mat to draw into
+                        Point(x, y),                                   // origin position
+                        Point(x + displacement.x, y + displacement.y), // arrow tip position
+                        Scalar( 0, 200, 0 ),                           // color
+                        1.2                                           // thickness
+                );
+            }
+            /*
+            // For corner detection
             if (displacement.x == 1) {
                 circle(
                         drawnFrame,                                    // mat to draw into
@@ -136,6 +147,7 @@ int main(int argc, char** argv) {
                         Scalar( 0, 200, 200 )                          // color
                 );
             }
+             */
         }
 
         imshow("gpu-filters", drawnFrame); // show frame

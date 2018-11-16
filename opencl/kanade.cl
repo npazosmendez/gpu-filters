@@ -208,39 +208,31 @@ __kernel void calculate_flow(
 
     // Corner
 
-    //if (pos.x == 50 && pos.y == 50) printf("Eigen %f\nMaxEigen %f\nRate %f\n\n", min_eigen[index], max_min_eigen, min_eigen[index] / max_min_eigen);
     bool is_corner = min_eigen[index] / max_min_eigen > THRESHOLD_CORNER;
 
-    // A
-
-    /*
-
-    float IxIx = 0;
-    float IxIy = 0;
-    float IyIy = 0;
-
-    int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
-    forn(wy, window_diameter) forn(wx, window_diameter) {
-        int2 in_pos = clamp(pos + ((int2) (wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
-
-        IxIx += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_x[LINEAR(in_pos.x, in_pos.y)];
-        IxIy += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
-        IyIy += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
-    }
-
-    float A[2][2];
-    A[0][0] = IxIx;
-    A[0][1] = IxIy;
-    A[1][0] = IxIy;
-    A[1][1] = IyIy;
-
-     */
-
     if (is_corner) {
+        // A
+
+        float IxIx = 0;
+        float IxIy = 0;
+        float IyIy = 0;
+
+        int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
+        forn(wy, window_diameter) forn(wx, window_diameter) {
+            int2 in_pos = clamp(pos + ((int2) (wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
+
+            IxIx += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_x[LINEAR(in_pos.x, in_pos.y)];
+            IxIy += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
+            IyIy += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
+        }
+
+        float A[2][2];
+        A[0][0] = IxIx;
+        A[0][1] = IxIy;
+        A[1][0] = IxIy;
+        A[1][1] = IyIy;
 
         // b
-
-        /*
 
         float2 previous_guess = previous_flow ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2: (float2) ( 0, 0 );
         float2 iter_guess = (float2) ( 0, 0 );
@@ -275,10 +267,6 @@ __kernel void calculate_flow(
         }
 
         flow[LINEAR(pos.x, pos.y)] = previous_guess + iter_guess;
-
-        */
-
-        flow[LINEAR(pos.x, pos.y)] = (float2) (1, 1);
 
     } else {
 
