@@ -7,7 +7,7 @@ __constant int2 ZERO = (int2) (0, 0);
 __constant int LK_ITERATIONS = 8;
 __constant int CORNER_WINDOW_RADIUS = 1; // recommended
 __constant int LK_WINDOW_RADIUS = 2;
-__constant double THRESHOLD_CORNER = 1e7;
+__constant double THRESHOLD_CORNER = 0.03;
 
 __constant int KSIZE = 3;
 
@@ -96,6 +96,19 @@ static void gauss_eliminate(double *a, double *b, double *x, int n)
 #undef A
 }
 
+void print_row(__global float * matrix, int2 size, int2 pos) {
+    int width = size.x;
+    int height = size.y;
+    printf("%0.2f %0.2f %0.2f %0.2f %0.2f\n", matrix[LINEAR(pos.x-2, pos.y)], matrix[LINEAR(pos.x-1, pos.y)], matrix[LINEAR(pos.x, pos.y)], matrix[LINEAR(pos.x+1, pos.y)], matrix[LINEAR(pos.x+2, pos.y)]);
+}
+
+void print_mat(__global float * matrix, int2 size, int2 pos) {
+    print_row(matrix, size, (int2) (pos.x, pos.y-2));
+    print_row(matrix, size, (int2) (pos.x, pos.y-1));
+    print_row(matrix, size, (int2) (pos.x, pos.y));
+    print_row(matrix, size, (int2) (pos.x, pos.y+1));
+    print_row(matrix, size, (int2) (pos.x, pos.y+2));
+}
 
 // KERNELS
 // +++++++
@@ -104,7 +117,8 @@ __kernel void calculate_tensor_and_mineigen(
         __global float * gradient_x,
         __global float * gradient_y,
         __global float * out_tensor, // Why I can't define I it as '__global float * out_tensor[2][2]?'
-        __global float * out_min_eigen) {
+        __global float * out_min_eigen,
+        __global float * intensity_old) {
 
     int2 size = (int2)(get_global_size(0), get_global_size(1));
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
@@ -142,6 +156,25 @@ __kernel void calculate_tensor_and_mineigen(
 
     float min_eigen = min(eigen_1, eigen_2);
 
+    if (min_eigen > 1000000 && pos.x < 3 && pos.y < 3) {
+        printf("Min Eigen = %f\n", min_eigen);
+        printf("A = %f %f %f %f\n", tensor[0][0], tensor[0][1], tensor[1][0], tensor[1][1]);
+        printf("Gradient x \n");
+        print_mat(gradient_x, size, pos);
+        printf("Gradient y \n");
+        print_mat(gradient_y, size, pos);
+        printf("Image \n");
+        print_mat(intensity_old, size, pos);
+        printf("\n");
+    }
+    /*
+    if (pos.x == 50 && pos.y == 50) {
+        printf("A = %f %f %f %f\n", tensor[0][0], tensor[0][1], tensor[1][0], tensor[1][1]);
+        printf("Min Eigen = %f\n", min_eigen);
+        printf("\n");
+    }
+    */
+
     // Output
     out_tensor[4 * index + 0] = ((float *) tensor)[0];
     out_tensor[4 * index + 1] = ((float *) tensor)[1];
@@ -176,7 +209,7 @@ __kernel void calculate_flow(
     // Corner
 
     //if (pos.x == 50 && pos.y == 50) printf("Eigen %f\nMaxEigen %f\nRate %f\n\n", min_eigen[index], max_min_eigen, min_eigen[index] / max_min_eigen);
-    bool is_corner = min_eigen[index] > 1e4;
+    bool is_corner = min_eigen[index] / max_min_eigen > THRESHOLD_CORNER;
 
     // A
 
@@ -319,5 +352,5 @@ __kernel void calculate_intensity(
 
     char3 pixel = vload3(i, src);
 
-    dst[i] = (pixel.x + pixel.y + pixel.z) / 3.0f;
+    dst[i] = (((unsigned char)pixel.x) + ((unsigned char)pixel.y) + ((unsigned char)pixel.z)) / 3.0f; // TODO: omgg char can be signeddd
 }

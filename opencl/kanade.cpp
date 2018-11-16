@@ -204,6 +204,7 @@ static void calculate_flow(int pi, int levels) {
     k_calculate_tensor_and_mineigen.setArg(1, *b_gradient_y);
     k_calculate_tensor_and_mineigen.setArg(2, *b_tensor);
     k_calculate_tensor_and_mineigen.setArg(3, *b_min_eigen);
+    k_calculate_tensor_and_mineigen.setArg(4, *b_intensity_old);
     err = queue.enqueueNDRangeKernel(
             k_calculate_tensor_and_mineigen,
             NullRange,
