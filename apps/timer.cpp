@@ -61,9 +61,10 @@ void run_inpainting_CL(){
 }
 
 void initialize_mask(){
+    memset(mask_ptr, 0, height * width * sizeof(bool));
     int x = width/2;
     int y = height/2;
-    int side = width/8;
+    int side = width/12;
     for (int i = -side; i <= side; i++ ) {
         for (int j = -side; j <= side; j++) {
             int yi = y + i;
@@ -115,13 +116,14 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
         C_function = run_kanade_C;
         CL_function = run_kanade_CL;
     }else if(filter_name == "inpainting"){
-        C_function = run_inpainting_CL;
+        C_function = run_inpainting_C;
         CL_function = run_inpainting_CL;
     }
     Mat backup = image1;
     REPEAT(warmup_iterations) C_function();
     for (int i = 0; i < time_iterations; ++i){
         image1 = backup;
+        initialize_mask();
         begin = chrono::high_resolution_clock::now();
         C_function();
         end = chrono::high_resolution_clock::now();
@@ -131,6 +133,7 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
     REPEAT(warmup_iterations) CL_function();
     for (int i = 0; i < time_iterations; ++i){
         image1 = backup;
+        initialize_mask();
         begin = chrono::high_resolution_clock::now();
         CL_function();
         end = chrono::high_resolution_clock::now();
@@ -184,7 +187,7 @@ int main(int argc, const char** argv) {
         selected_filters = all_filters;
     }
 
-    int warmup_iterations = 10;
+    int warmup_iterations = 5;
     int time_iterations = 10;
     if (arguments.count("--iterations")){
         time_iterations = stoi(arguments["--iterations"]);
@@ -218,7 +221,6 @@ int main(int argc, const char** argv) {
     counter = (char*)malloc(a_ammount*p_ammount*3*sizeof(char));
     flow = (vec*) malloc(sizeof(vec) * width * height);
     mask_ptr = (bool*) malloc(width * height * sizeof(bool));
-    memset(mask_ptr, 0, height * width * sizeof(bool));
     initialize_mask();
 
     debug = (int*) malloc(width * height * sizeof(int));
