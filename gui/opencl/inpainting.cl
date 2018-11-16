@@ -67,7 +67,7 @@ float masked_convolute(int width, int height, __global uchar * img, int i, int j
                 avg += img[LINEAR3((int3)(inner_j, inner_i, ci))];
             }
             avg /= 3;
-            acc += avg * kern[LINEAR((int2)(kj, ki))];
+            acc += avg * kern[kj+ki*kernel_diameter];
         }
     }
 
