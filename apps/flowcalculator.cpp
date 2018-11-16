@@ -26,7 +26,7 @@ using namespace std;
 #define HEIGHT 480
 
 #define LEVELS 4
-#define GRANULARITY 10
+#define GRANULARITY 2
 #define FACTOR 1
 #define MIN_LENGTH 2
 
@@ -128,13 +128,12 @@ int main(int argc, char** argv) {
             vec displacement = flow[LINEAR(x, y)];
             displacement.x *= FACTOR;
             displacement.y *= FACTOR;
-            if (abs(displacement.x) > MIN_LENGTH || abs(displacement.y) > MIN_LENGTH) {
-                line(
+            if (displacement.x == 1) {
+                circle(
                         drawnFrame,                                    // mat to draw into
                         Point(x, y),                                   // origin position
-                        Point(x + displacement.x, y + displacement.y), // arrow tip position
-                        Scalar( 0, 200, 0 ),                           // color
-                        1.2                                           // thickness
+                        1,                                             // radius
+                        Scalar( 0, 200, 200 )                          // color
                 );
             }
         }

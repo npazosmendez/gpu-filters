@@ -5,6 +5,7 @@
 __constant int2 ZERO = (int2) (0, 0);
 
 __constant int LK_ITERATIONS = 8;
+__constant int CORNER_WINDOW_RADIUS = 1; // recommended
 __constant int LK_WINDOW_RADIUS = 2;
 __constant double THRESHOLD_CORNER = 1e7;
 
@@ -30,6 +31,7 @@ __constant float KERNEL_GAUSSIAN_BLUR[] = {
 
 // AUXILIARS
 // +++++++++
+/*
 static int is_corner(double tensor[2][2]) {
     double determinant = tensor[0][0] * tensor[1][1] - tensor[0][1] * tensor[1][0];
     double trace = tensor[0][0] + tensor[1][1];
@@ -39,6 +41,7 @@ static int is_corner(double tensor[2][2]) {
 
     return cornerism > THRESHOLD_CORNER;
 }
+ */
 
 // ROSETTA SNIPPET
 // https://rosettacode.org/wiki/Gaussian_elimination
@@ -97,6 +100,60 @@ static void gauss_eliminate(double *a, double *b, double *x, int n)
 // KERNELS
 // +++++++
 
+__kernel void calculate_tensor_and_mineigen(
+        __global float * gradient_x,
+        __global float * gradient_y,
+        __global float * out_tensor, // Why I can't define I it as '__global float * out_tensor[2][2]?'
+        __global float * out_min_eigen) {
+
+    int2 size = (int2)(get_global_size(0), get_global_size(1));
+    int2 pos = (int2)(get_global_id(0), get_global_id(1));
+    int index = (pos.y * size.x) + pos.x;
+
+    // Tensor
+    float IxIx = 0;
+    float IxIy = 0;
+    float IyIy = 0;
+
+    int window_radius = CORNER_WINDOW_RADIUS;
+    int window_diameter = window_radius * 2 + 1;
+
+    forn(wy, window_diameter) forn(wx, window_diameter) {
+        int2 in_pos = clamp(pos + ((int2) (wx, wy) - window_radius), ZERO, size - 1);
+        int in_index = (in_pos.y * size.x) + in_pos.x;
+
+        IxIx += gradient_x[in_index] * gradient_x[in_index];
+        IxIy += gradient_x[in_index] * gradient_y[in_index];
+        IyIy += gradient_y[in_index] * gradient_y[in_index];
+    }
+
+    float tensor[2][2];
+    tensor[0][0] = IxIx;
+    tensor[0][1] = IxIy;
+    tensor[1][0] = IxIy;
+    tensor[1][1] = IyIy;
+
+    // Mineigen
+    double determinant = tensor[0][0] * tensor[1][1] - tensor[0][1] * tensor[1][0];
+    double trace = tensor[0][0] + tensor[1][1];
+
+    float eigen_1 = (trace / 2.0 + sqrt((float)(pow((float)trace, (float)2.0)/4.0 - determinant)));
+    float eigen_2 = (trace / 2.0 - sqrt((float)(pow((float)trace, (float)2.0)/4.0 - determinant)));
+
+    float min_eigen = min(eigen_1, eigen_2);
+
+    // Output
+    out_tensor[4 * index + 0] = ((float *) tensor)[0];
+    out_tensor[4 * index + 1] = ((float *) tensor)[1];
+    out_tensor[4 * index + 2] = ((float *) tensor)[2];
+    out_tensor[4 * index + 3] = ((float *) tensor)[3];
+    out_min_eigen[index] = min_eigen;
+}
+
+#define ANSI_RED     "\x1b[31m"
+#define ANSI_RESET   "\x1b[0m"
+#define ASSERT(condition) do { if (!(condition)) printf("%s Failed assertion '%s'%s\n", ANSI_RED, #condition, ANSI_RESET); } while (0)
+
 __kernel void calculate_flow(
         int width,
         int height,
@@ -107,64 +164,94 @@ __kernel void calculate_flow(
         __global float2 * flow,
         int previous_width,
         int previous_height,
-        __global float2 * previous_flow) {
+        __global float2 * previous_flow,
+        __global float * tensor, // TODO: Remove this, I actually don't need it
+        __global float * min_eigen,
+        float max_min_eigen) {
 
     int2 size = (int2)(get_global_size(0), get_global_size(1));
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
+    int index = (pos.y * size.x) + pos.x;
 
-    float2 previous_guess = previous_flow ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2: (float2) ( 0, 0 );
-    float2 iter_guess = (float2) ( 0, 0 );
+    // Corner
 
-    for (int i = 0; i < LK_ITERATIONS; i++) {
+    //if (pos.x == 50 && pos.y == 50) printf("Eigen %f\nMaxEigen %f\nRate %f\n\n", min_eigen[index], max_min_eigen, min_eigen[index] / max_min_eigen);
+    bool is_corner = min_eigen[index] > 1e4;
 
-        float IxIx = 0;
-        float IxIy = 0;
-        float IyIy = 0;
-        float IxIt = 0;
-        float IyIt = 0;
+    // A
 
-        int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
-        forn(wy, window_diameter) forn(wx, window_diameter) {
+    /*
 
-            int2 window_offset = (int2) (wx, wy);
+    float IxIx = 0;
+    float IxIy = 0;
+    float IyIy = 0;
 
-            int2 in_pos = clamp(pos + (window_offset - LK_WINDOW_RADIUS), ZERO, size - 1);
-            int2 in_guessed_pos = in_pos + convert_int2(previous_guess + iter_guess);
+    int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
+    forn(wy, window_diameter) forn(wx, window_diameter) {
+        int2 in_pos = clamp(pos + ((int2) (wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
 
-            int source_index = LINEAR(in_pos.x, in_pos.y);
-            int target_index = LINEAR(in_guessed_pos.x, in_guessed_pos.y);
+        IxIx += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_x[LINEAR(in_pos.x, in_pos.y)];
+        IxIy += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
+        IyIy += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
+    }
 
-            float gradient_t = 0;
-            if (target_index >= 0 && target_index < width * height) {
-                gradient_t = intensity_new[target_index] - intensity_old[source_index];
+    float A[2][2];
+    A[0][0] = IxIx;
+    A[0][1] = IxIy;
+    A[1][0] = IxIy;
+    A[1][1] = IyIy;
+
+     */
+
+    if (is_corner) {
+
+        // b
+
+        /*
+
+        float2 previous_guess = previous_flow ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2: (float2) ( 0, 0 );
+        float2 iter_guess = (float2) ( 0, 0 );
+
+        for (int i = 0; i < LK_ITERATIONS; i++) {
+            float IxIt = 0;
+            float IyIt = 0;
+
+            int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
+            forn(wy, window_diameter) forn(wx, window_diameter) {
+                int2 in_pos = clamp(pos + ((int2) (wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
+                int2 in_guessed_pos = in_pos + convert_int2(previous_guess + iter_guess);
+
+                int source_index = LINEAR(in_pos.x, in_pos.y);
+                int target_index = LINEAR(in_guessed_pos.x, in_guessed_pos.y);
+
+                float gradient_t = 0;
+                if (target_index >= 0 && target_index < width * height) {
+                    gradient_t = intensity_new[target_index] - intensity_old[source_index];
+                }
+
+                IxIt += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
+                IyIt += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
             }
 
-            IxIx += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_x[LINEAR(in_pos.x, in_pos.y)];
-            IxIy += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
-            IyIy += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
-            IxIt += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
-            IyIt += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
-        }
+            double b[2] = {-IxIt, -IyIt};
+            double d[2];
 
-        double A[2][2];
-        A[0][0] = IxIx;
-        A[0][1] = IxIy;
-        A[1][0] = IxIy;
-        A[1][1] = IyIy;
-        double b[2] = {-IxIt, -IyIt};
-        double d[2];
-
-        if (is_corner(A)) {
             gauss_eliminate((double*)A, b, d, 2);
             iter_guess.x += d[0];
             iter_guess.y += d[1];
-        } else {
-            iter_guess = (float2) ( 0, 0 );
         }
+
+        flow[LINEAR(pos.x, pos.y)] = previous_guess + iter_guess;
+
+        */
+
+        flow[LINEAR(pos.x, pos.y)] = (float2) (1, 1);
+
+    } else {
+
+        flow[LINEAR(pos.x, pos.y)] = (float2) (0, 0);
+
     }
-
-    flow[LINEAR(pos.x, pos.y)] = previous_guess + iter_guess;
-
 }
 
 void convolution(
