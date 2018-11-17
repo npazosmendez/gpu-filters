@@ -165,10 +165,6 @@ static void init(int in_width, int in_height, int levels) {
     }
 }
 
-static void finish() {
-    // TODO free buffers
-}
-
 static int is_corner(double tensor[2][2]) {
     double determinant = tensor[0][0] * tensor[1][1] - tensor[0][1] * tensor[1][0];
     double trace = tensor[0][0] + tensor[1][1];
@@ -247,7 +243,7 @@ static void calculate_flow(int pi, int levels) {
     }
 }
 
-void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * output_flow, int levels) {
+void kanade(int in_width, int in_height, char * img_old, char * img_new, vecf * output_flow, int levels) {
 
     if (!initialized) init(in_width, in_height, levels);
 
@@ -324,6 +320,6 @@ void kanade(int in_width, int in_height, char * img_old, char * img_new, vec * o
     vecf * full_flow = pyramidal_flows[0];
 
     forn(i, full_width * full_height) {
-        output_flow[i] = (vec) { (int) full_flow[i].x, (int) full_flow[i].y };
+        output_flow[i] = (vecf) { full_flow[i].x, full_flow[i].y };
     }
 }

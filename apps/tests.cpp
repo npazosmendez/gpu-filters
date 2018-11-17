@@ -26,6 +26,8 @@ using namespace std;
 #define mu_failure(test, msg) printf("%s%s: Failed assertion '%s'%s\n", ANSI_RED, #test, msg, ANSI_RESET)
 #define mu_run_test(test) do { char * msg = test(); msg ? mu_failure(test, msg) : mu_success(test); } while (0)
 
+/*
+ *
 void intensity_to_img(unsigned char * intensity, char * img, int width, int height) {
     for (int i = 0; i < height * width; i++) {
         for (int k = 0; k < 3; k++) {
@@ -71,8 +73,11 @@ static char * test_kanade() {
     return 0;
 }
 
+ */
+
 int main(int argc, char** argv) {
     //string _; cin >> _;
-    mu_run_test(test_kanade);
+    //mu_run_test(test_kanade);
     return 0;
 }
+

@@ -23,6 +23,6 @@ void inpaint_generate_arbitrary_mask(bool * mask, int width, int height);
 void inpaint_init(int width, int height, char * img, bool * mask, int * debug);
 bool inpaint_step(int width, int height, char * img, bool * mask, int * debug);
 
-void kanade(int width, int height, char * imgA, char * imgB, vec * flow, int levels);
+void kanade(int width, int height, char * imgA, char * imgB, vecf * flow, int levels);
 
 #endif

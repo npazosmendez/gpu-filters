@@ -71,8 +71,11 @@ void createProgram(string filename) {
     cl_int err = 0;
     program = Program(context, sources, &err);
     clHandleError(__FILE__, __LINE__, err);
-    //const char* options = "-Werror";
+#ifdef DEBUG
+    const char* options = "-Werror -cl-opt-disable";
+#else
     const char* options = "";
+#endif
     err = program.build(context.getInfo<CL_CONTEXT_DEVICES>(), options);
     clHandleError(__FILE__, __LINE__, err);
 }

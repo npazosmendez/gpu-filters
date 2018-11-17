@@ -27,7 +27,7 @@ int a_ammount;
 int p_ammount;
 char * counter;
 
-vec * flow;
+vecf * flow;
 
 void run_canny_CL(){
     CL_canny((char*)image1.ptr(), width, height, 60, 30);
@@ -186,7 +186,7 @@ int main(int argc, const char** argv) {
     a_ammount = 100;
     p_ammount = 100;
     counter = (char*)malloc(a_ammount*p_ammount*3*sizeof(char));
-    flow = (vec*) malloc(sizeof(vec) * width * height);
+    flow = (vecf*) malloc(sizeof(vecf) * width * height);
 
     TextTable text_table( '-', '|', '+' );
     text_table.add( "Filter" );

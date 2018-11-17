@@ -96,9 +96,12 @@ static void gauss_eliminate(double *a, double *b, double *x, int n)
 #undef A
 }
 
+void print_row(__global float * matrix, int2 size, int2 pos);
+void print_mat(__global float * matrix, int2 size, int2 pos);
+
+
 void print_row(__global float * matrix, int2 size, int2 pos) {
     int width = size.x;
-    int height = size.y;
     printf("%0.2f %0.2f %0.2f %0.2f %0.2f\n", matrix[LINEAR(pos.x-2, pos.y)], matrix[LINEAR(pos.x-1, pos.y)], matrix[LINEAR(pos.x, pos.y)], matrix[LINEAR(pos.x+1, pos.y)], matrix[LINEAR(pos.x+2, pos.y)]);
 }
 
@@ -156,30 +159,11 @@ __kernel void calculate_tensor_and_mineigen(
 
     float min_eigen = min(eigen_1, eigen_2);
 
-    if (min_eigen > 1000000 && pos.x < 3 && pos.y < 3) {
-        printf("Min Eigen = %f\n", min_eigen);
-        printf("A = %f %f %f %f\n", tensor[0][0], tensor[0][1], tensor[1][0], tensor[1][1]);
-        printf("Gradient x \n");
-        print_mat(gradient_x, size, pos);
-        printf("Gradient y \n");
-        print_mat(gradient_y, size, pos);
-        printf("Image \n");
-        print_mat(intensity_old, size, pos);
-        printf("\n");
-    }
-    /*
-    if (pos.x == 50 && pos.y == 50) {
-        printf("A = %f %f %f %f\n", tensor[0][0], tensor[0][1], tensor[1][0], tensor[1][1]);
-        printf("Min Eigen = %f\n", min_eigen);
-        printf("\n");
-    }
-    */
-
     // Output
-    out_tensor[4 * index + 0] = ((float *) tensor)[0];
-    out_tensor[4 * index + 1] = ((float *) tensor)[1];
-    out_tensor[4 * index + 2] = ((float *) tensor)[2];
-    out_tensor[4 * index + 3] = ((float *) tensor)[3];
+    out_tensor[4 * index + 0] = tensor[0][0];
+    out_tensor[4 * index + 1] = tensor[0][1];
+    out_tensor[4 * index + 2] = tensor[1][0];
+    out_tensor[4 * index + 3] = tensor[1][1];
     out_min_eigen[index] = min_eigen;
 }
 
@@ -243,15 +227,28 @@ __kernel void calculate_flow(
 
             int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
             forn(wy, window_diameter) forn(wx, window_diameter) {
-                int2 in_pos = clamp(pos + ((int2) (wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
-                int2 in_guessed_pos = in_pos + convert_int2(previous_guess + iter_guess);
 
-                int source_index = LINEAR(in_pos.x, in_pos.y);
-                int target_index = LINEAR(in_guessed_pos.x, in_guessed_pos.y);
+                int2 in_pos = clamp(pos + ((int2) (wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
+
+                float2 in_guessed_pos = convert_float2(in_pos) + previous_guess + iter_guess;
+                int2 base = convert_int2(in_guessed_pos);
 
                 float gradient_t = 0;
-                if (target_index >= 0 && target_index < width * height) {
-                    gradient_t = intensity_new[target_index] - intensity_old[source_index];
+                if (base.x >= 0 && base.y >= 0 && base.x < size.x - 1 && base.y < size.y - 1) {
+                    float alpha_x = in_guessed_pos.x - base.x;
+                    float alpha_y = in_guessed_pos.y - base.y;
+
+                    float interpolation = 0;
+
+                    interpolation += (alpha_x) * (alpha_y) * intensity_new[LINEAR(base.x, base.y)];
+                    interpolation += (1 - alpha_x) * (alpha_y) * intensity_new[LINEAR(base.x + 1, base.y)];
+                    interpolation += (alpha_x) * (1 - alpha_y) * intensity_new[LINEAR(base.x, base.y + 1)];
+                    interpolation += (1 - alpha_x) * (1 - alpha_y) * intensity_new[LINEAR(base.x + 1, base.y + 1)];
+
+                    gradient_t = interpolation - intensity_old[LINEAR(in_pos.x, in_pos.y)];
+
+                } else {
+                    // TODO: What else
                 }
 
                 IxIt += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
@@ -266,6 +263,19 @@ __kernel void calculate_flow(
             iter_guess.y += d[1];
         }
 
+        if (pos.x < 5 && pos.y < 5) {
+            if (fabs(((float) (previous_guess.x + iter_guess.x))) > 100.0 && fabs(((float) (previous_guess.x + iter_guess.x))) < 5000.0) {
+                printf("OVERBOARD\n");
+                printf("Intensity\n");
+                print_mat(intensity_old, size, pos);
+                printf("Gradient X\n");
+                print_mat(gradient_x, size, pos);
+                printf("Gradient Y\n");
+                print_mat(gradient_y, size, pos);
+            }
+        }
+
+
         flow[LINEAR(pos.x, pos.y)] = previous_guess + iter_guess;
 
     } else {
@@ -274,6 +284,11 @@ __kernel void calculate_flow(
 
     }
 }
+
+void convolution(
+        __global float * src,
+        __global float * dst,
+        __constant float * kern);
 
 void convolution(
         __global float * src,

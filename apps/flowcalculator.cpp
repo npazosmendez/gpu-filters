@@ -28,7 +28,7 @@ using namespace std;
 #define LEVELS 4
 #define GRANULARITY 1
 #define FACTOR 1
-#define MIN_LENGTH 2
+#define MIN_LENGTH 0
 
 
 bool quit = false;
@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
 
     // Params
 
-    void (*picked_kanade)(int, int, char*, char*, vec*, int) = kanade;
+    void (*picked_kanade)(int, int, char*, char*, vecf*, int) = kanade;
 
     for (int i = 1; i < argc; i++) {
         string param = argv[i];
@@ -55,14 +55,14 @@ int main(int argc, char** argv) {
                 cerr << "Device name missing after '-d'." << endl;
                 exit(1);
             }
-            int device;
+            int device_number;
             try {
-                device = stoi(argv[i+1]);
+                device_number = stoi(argv[i+1]);
             } catch (int e) {
                 cerr << "Couldn't convert '-d' parameter to number" << endl;
                 return -1;
             }
-            selectDevice(device);
+            selectDevice(device_number);
         } else if (param == "-h") {
             cout << "Usage:\n";
             cout << "  flowcalculator [flags]\n";
@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
 
     // Init flow buffer
 
-    vec * flow = (vec*) malloc(sizeof(vec) * width * height);
+    vecf * flow = (vecf*) malloc(sizeof(vecf) * width * height);
 
     // Show video and apply filter
 
@@ -125,16 +125,16 @@ int main(int argc, char** argv) {
 
         drawnFrame = cameraFrame.clone();
         forn(y, height) forn(x, width) if (y % GRANULARITY == 0 && x % GRANULARITY == 0) {
-            vec displacement = flow[LINEAR(x, y)];
+            vecf displacement = flow[LINEAR(x, y)];
             displacement.x *= FACTOR;
             displacement.y *= FACTOR;
-            if (abs(displacement.x) > MIN_LENGTH || abs(displacement.y) > MIN_LENGTH) {
+            if (abs(int(displacement.x)) > MIN_LENGTH || abs(int(displacement.y)) > MIN_LENGTH) {
                 line(
                         drawnFrame,                                    // mat to draw into
                         Point(x, y),                                   // origin position
-                        Point(x + displacement.x, y + displacement.y), // arrow tip position
+                        Point(x + int(displacement.x), y + int(displacement.y)), // arrow tip position
                         Scalar( 0, 200, 0 ),                           // color
-                        1.2                                           // thickness
+                        1                                              // thickness
                 );
             }
             /*

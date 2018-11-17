@@ -247,7 +247,7 @@ static void calculate_flow(int pi, int levels) {
     clHandleError(__FILE__,__LINE__,err);
 }
 
-void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec * output_flow, int levels) {
+void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vecf * output_flow, int levels) {
 
     if (!initialized) init(in_width, in_height, levels);
     if (in_width != pyramidal_widths[0]) refresh_size(in_width, in_height, levels);
@@ -368,6 +368,8 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
 
     for (int pi = levels - 1; pi >= 0; pi--) {
 
+        printf("Loop init (%d)\n", pi);
+
         // Gradients
         int width = pyramidal_widths[pi];
         int height = pyramidal_heights[pi];
@@ -376,8 +378,11 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         Buffer * b_gradient_y = b_pyramidal_gradients_y[pi];
         Buffer * b_intensity_old = b_pyramidal_intensities_old[pi];
 
+        printf("Convolution X(%d)\n", pi);
+
         k_convolution_x.setArg(0, *b_intensity_old);
         k_convolution_x.setArg(1, *b_gradient_x);
+        printf("Convolution X - About to Enqueue(%d)\n", pi);
         err = queue.enqueueNDRangeKernel(
                 k_convolution_x,
                 NullRange,
@@ -385,7 +390,10 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
                 NullRange // default
         );
         queue.finish();
+        printf("Convolution X - About to Handle Error(%d)\n", pi);
         clHandleError(__FILE__,__LINE__,err);
+
+        printf("Convolution Y (%d)\n", pi);
 
         k_convolution_y.setArg(0, *b_intensity_old);
         k_convolution_y.setArg(1, *b_gradient_y);
@@ -398,6 +406,8 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
         queue.finish();
         clHandleError(__FILE__,__LINE__,err);
 
+        printf("Flow (%d)\n", pi);
+
         // LK algorithm
         calculate_flow(pi, levels);
     }
@@ -407,6 +417,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vec 
     clHandleError(__FILE__,__LINE__,err);
 
     forn(i, full_width * full_height) {
-        output_flow[i] = (vec) { (int) flow_output[i].x, (int) flow_output[i].y };
+        output_flow[i] = (vecf) { flow_output[i].x, flow_output[i].y };
     }
 }

@@ -38,7 +38,7 @@ APPS := inpainter linedetector flowcalculator tests timer
 apps: CPPFLAGS += -O3 -g
 apps: $(APPS)
 
-dapps: CPPFLAGS += -g
+dapps: CPPFLAGS += -g -D DEBUG
 dapps: $(APPS)
 
 $(APPS): % : $(OBJECTS) $(addprefix apps/, %.o)
