@@ -67,8 +67,6 @@ duration<double> time_span;
 
 void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug) {
 
-    cout << "Initializing OpenCL model for Inpainting\n";
-
     // OpenCL initialization
     if(!openCL_initialized) initCL();
 
