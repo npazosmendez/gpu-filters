@@ -5,6 +5,7 @@ extern "C" {
 #include "opencl/opencl-filters.hpp"
 #include <chrono>
 #include <TextTable.h>
+#include <ProgressBar.hpp>
 #include <iomanip>
 #include <sstream>
 #include <set>
@@ -20,6 +21,9 @@ using namespace std;
 
 int width;
 int height;
+
+Mat source_image;
+
 Mat image1;
 Mat image2;
 
@@ -119,26 +123,44 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
         C_function = run_inpainting_C;
         CL_function = run_inpainting_CL;
     }
-    Mat backup = image1;
-    REPEAT(warmup_iterations) C_function();
+
+    ProgressBar bar(warmup_iterations + time_iterations);
+    REPEAT(warmup_iterations){
+        image1 = source_image.clone();
+        image2 = source_image.clone();
+        C_function();
+        bar.Update();
+    }
     for (int i = 0; i < time_iterations; ++i){
-        image1 = backup;
+        image1 = source_image.clone();
+        image2 = source_image.clone();
         initialize_mask();
         begin = chrono::high_resolution_clock::now();
         C_function();
         end = chrono::high_resolution_clock::now();
         C_microsec_duration += chrono::duration_cast<chrono::microseconds>(end-begin).count();
+        bar.Update();
     }
+    cout << endl;
 
-    REPEAT(warmup_iterations) CL_function();
+    bar.Reset();
+    REPEAT(warmup_iterations){
+        image1 = source_image.clone();
+        image2 = source_image.clone();
+        CL_function();
+        bar.Update();
+    }
     for (int i = 0; i < time_iterations; ++i){
-        image1 = backup;
+        image1 = source_image.clone();
+        image2 = source_image.clone();
         initialize_mask();
         begin = chrono::high_resolution_clock::now();
         CL_function();
         end = chrono::high_resolution_clock::now();
         CL_microsec_duration += chrono::duration_cast<chrono::microseconds>(end-begin).count();
+        bar.Update();
     }
+    cout << endl;
 
     C_miliseconds_duration = C_microsec_duration / time_iterations / 1000.0;
     CL_miliseconds_duration = CL_microsec_duration / time_iterations / 1000.0;
@@ -168,6 +190,7 @@ int main(int argc, const char** argv) {
         cout << "Timing application for the filters. For custom timing try:" << endl;
         cout << "\t--filter <filter_name> (canny/hough/kanade)" << endl;
         cout << "\t--iterations <#iterations>" << endl;
+        cout << "\t--warmup <#iterations>" << endl;
         cout << "\t--device <device_nr>" << endl;
         cout << "\t--image <image_path> (needed)" << endl;
         cout << "\t--help" << endl;
@@ -187,10 +210,17 @@ int main(int argc, const char** argv) {
         selected_filters = all_filters;
     }
 
-    int warmup_iterations = 5;
+    int warmup_iterations = 10;
     int time_iterations = 10;
     if (arguments.count("--iterations")){
         time_iterations = stoi(arguments["--iterations"]);
+        if (time_iterations <= 0){
+            cerr << "Number of iterations should be positive" << endl;
+            abort();
+        }
+    }
+    if (arguments.count("--warmup")){
+        warmup_iterations = stoi(arguments["--warmup"]);
         if (time_iterations <= 0){
             cerr << "Number of iterations should be positive" << endl;
             abort();
@@ -211,10 +241,12 @@ int main(int argc, const char** argv) {
         cerr << "Need an image path through '--image'"<<endl;
         abort();
     }
-    image1 = imread(arguments["--image"], CV_LOAD_IMAGE_COLOR);
-    image2 = image1;
-    width = image1.size().width;
-    height = image1.size().height;
+
+    cout << "warmup: " << warmup_iterations << endl;
+    cout << "time iterations: " << time_iterations << endl;
+    source_image = imread(arguments["--image"], CV_LOAD_IMAGE_COLOR);
+    width = source_image.size().width;
+    height = source_image.size().height;
 
     a_ammount = 100;
     p_ammount = 100;
