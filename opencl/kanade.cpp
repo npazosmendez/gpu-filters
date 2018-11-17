@@ -74,8 +74,6 @@ static cl_int err = 0;
 
 static void init(int in_width, int in_height, int levels) {
 
-    cout << "Initializing OpenCL model for Optical Flow\n";
-
     // OpenCL initialization
     if(!openCL_initialized) initCL();
 
