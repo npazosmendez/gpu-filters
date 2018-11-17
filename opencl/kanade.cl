@@ -30,6 +30,10 @@ __constant float KERNEL_GAUSSIAN_BLUR[] = {
 
 #define ANSI_RED     "\x1b[31m"
 #define ANSI_RESET   "\x1b[0m"
+#define IVAR(var) printf("%s = %d\n", #var, (var))
+#define FVAR(var) printf("%s = %f\n", #var, (var))
+#define I2VAR(var) printf("%s = (%d, %d)\n", #var, (var).x, (var).y)
+#define F2VAR(var) printf("%s = (%f, %f)\n", #var, (var).x, (var).y)
 #define ASSERT(condition) do { if (!(condition)) printf("%s Failed assertion '%s'%s\n", ANSI_RED, #condition, ANSI_RESET); } while (0)
 #define IN_BOUNDS(index, size) ASSERT((index) >= 0 && (index) < (size).x * (size).y)
 
@@ -246,7 +250,7 @@ __kernel void calculate_flow(
                 int2 in_pos = clamp(pos + ((int2) (wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
 
                 float2 in_guessed_pos = convert_float2(in_pos) + previous_guess + iter_guess;
-                int2 base = convert_int2(in_guessed_pos);
+                int2 base = (int2) ( ((int)in_guessed_pos.x), ((int) in_guessed_pos.y) );
 
                 float gradient_t = 0;
                 if (base.x >= 0 && base.y >= 0 && base.x < size.x - 1 && base.y < size.y - 1) {
@@ -279,14 +283,28 @@ __kernel void calculate_flow(
             double b[2] = {-IxIt, -IyIt};
             double d[2];
 
-            gauss_eliminate((double*)A, b, d, 2);
+            float Acopy[2][2];
+            Acopy[0][0] = A[0][0];
+            Acopy[0][1] = A[0][1];
+            Acopy[1][0] = A[1][0];
+            Acopy[1][1] = A[1][1];
+
+            gauss_eliminate((double*)Acopy, b, d, 2);
+
             iter_guess.x += d[0];
             iter_guess.y += d[1];
         }
 
-        if (pos.x < 5 && pos.y < 5) {
-            if (fabs(((float) (previous_guess.x + iter_guess.x))) > 100.0 && fabs(((float) (previous_guess.x + iter_guess.x))) < 5000.0) {
-                printf("OVERBOARD\n");
+        // DEBUG LAND
+        // ++++++++++
+        // ++++++++++
+
+        if (pos.x > 10 && pos.y > 10 && pos.x < size.x - 10 && pos.y < size.y - 10) if (pos.x % 10 == 0)
+        if (fabs(((float) (previous_guess.x + iter_guess.x))) > 80.0) {
+                //printf("OVERBOARD\n");
+                //printf("Previous Guess: (%f, %f)\n", previous_guess.x, previous_guess.y);
+                //printf("Iter Guess: (%f, %f)\n", iter_guess.x, iter_guess.y);
+                /*
                 printf("Intensity\n");
                 print_mat(intensity_old, size, pos);
                 printf("Gradient X\n");
@@ -294,11 +312,76 @@ __kernel void calculate_flow(
                 printf("Gradient Y\n");
                 print_mat(gradient_y, size, pos);
 
-            }
+
+
+                if (has_previous_level) IN_BOUNDS((pos.y/2) * previous_width + (pos.x/2), size / 2);
+
+                float2 previous_guess = has_previous_level ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2: (float2) ( 0, 0 );
+                float2 iter_guess = (float2) ( 0, 0 );
+
+                for (int i = 0; i < LK_ITERATIONS; i++) {
+                    float IxIt = 0;
+                    float IyIt = 0;
+
+                    F2VAR(iter_guess);
+
+                    int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
+                    forn(wy, window_diameter) forn(wx, window_diameter) {
+
+                        int2 in_pos = clamp(pos + ((int2) (wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
+
+                        float2 in_guessed_pos = convert_float2(in_pos) + previous_guess + iter_guess;
+                        int2 base = (int2) ( ((int)in_guessed_pos.x), ((int) in_guessed_pos.y) );
+
+                        float gradient_t = 0;
+                        if (base.x >= 0 && base.y >= 0 && base.x < size.x - 1 && base.y < size.y - 1) {
+                            float alpha_x = in_guessed_pos.x - base.x;
+                            float alpha_y = in_guessed_pos.y - base.y;
+
+                            float interpolation = 0;
+
+                            IN_BOUNDS(LINEAR(base.x, base.y), size);
+                            IN_BOUNDS(LINEAR(base.x + 1, base.y), size);
+                            IN_BOUNDS(LINEAR(base.x, base.y + 1), size);
+                            IN_BOUNDS(LINEAR(base.x + 1, base.y + 1), size);
+                            interpolation += (alpha_x) * (alpha_y) * intensity_new[LINEAR(base.x, base.y)];
+                            interpolation += (1 - alpha_x) * (alpha_y) * intensity_new[LINEAR(base.x + 1, base.y)];
+                            interpolation += (alpha_x) * (1 - alpha_y) * intensity_new[LINEAR(base.x, base.y + 1)];
+                            interpolation += (1 - alpha_x) * (1 - alpha_y) * intensity_new[LINEAR(base.x + 1, base.y + 1)];
+
+                            IN_BOUNDS(LINEAR(in_pos.x, in_pos.y), size);
+                            gradient_t = interpolation - intensity_old[LINEAR(in_pos.x, in_pos.y)];
+
+                        } else {
+                            // TODO: What else
+                        }
+
+                        IN_BOUNDS(LINEAR(in_pos.x, in_pos.y), size);
+                        IxIt += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
+                        IyIt += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
+                    }
+
+                    double b[2] = {-IxIt, -IyIt};
+                    double d[2];
+
+                    gauss_eliminate((double*)A, b, d, 2);
+                    iter_guess.x += d[0];
+                    iter_guess.y += d[1];
+                }
+
+
+
+                */
+
+                printf("\n");
         }
 
         IN_BOUNDS(LINEAR(pos.x, pos.y), size);
         flow[LINEAR(pos.x, pos.y)] = previous_guess + iter_guess;
+
+        // DEBUG LAND
+        // ++++++++++
+        // ++++++++++
 
     } else {
 
