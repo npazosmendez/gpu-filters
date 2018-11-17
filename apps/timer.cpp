@@ -88,7 +88,11 @@ string double_to_string(double val){
     return stream.str();
 }
 
-void print_filter_measurements(string filter_name, double CL_miliseconds, double C_miliseconds, TextTable& text_table){
+void print_filter_measurements(string filter_name, vector<double> &CL_miliseconds_durations, vector<double> &C_miliseconds_durations, TextTable& text_table){
+
+    // TODO: further analize measurements: variance, mean, outliers, etc.
+    double C_miliseconds = *min_element(C_miliseconds_durations.begin(), C_miliseconds_durations.end());
+    double CL_miliseconds = *min_element(CL_miliseconds_durations.begin(), CL_miliseconds_durations.end());
 
     text_table.add( filter_name );
     text_table.add("");
@@ -101,13 +105,12 @@ void print_filter_measurements(string filter_name, double CL_miliseconds, double
 }
 
 
-void time_filter(string filter_name, int warmup_iterations, int time_iterations, double &C_miliseconds_duration, double &CL_miliseconds_duration){
-    // TODO: every call should be done with the same image, not the filtered one
+void time_filter(string filter_name, int warmup_iterations, int time_iterations, vector<double> &C_miliseconds_durations, vector<double> &CL_miliseconds_durations){
+    C_miliseconds_durations = vector<double>();
+    CL_miliseconds_durations = vector<double>();
     cout << "Timing " << filter_name << "..." << endl;
     auto begin = chrono::high_resolution_clock::now();
     auto end = chrono::high_resolution_clock::now();
-    long int C_microsec_duration = 0;
-    long int CL_microsec_duration = 0;
     void (*C_function)();
     void (*CL_function)();
     if (filter_name == "canny"){
@@ -138,8 +141,9 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
         begin = chrono::high_resolution_clock::now();
         C_function();
         end = chrono::high_resolution_clock::now();
-        C_microsec_duration += chrono::duration_cast<chrono::microseconds>(end-begin).count();
+        long int C_microsec_duration = chrono::duration_cast<chrono::microseconds>(end-begin).count();
         bar.Update();
+        C_miliseconds_durations.push_back(C_microsec_duration / 1000.0);
     }
     cout << endl;
 
@@ -157,13 +161,12 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
         begin = chrono::high_resolution_clock::now();
         CL_function();
         end = chrono::high_resolution_clock::now();
-        CL_microsec_duration += chrono::duration_cast<chrono::microseconds>(end-begin).count();
+        long int CL_microsec_duration = chrono::duration_cast<chrono::microseconds>(end-begin).count();
         bar.Update();
+        CL_miliseconds_durations.push_back(CL_microsec_duration / 1000.0);
     }
     cout << endl;
 
-    C_miliseconds_duration = C_microsec_duration / time_iterations / 1000.0;
-    CL_miliseconds_duration = CL_microsec_duration / time_iterations / 1000.0;
 }
 
 
@@ -210,8 +213,9 @@ int main(int argc, const char** argv) {
         selected_filters = all_filters;
     }
 
-    int warmup_iterations = 10;
-    int time_iterations = 10;
+    // defaults are low because of inpainting
+    int warmup_iterations = 3;
+    int time_iterations = 5;
     if (arguments.count("--iterations")){
         time_iterations = stoi(arguments["--iterations"]);
         if (time_iterations <= 0){
@@ -242,8 +246,6 @@ int main(int argc, const char** argv) {
         abort();
     }
 
-    cout << "warmup: " << warmup_iterations << endl;
-    cout << "time iterations: " << time_iterations << endl;
     source_image = imread(arguments["--image"], CV_LOAD_IMAGE_COLOR);
     width = source_image.size().width;
     height = source_image.size().height;
@@ -273,12 +275,12 @@ int main(int argc, const char** argv) {
     initCL(true);
     cout << "\n";
 
-    double C_miliseconds_duration;
-    double CL_miliseconds_duration;
+    vector<double> C_miliseconds_durations;
+    vector<double> CL_miliseconds_durations;
 
     for(string filter_name : selected_filters){
-        time_filter(filter_name, warmup_iterations, time_iterations, C_miliseconds_duration, CL_miliseconds_duration);
-        print_filter_measurements(filter_name, CL_miliseconds_duration, C_miliseconds_duration, text_table);
+        time_filter(filter_name, warmup_iterations, time_iterations, C_miliseconds_durations, CL_miliseconds_durations);
+        print_filter_measurements(filter_name, CL_miliseconds_durations, C_miliseconds_durations, text_table);
     }
 
     cout << text_table;
