@@ -68,7 +68,7 @@ void initialize_mask(){
     memset(mask_ptr, 0, height * width * sizeof(bool));
     int x = width/2;
     int y = height/2;
-    int side = width/12;
+    int side = width/30;
     for (int i = -side; i <= side; i++ ) {
         for (int j = -side; j <= side; j++) {
             int yi = y + i;
