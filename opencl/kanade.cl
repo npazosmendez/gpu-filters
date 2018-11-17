@@ -28,6 +28,11 @@ __constant float KERNEL_GAUSSIAN_BLUR[] = {
         1/16.0, 1/8.0 , 1/16.0
 };
 
+#define ANSI_RED     "\x1b[31m"
+#define ANSI_RESET   "\x1b[0m"
+#define ASSERT(condition) do { if (!(condition)) printf("%s Failed assertion '%s'%s\n", ANSI_RED, #condition, ANSI_RESET); } while (0)
+#define IN_BOUNDS(index, size) ASSERT((index) >= 0 && (index) < (size).x * (size).y)
+
 
 // AUXILIARS
 // +++++++++
@@ -99,9 +104,13 @@ static void gauss_eliminate(double *a, double *b, double *x, int n)
 void print_row(__global float * matrix, int2 size, int2 pos);
 void print_mat(__global float * matrix, int2 size, int2 pos);
 
-
 void print_row(__global float * matrix, int2 size, int2 pos) {
     int width = size.x;
+    IN_BOUNDS(LINEAR(pos.x-2, pos.y), size);
+    IN_BOUNDS(LINEAR(pos.x-1, pos.y), size);
+    IN_BOUNDS(LINEAR(pos.x, pos.y), size);
+    IN_BOUNDS(LINEAR(pos.x+1, pos.y), size);
+    IN_BOUNDS(LINEAR(pos.x+2, pos.y), size);
     printf("%0.2f %0.2f %0.2f %0.2f %0.2f\n", matrix[LINEAR(pos.x-2, pos.y)], matrix[LINEAR(pos.x-1, pos.y)], matrix[LINEAR(pos.x, pos.y)], matrix[LINEAR(pos.x+1, pos.y)], matrix[LINEAR(pos.x+2, pos.y)]);
 }
 
@@ -139,6 +148,7 @@ __kernel void calculate_tensor_and_mineigen(
         int2 in_pos = clamp(pos + ((int2) (wx, wy) - window_radius), ZERO, size - 1);
         int in_index = (in_pos.y * size.x) + in_pos.x;
 
+        IN_BOUNDS(in_index, size);
         IxIx += gradient_x[in_index] * gradient_x[in_index];
         IxIy += gradient_x[in_index] * gradient_y[in_index];
         IyIy += gradient_y[in_index] * gradient_y[in_index];
@@ -160,16 +170,16 @@ __kernel void calculate_tensor_and_mineigen(
     float min_eigen = min(eigen_1, eigen_2);
 
     // Output
+    IN_BOUNDS(4 * index + 0, size * 4);
+    IN_BOUNDS(4 * index + 3, size * 4);
     out_tensor[4 * index + 0] = tensor[0][0];
     out_tensor[4 * index + 1] = tensor[0][1];
     out_tensor[4 * index + 2] = tensor[1][0];
     out_tensor[4 * index + 3] = tensor[1][1];
+    IN_BOUNDS(index, size);
     out_min_eigen[index] = min_eigen;
 }
 
-#define ANSI_RED     "\x1b[31m"
-#define ANSI_RESET   "\x1b[0m"
-#define ASSERT(condition) do { if (!(condition)) printf("%s Failed assertion '%s'%s\n", ANSI_RED, #condition, ANSI_RESET); } while (0)
 
 __kernel void calculate_flow(
         int width,
@@ -181,7 +191,7 @@ __kernel void calculate_flow(
         __global float2 * flow,
         int previous_width,
         int previous_height,
-        __global float2 * previous_flow,
+        __global float2 * previous_flow, // TODO: Why is it not NULL when L = 0?
         __global float * tensor, // TODO: Remove this, I actually don't need it
         __global float * min_eigen,
         float max_min_eigen) {
@@ -190,8 +200,10 @@ __kernel void calculate_flow(
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
     int index = (pos.y * size.x) + pos.x;
 
-    // Corner
+    bool has_previous_level = previous_width != -1;
 
+    // Corner
+    IN_BOUNDS(index, size);
     bool is_corner = min_eigen[index] / max_min_eigen > THRESHOLD_CORNER;
 
     if (is_corner) {
@@ -205,6 +217,7 @@ __kernel void calculate_flow(
         forn(wy, window_diameter) forn(wx, window_diameter) {
             int2 in_pos = clamp(pos + ((int2) (wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
 
+            IN_BOUNDS(LINEAR(in_pos.x, in_pos.y), size);
             IxIx += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_x[LINEAR(in_pos.x, in_pos.y)];
             IxIy += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
             IyIy += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
@@ -218,7 +231,9 @@ __kernel void calculate_flow(
 
         // b
 
-        float2 previous_guess = previous_flow ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2: (float2) ( 0, 0 );
+        if (has_previous_level) IN_BOUNDS((pos.y/2) * previous_width + (pos.x/2), size / 2);
+
+        float2 previous_guess = has_previous_level ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2: (float2) ( 0, 0 );
         float2 iter_guess = (float2) ( 0, 0 );
 
         for (int i = 0; i < LK_ITERATIONS; i++) {
@@ -240,17 +255,23 @@ __kernel void calculate_flow(
 
                     float interpolation = 0;
 
+                    IN_BOUNDS(LINEAR(base.x, base.y), size);
+                    IN_BOUNDS(LINEAR(base.x + 1, base.y), size);
+                    IN_BOUNDS(LINEAR(base.x, base.y + 1), size);
+                    IN_BOUNDS(LINEAR(base.x + 1, base.y + 1), size);
                     interpolation += (alpha_x) * (alpha_y) * intensity_new[LINEAR(base.x, base.y)];
                     interpolation += (1 - alpha_x) * (alpha_y) * intensity_new[LINEAR(base.x + 1, base.y)];
                     interpolation += (alpha_x) * (1 - alpha_y) * intensity_new[LINEAR(base.x, base.y + 1)];
                     interpolation += (1 - alpha_x) * (1 - alpha_y) * intensity_new[LINEAR(base.x + 1, base.y + 1)];
 
+                    IN_BOUNDS(LINEAR(in_pos.x, in_pos.y), size);
                     gradient_t = interpolation - intensity_old[LINEAR(in_pos.x, in_pos.y)];
 
                 } else {
                     // TODO: What else
                 }
 
+                IN_BOUNDS(LINEAR(in_pos.x, in_pos.y), size);
                 IxIt += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
                 IyIt += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
             }
@@ -272,14 +293,16 @@ __kernel void calculate_flow(
                 print_mat(gradient_x, size, pos);
                 printf("Gradient Y\n");
                 print_mat(gradient_y, size, pos);
+
             }
         }
 
-
+        IN_BOUNDS(LINEAR(pos.x, pos.y), size);
         flow[LINEAR(pos.x, pos.y)] = previous_guess + iter_guess;
 
     } else {
 
+        IN_BOUNDS(LINEAR(pos.x, pos.y), size);
         flow[LINEAR(pos.x, pos.y)] = (float2) (0, 0);
 
     }
@@ -307,12 +330,15 @@ void convolution(
     float temp = 0;
     for (int yk = 0; yk < KSIZE; yk++) {
         for (int xk = 0; xk < KSIZE; xk++) {
+            IN_BOUNDS((pos.y + yk - KSIZE/2) * size.x + (pos.x + xk - KSIZE/2), size);
+            IN_BOUNDS(yk * KSIZE + xk, (int2) (KSIZE, KSIZE));
             float intensity = src[(pos.y + yk - KSIZE/2) * size.x + (pos.x + xk - KSIZE/2)];
             float factor = kern[yk * KSIZE + xk];
             temp += intensity * factor;
         }
     }
 
+    IN_BOUNDS(pos.y * size.x + pos.x, size);
     dst[pos.y * size.x + pos.x] = temp;
 }
 
@@ -343,6 +369,8 @@ __kernel void subsample(
     int2 size = (int2)(get_global_size(0), get_global_size(1));
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
 
+    IN_BOUNDS(pos.y * size.x + pos.x, size);
+    IN_BOUNDS(2*pos.y * src_width + 2*pos.x, (int2)(src_width, src_height));
     dst[pos.y * size.x + pos.x] = src[2*pos.y * src_width + 2*pos.x];
     dst[pos.y * size.x + pos.x] = src[2*pos.y * src_width + 2*pos.x];
 }
