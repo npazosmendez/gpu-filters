@@ -1,13 +1,30 @@
-# Filters
+# GPU Filters
+
+Four image processing filters implemented in pure C and in OpenCL to compare their performances.
 
 **Edge Detection** with Canny's algorithm
 
+Raw                        |  Processed
+:-------------------------:|:-------------------------:
+![](readme/canny_raw.png)  |  ![](readme/canny.png)
+
 **Line Detection** with Hough's transform
+
+Raw                        |  Processed
+:-------------------------:|:-------------------------:
+![](readme/hough_raw.png)  |  ![](readme/hough.png)
 
 **Region Filling** via exemplar-based image inpainting
 
+Raw                        |  Processed
+:-------------------------:|:-------------------------:
+![](readme/inpainting_raw.png)  |  ![](readme/inpainting_raw.png)
+
 **Dense Optical Flow** with Lucas-Kanade
 
+Raw                        |  Processed
+:-------------------------:|:-------------------------:
+![](readme/kanade_raw.png)  |  ![](readme/kanade_raw.png)
 
 # Dependencies
 * ### OpenCL 1.2 with C++ bindings 
