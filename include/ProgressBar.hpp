@@ -1,6 +1,6 @@
 /* Progress Bar for c++ loops with internal running variable
  *
- * Author: Luigi Pertoldi
+ * Author: Luigi Pertoldi (changed)
  * Created: 3 dic 2016
  *
  * Notes: The bar must be used when there's no other possible source of output
@@ -14,128 +14,90 @@
 
 class ProgressBar {
 
-    public:
-      // default destructor
-      ~ProgressBar()                             = default;
+public:
+	// default destructor
+	~ProgressBar()                             = default;
 
-      // delete everything else
-      ProgressBar           (ProgressBar const&) = delete;
-      ProgressBar& operator=(ProgressBar const&) = delete;
-      ProgressBar           (ProgressBar&&)      = delete;
-      ProgressBar& operator=(ProgressBar&&)      = delete;
+	// delete everything else
+	ProgressBar           (ProgressBar const&) = delete;
+	ProgressBar& operator=(ProgressBar const&) = delete;
+	ProgressBar           (ProgressBar&&)      = delete;
+	ProgressBar& operator=(ProgressBar&&)      = delete;
 
-      // default constructor, must call SetNIter later
-      ProgressBar() :
-          i(0),
-          savedPerc(0),
-          style('#'),
-          showBar(true),
-          updateIsCalled(false),
-          setNIterIsCalled(true) {}
-      ProgressBar(int n, char opt = '#', bool showbar = true) :
-          i(0),
-          nCycles(n),
-          savedPerc(0),
-          style(opt),
-          showBar(showbar),
-          updateIsCalled(false),
-          setNIterIsCalled(true) {}
+	// default constructor, must call SetNIter later
 
-      // reset bar to use it again
-      void Reset() {
-          i = 0,
-          updateIsCalled = false;
-          savedPerc = 0;
-          return;
-      }
-     // set number of loop iterations
-      void SetNIter(int iter) {
-          nCycles = iter;
-          setNIterIsCalled = true;
-          return;
-      }
-      // chose between '#' or '->' style
-      void SetStyle(char opt) { style = opt; }
-      // to show only the percentage
-      void ShowBar(bool flag) { showBar = flag; }
-      // main function
-      void Update() {
-          if (!setNIterIsCalled) { std::cerr << "ProgressBar: number of cycles not set!\n"; return; }
+	ProgressBar(int n) :
+			nCycles(n),
+			printed(false) {
+		Reset();
+	}
 
-          if (!updateIsCalled) {
-              if ( showBar == true ) {
-                  std::cout << "[--------------------------------------------------] 0" << "%" << std::flush; // 50 '-'
-              }
-              else std::cout << "0%" << std::flush;
-          }
-          updateIsCalled = true;
+	// reset bar to use it again
+	void Reset() {
+		i = 0,
+		printed = false;
+		savedPerc = 0;
+		bar[0] = '[';
+		for(int index = 0; index < 100/2; index++) bar[index+1] = '-';
+		bar[51] = ']';
+		bar[52] = ' ';
+		bar[53] = '0';
+		bar[54] = '%';
+		bar[55] = ' ';
+		bar[56] = ' ';
+		return;
+	}
 
-          int perc = 0;
+	// main function
+	void Update() {
 
-          // compute percentage
-          perc = i*100. / (nCycles-1);
-          if ( perc < savedPerc ) return;
+			// compute percentage
+			int perc = i*100. / (nCycles-1);
+			++i;
 
-          // update percentage each unit
-          if (perc == savedPerc + 1) {
-              // erase the correct  number of characters
-              if (perc  < 10)               std::cout << "\b\b"   << perc << "%";
-              if (perc == 10)               std::cout << "\b\b"   << perc << "%";
-              if (perc  > 10 && perc < 100) std::cout << "\b\b\b" << perc << "%";
-              if (perc == 100)              std::cout << "\b\b\b" << perc << "%";
-          }
-          if ( showBar == true ) {
-              // update bar every ten units
-              if (perc % 2 == 0) {
-                  // erase trailing percentage characters
-                  if (perc  < 10)               std::cout << "\b\b\b\b";
-                  if (perc == 10)               std::cout << "\b\b\b\b\b";
-                  if (perc  > 10 && perc < 100) std::cout << "\b\b\b\b\b";
-                  if (perc == 100)              std::cout << "\b\b\b\b\b\b";
+			if ( perc == savedPerc ) return;
 
-                  // erase "-"
-                  for (int j = 0; j < 50 - (perc-1) / 2; ++j) std::cout << "\b";
+			for(int index = 0; index < perc/2; index++) bar[index+1] = '#';
+			for(int index = perc/2; index < 100/2; index++) bar[index+1] = '-';
 
-                  if ( style == '#' ) {
-                      // add one additional "#"
-                      if (perc == 0) std::cout << "-" << std::flush;
-                      else           std::cout << "#" << std::flush;
-                  }
+			char centena = (perc / 100)%10 + 48;
+			char decena = (perc / 10)%10 + 48;
+			char unidad = (perc / 1)%10 + 48;
+			if(centena == '0'){
+				centena = ' ';
+				if(decena == '0') decena = ' ';
+			}
+			bar[53] = centena;
+			bar[54] = decena;
+			bar[55] = unidad;
+			bar[56] = '%';
+			savedPerc = perc;
 
-                  else if ( style == '>' ) {
-                      // shift '>' to right
-                      if (perc == 0) std::cout << ">" << std::flush;
-                      else if (perc == 2) std::cout << "\b\b[->" << std::flush;
-                      else                std::cout << "\b->"    << std::flush;
-                  }
+			if (printed){
+				for(int index = 0; index < barLenght; index++) std::cout << '\b';
+			}
+			Print();
+			return;
+	}
 
-                  // refill with "-"
-                  for (int j = 0; j < 50-(perc-1)/2-1; ++j) std::cout << "-";
+	void Print(){
+		for(int index = 0; index < barLenght; index++) std::cout << bar[index];
+		std::cout << std::flush;
+		printed = true;
+	}
 
-                  // readd trailing percentage characters
-                  std::cout << "] " << perc << "%";
-              }
-          }
-          savedPerc = perc;
-          std::cout << std::flush;
+private:
+	// internal counter
+	int i;
+	// total number of iterations
+	int nCycles;
+	int savedPerc;
 
-          ++i;
-          return;
-      }
+	// track first call of Update()
+	bool printed;
 
-
-    private:
-      // internal counter
-      int i;
-      // total number of iterations
-      int nCycles;
-      int savedPerc;
-
-      char style;
-      bool showBar;
-      // track first call of Update()
-      bool updateIsCalled;
-      bool setNIterIsCalled;
+	const static int barLenght = 2 + 50 + 3 + 2;
+	char bar[barLenght];
 };
 
 #endif

@@ -128,6 +128,7 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
     }
 
     ProgressBar bar(warmup_iterations + time_iterations);
+    bar.Print();
     REPEAT(warmup_iterations){
         image1 = source_image.clone();
         image2 = source_image.clone();
@@ -148,6 +149,7 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
     cout << endl;
 
     bar.Reset();
+    bar.Print();
     REPEAT(warmup_iterations){
         image1 = source_image.clone();
         image2 = source_image.clone();
