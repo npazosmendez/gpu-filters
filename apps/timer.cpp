@@ -128,12 +128,12 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
     }
 
     ProgressBar bar(warmup_iterations + time_iterations);
-    bar.Print();
+    bar.print();
     REPEAT(warmup_iterations){
         image1 = source_image.clone();
         image2 = source_image.clone();
         C_function();
-        bar.Update();
+        bar.update();
     }
     for (int i = 0; i < time_iterations; ++i){
         image1 = source_image.clone();
@@ -143,18 +143,17 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
         C_function();
         end = chrono::high_resolution_clock::now();
         long int C_microsec_duration = chrono::duration_cast<chrono::microseconds>(end-begin).count();
-        bar.Update();
+        bar.update();
         C_miliseconds_durations.push_back(C_microsec_duration / 1000.0);
     }
-    cout << endl;
+    bar.finish();
 
-    bar.Reset();
-    bar.Print();
+    bar.print();
     REPEAT(warmup_iterations){
         image1 = source_image.clone();
         image2 = source_image.clone();
         CL_function();
-        bar.Update();
+        bar.update();
     }
     for (int i = 0; i < time_iterations; ++i){
         image1 = source_image.clone();
@@ -164,10 +163,10 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
         CL_function();
         end = chrono::high_resolution_clock::now();
         long int CL_microsec_duration = chrono::duration_cast<chrono::microseconds>(end-begin).count();
-        bar.Update();
+        bar.update();
         CL_miliseconds_durations.push_back(CL_microsec_duration / 1000.0);
     }
-    cout << endl;
+    bar.finish();
 
 }
 
