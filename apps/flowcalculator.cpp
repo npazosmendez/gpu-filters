@@ -25,8 +25,8 @@ using namespace std;
 #define WIDTH 640
 #define HEIGHT 480
 
-#define LEVELS 4
-#define GRANULARITY 1
+#define LEVELS 1
+#define GRANULARITY 2
 #define FACTOR 1
 #define MIN_LENGTH 0
 

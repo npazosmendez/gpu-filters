@@ -223,8 +223,6 @@ static void calculate_flow(int pi, int levels) {
         max_min_eigen = max(max_min_eigen, min_eigen[i]);
     }
 
-    //printf("Previous Width: %i (level %i)\n", previous_width, pi);
-
     // LK
     k_calculate_flow.setArg(0, width);
     k_calculate_flow.setArg(1, height);
@@ -236,10 +234,8 @@ static void calculate_flow(int pi, int levels) {
     k_calculate_flow.setArg(7, previous_width);
     k_calculate_flow.setArg(8, previous_height);
     if (b_previous_flow != NULL) {
-        //printf("Previous Flow: %p (level %i)\n", b_previous_flow, pi);
         k_calculate_flow.setArg(9, *b_previous_flow);
     } else {
-        //printf("Previous Flow: NULL (level %i)\n", pi);
         k_calculate_flow.setArg(9, NULL);
     }
     k_calculate_flow.setArg(10, *b_tensor);
@@ -253,8 +249,19 @@ static void calculate_flow(int pi, int levels) {
     );
     queue.finish();
     clHandleError(__FILE__,__LINE__,err);
+}
 
-    //printf("\n");
+void convolution(Kernel kernel, Buffer * src, Buffer * dst, int width, int height) {
+    kernel.setArg(0, *src);
+    kernel.setArg(1, *dst);
+    err = queue.enqueueNDRangeKernel(
+            kernel,
+            NullRange,
+            NDRange(width, height),
+            NullRange // default
+    );
+    queue.finish();
+    clHandleError(__FILE__,__LINE__,err);
 }
 
 void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vecf * output_flow, int levels) {
@@ -378,8 +385,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vecf
 
     for (int pi = levels - 1; pi >= 0; pi--) {
 
-        //printf("Loop init (%d)\n", pi);
-
         // Gradients
         int width = pyramidal_widths[pi];
         int height = pyramidal_heights[pi];
@@ -388,11 +393,8 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vecf
         Buffer * b_gradient_y = b_pyramidal_gradients_y[pi];
         Buffer * b_intensity_old = b_pyramidal_intensities_old[pi];
 
-        //printf("Convolution X(%d)\n", pi);
-
         k_convolution_x.setArg(0, *b_intensity_old);
         k_convolution_x.setArg(1, *b_gradient_x);
-        //printf("Convolution X - About to Enqueue(%d)\n", pi);
         err = queue.enqueueNDRangeKernel(
                 k_convolution_x,
                 NullRange,
@@ -400,10 +402,7 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vecf
                 NullRange // default
         );
         queue.finish();
-        //printf("Convolution X - About to Handle Error(%d)\n", pi);
         clHandleError(__FILE__,__LINE__,err);
-
-        //printf("Convolution Y (%d)\n", pi);
 
         k_convolution_y.setArg(0, *b_intensity_old);
         k_convolution_y.setArg(1, *b_gradient_y);
@@ -415,8 +414,6 @@ void CL_kanade(int in_width, int in_height, char * img_old, char * img_new, vecf
         );
         queue.finish();
         clHandleError(__FILE__,__LINE__,err);
-
-        //printf("Flow (%d)\n", pi);
 
         // LK algorithm
         calculate_flow(pi, levels);
