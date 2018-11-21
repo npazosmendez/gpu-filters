@@ -4,10 +4,10 @@
 
 __constant int2 ZERO = (int2) (0, 0);
 
-__constant int LK_ITERATIONS = 8;
+__constant int LK_ITERATIONS = 30; // TODO: This many iterations are needed for tests, but recomended is actually TATWTOOTM'5-10'
 __constant int CORNER_WINDOW_RADIUS = 1; // recommended
-__constant int LK_WINDOW_RADIUS = 2;
-__constant double THRESHOLD_CORNER = 0.03;
+__constant int LK_WINDOW_RADIUS = 1;
+__constant double THRESHOLD_CORNER = 0.05;
 
 __constant int KSIZE = 3;
 
@@ -51,59 +51,6 @@ static int is_corner(double tensor[2][2]) {
     return cornerism > THRESHOLD_CORNER;
 }
  */
-
-// ROSETTA SNIPPET
-// https://rosettacode.org/wiki/Gaussian_elimination
-
-// Careful, modifies a and b!!
-
-#define mat_elem(a, y, x, n) (a + ((y) * (n) + (x)))
-
-static void swap_row(double *a, double *b, int r1, int r2, int n)
-{
-    double tmp, *p1, *p2;
-    int i;
-
-    if (r1 == r2) return;
-    for (i = 0; i < n; i++) {
-        p1 = mat_elem(a, r1, i, n);
-        p2 = mat_elem(a, r2, i, n);
-        tmp = *p1, *p1 = *p2, *p2 = tmp;
-    }
-    tmp = b[r1], b[r1] = b[r2], b[r2] = tmp;
-}
-
-static void gauss_eliminate(double *a, double *b, double *x, int n)
-{
-#define A(y, x) (*mat_elem(a, y, x, n))
-    int j, col, row, max_row,dia; // i
-    double max, tmp;
-
-    for (dia = 0; dia < n; dia++) {
-        max_row = dia, max = A(dia, dia);
-
-        for (row = dia + 1; row < n; row++)
-            if ((tmp = fabs((float)A(row, dia))) > max) // Could be double if we extend with 'cl_khr_fp64'
-                max_row = row, max = tmp;
-
-        swap_row(a, b, dia, max_row, n);
-
-        for (row = dia + 1; row < n; row++) {
-            tmp = A(row, dia) / A(dia, dia);
-            for (col = dia+1; col < n; col++)
-                A(row, col) -= tmp * A(dia, col);
-            A(row, dia) = 0;
-            b[row] -= tmp * b[dia];
-        }
-    }
-    for (row = n - 1; row >= 0; row--) {
-        tmp = b[row];
-        for (j = n - 1; j > row; j--)
-            tmp -= x[j] * A(row, j);
-        x[row] = tmp / A(row, row);
-    }
-#undef A
-}
 
 void print_row(__global float * matrix, int2 size, int2 pos);
 void print_mat(__global float * matrix, int2 size, int2 pos);
@@ -230,6 +177,113 @@ __kernel void test_get_gradient_t(
     output[0] = get_gradient_t(in_pos, previous_guess, iter_guess, size, intensity_new, intensity_old);
 }
 
+float2 solve_system(double a, double b, double c, double d, double e, double f) {
+    double determinant = a*d - b*c;
+    if(determinant != 0) {
+        return (float2) ( (e*d - b*f)/determinant, (a*f - e*c)/determinant );
+    } else {
+        return (float2) ( 0, 0 );
+    }
+}
+
+void debug_calculate_flow(
+        int width,
+        int height,
+        __global float * gradient_x,
+        __global float * gradient_y,
+        __global float * intensity_old,
+        __global float * intensity_new,
+        __global float2 * flow,
+        int previous_width,
+        int previous_height,
+        __global float2 * previous_flow, // TODO: Why is it not NULL when L = 0?
+        __global float * tensor, // TODO: Remove this, I actually don't need it
+        __global float * min_eigen,
+        float max_min_eigen,
+        int level) {
+
+    int2 size = (int2)(get_global_size(0), get_global_size(1));
+    int2 pos = (int2)(get_global_id(0), get_global_id(1));
+    int index = (pos.y * size.x) + pos.x;
+
+    printf("ABNORMAL\n");
+
+    bool has_previous_level = previous_width != -1;
+
+
+    // Spatial Gradient Matrix
+    float IxIx = 0;
+    float IxIy = 0;
+    float IyIy = 0;
+
+    int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
+    forn(wy, window_diameter) forn(wx, window_diameter) {
+            int2 in_pos = clamp(pos + ((int2) (wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
+
+            IN_BOUNDS(LINEAR(in_pos.x, in_pos.y), size);
+            IxIx += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_x[LINEAR(in_pos.x, in_pos.y)];
+            IxIy += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
+            IyIy += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
+        }
+
+    // Iterative LK
+    if (has_previous_level) IN_BOUNDS((pos.y/2) * previous_width + (pos.x/2), size / 2);
+
+    float2 previous_guess = has_previous_level ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2 : (float2) ( 0, 0 );
+    float2 iter_guess = (float2) ( 0, 0 );
+
+    for (int i = 0; i < LK_ITERATIONS; i++) {
+        F2VAR(iter_guess);
+
+        float IxIt = 0;
+        float IyIt = 0;
+
+        int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
+        forn(wy, window_diameter) forn(wx, window_diameter) {
+
+            int2 in_pos = clamp(pos + ((int2) (wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
+
+            float gradient_t = get_gradient_t(in_pos, previous_guess, iter_guess, size, intensity_new, intensity_old);
+
+            IN_BOUNDS(LINEAR(in_pos.x, in_pos.y), size);
+            IxIt += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
+            IyIt += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
+        }
+
+        //DEBUG
+        float diff_old = 0;
+        forn(wy, window_diameter) forn(wx, window_diameter) {
+            int2 in_pos = clamp(pos + ((int2)(wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
+            float gradient_t = get_gradient_t(in_pos, previous_guess, iter_guess, size, intensity_new, intensity_old);
+            diff_old += (gradient_t * gradient_t);
+        }
+        printf("Old Error = %f\n", diff_old);
+        // DEBUG
+
+        iter_guess += solve_system(IxIx, IxIy, IxIy, IyIy,  -IxIt, -IyIt);
+        // TODO: So... I'm solving the system correctly... But solving it can actually INCREASE the error...
+        // Option A: Numeric issue (but I don't think so)
+        // In all likelihood I'm feeding the system with the wrong numbers
+        //  So... Either the gradients are baddly computed...
+        //  Or I'm calculating them wrong
+
+        // DEBUG
+        float diff_new = 0;
+        forn(wy, window_diameter) forn(wx, window_diameter) {
+            int2 in_pos = clamp(pos + ((int2)(wx, wy) - LK_WINDOW_RADIUS), ZERO, size - 1);
+            float gradient_t = get_gradient_t(in_pos, previous_guess, iter_guess, size, intensity_new, intensity_old);
+            diff_new += (gradient_t * gradient_t);
+        }
+        printf("New Error = %f\n", diff_new);
+        // DEBUG
+
+    }
+
+    printf("\n");
+}
+
+
+
 
 __kernel void calculate_flow(
         int width,
@@ -244,7 +298,8 @@ __kernel void calculate_flow(
         __global float2 * previous_flow, // TODO: Why is it not NULL when L = 0?
         __global float * tensor, // TODO: Remove this, I actually don't need it
         __global float * min_eigen,
-        float max_min_eigen) {
+        float max_min_eigen,
+        int level) {
 
     int2 size = (int2)(get_global_size(0), get_global_size(1));
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
@@ -256,12 +311,24 @@ __kernel void calculate_flow(
     IN_BOUNDS(index, size);
     bool is_corner = min_eigen[index] / max_min_eigen > THRESHOLD_CORNER;
 
-    if (is_corner) {
-        // A
+    //if (is_corner || level != 0) {
+    if (true) {
 
+        // Spatial Gradient Matrix
         float IxIx = 0;
         float IxIy = 0;
         float IyIy = 0;
+
+        if (pos.x == 2 && pos.y == 2) {
+            printf("Intensity Old\n"); print_mat(intensity_old, size, pos);
+            printf("Intensity New\n"); print_mat(intensity_new, size, pos);
+            printf("Gradient X\n"); print_mat(gradient_x, size, pos);
+            printf("Gradient Y\n"); print_mat(gradient_y, size, pos);
+        }
+
+        //if (pos.x == 2 && pos.y == 2)
+        //if (pos.x == 2 && pos.y == 2)
+        //if (pos.x == 2 && pos.y == 2)
 
         int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
         forn(wy, window_diameter) forn(wx, window_diameter) {
@@ -271,17 +338,21 @@ __kernel void calculate_flow(
             IxIx += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_x[LINEAR(in_pos.x, in_pos.y)];
             IxIy += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
             IyIy += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
+
+            if (pos.x == 2 && pos.y == 2) I2VAR(in_pos);
+            if (pos.x == 2 && pos.y == 2) FVAR(IxIx);
+            if (pos.x == 2 && pos.y == 2) FVAR(IxIy);
+            if (pos.x == 2 && pos.y == 2) FVAR(IyIy);
         }
 
-        // b
 
+        // Iterative LK
         if (has_previous_level) IN_BOUNDS((pos.y/2) * previous_width + (pos.x/2), size / 2);
 
-        float2 previous_guess = has_previous_level ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2: (float2) ( 0, 0 );
+        float2 previous_guess = has_previous_level ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2 : (float2) ( 0, 0 );
         float2 iter_guess = (float2) ( 0, 0 );
 
         for (int i = 0; i < LK_ITERATIONS; i++) {
-            // get IxIt and IyIt
             float IxIt = 0;
             float IyIt = 0;
 
@@ -297,20 +368,12 @@ __kernel void calculate_flow(
                 IyIt += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_t;
             }
 
-            float A[2][2];
-            A[0][0] = IxIx;
-            A[0][1] = IxIy;
-            A[1][0] = IxIy;
-            A[1][1] = IyIy;
-
-            double b[2] = {-IxIt, -IyIt};
-            double d[2];
-
-            gauss_eliminate((double*)A, b, d, 2);
-
-            iter_guess.x += d[0];
-            iter_guess.y += d[1];
+            iter_guess += solve_system(IxIx, IxIy, IxIy, IyIy,  -IxIt, -IyIt);
         }
+
+        // DEBUG
+        //if (fabs(iter_guess.y) > 40) debug_calculate_flow(width, height, gradient_x, gradient_y, intensity_old, intensity_new, flow, previous_width, previous_height, previous_flow, tensor, min_eigen, max_min_eigen, level);
+        // DEBUG
 
         IN_BOUNDS(LINEAR(pos.x, pos.y), size);
         flow[LINEAR(pos.x, pos.y)] = previous_guess + iter_guess;

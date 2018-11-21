@@ -230,7 +230,7 @@ static void calculate_flow(int pi, int levels) {
     k_calculate_flow.setArg(3, *b_gradient_y);
     k_calculate_flow.setArg(4, *b_intensity_old);
     k_calculate_flow.setArg(5, *b_intensity_new);
-    k_calculate_flow.setArg(6, *b_flow);
+        k_calculate_flow.setArg(6, *b_flow);
     k_calculate_flow.setArg(7, previous_width);
     k_calculate_flow.setArg(8, previous_height);
     if (b_previous_flow != NULL) {
@@ -241,6 +241,7 @@ static void calculate_flow(int pi, int levels) {
     k_calculate_flow.setArg(10, *b_tensor);
     k_calculate_flow.setArg(11, *b_min_eigen);
     k_calculate_flow.setArg(12, max_min_eigen);
+    k_calculate_flow.setArg(13, pi);
     err = queue.enqueueNDRangeKernel(
             k_calculate_flow,
             NullRange,

@@ -314,12 +314,38 @@ void test_get_gradient_t() {
     ASSERT_EQF(output[0], (70.4 + 18.4 + 4.16 + 0.96) - 13);
 }
 
+void test_functional_simple() {
+    int width = 5;
+    int height = 5;
+
+    // A red dot moves one to the right
+    unsigned char img_old[5*5*3] = {};
+    img_old[3*(2 * 5 + 2) + 0] = 255;
+    img_old[3*(2 * 5 + 2) + 1] = 255;
+    img_old[3*(2 * 5 + 2) + 2] = 255;
+
+    unsigned char img_new[5*5*3] = {};
+    img_new[3*(3 * 5 + 3) + 0] = 254;
+    img_new[3*(3 * 5 + 3) + 1] = 254;
+    img_new[3*(3 * 5 + 3) + 2] = 254;
+
+    vecf output_flow[5*5];
+
+    int levels = 1;
+
+    CL_kanade(width, height, (char*) img_old, (char*)img_new, output_flow, levels);
+
+    ASSERT_EQF(output_flow[2 * 5 + 2].x, 1);
+    ASSERT_EQF(output_flow[2 * 5 + 2].y, 1);
+}
+
 
 int main(int argc, char** argv) {
-    init();
-    printf("\n");
-    RUN_TEST(test_intensity);
-    RUN_TEST(test_get_gradient_t);
+    //init();
+    //printf("\n");
+    //RUN_TEST(test_intensity);
+    //RUN_TEST(test_get_gradient_t);
+    RUN_TEST(test_functional_simple);
     return 0;
 }
 
