@@ -42,7 +42,7 @@ class KanadeFilter : public ImageFilter {
 
 	private:
 		Mat _last_frame;
-		vec _flow[2000*2000];
+		vecf _flow[2000*2000];
 		void process_frame_CL(Mat *);
 		void process_frame_C(Mat *);
 		void overlay_flow(Mat* frame);

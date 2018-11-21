@@ -129,14 +129,14 @@ void KanadeFilter::overlay_flow(Mat* frame){
     int _height = frame->size().height;
     
     forn(y, _height) forn(x, _width) if (y % GRANULARITY == 0 && x % GRANULARITY == 0) {
-        vec displacement = _flow[LINEAR(x, y)];
+        vecf displacement = _flow[LINEAR(x, y)];
         displacement.x *= FACTOR;
         displacement.y *= FACTOR;
         if (abs(displacement.x) > 2 || abs(displacement.y) > 2) {
             arrowedLine(
                 *frame,
                 Point(x, y),
-                Point(x + displacement.x, y + displacement.y),
+                Point(((int)x + displacement.x), ((int)y + displacement.y)),
                 Scalar( 0, 200, 0 ),
                 1,
                 8,
