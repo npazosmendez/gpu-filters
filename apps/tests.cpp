@@ -21,7 +21,7 @@ extern "C" {
 }
 #include "opencl/opencl-filters.hpp"
 
-using namespace std;
+//using namespace std; // makes some math definition ambiguous in my compiler
 using namespace std::chrono;
 using namespace cl;
 
@@ -64,7 +64,7 @@ static cl_int err = 0;
 
 static void init() {
 
-    cout << "Initializing OpenCL model for Optical Flow\n";
+    std::cout << "Initializing OpenCL model for Optical Flow\n";
 
     // OpenCL initialization
     if (!openCL_initialized) initCL();
