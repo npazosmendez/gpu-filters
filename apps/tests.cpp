@@ -314,7 +314,56 @@ void test_get_gradient_t() {
     ASSERT_EQF(output[0], (70.4 + 18.4 + 4.16 + 0.96) - 13);
 }
 
-void test_functional_simple() {
+void test_functional_horizontal_movement() {
+    int width = 5;
+    int height = 5;
+
+    unsigned char img_old[5*5*3] = {};
+    img_old[3*(2 * 5 + 2) + 0] = 255;
+    img_old[3*(2 * 5 + 2) + 1] = 255;
+    img_old[3*(2 * 5 + 2) + 2] = 255;
+
+    unsigned char img_new[5*5*3] = {};
+    img_new[3*(2 * 5 + 3) + 0] = 254;
+    img_new[3*(2 * 5 + 3) + 1] = 254;
+    img_new[3*(2 * 5 + 3) + 2] = 254;
+
+    vecf output_flow[5*5];
+
+    int levels = 2;
+
+    CL_kanade(width, height, (char*) img_old, (char*)img_new, output_flow, levels);
+
+    ASSERT_EQF(output_flow[2 * 5 + 2].x, 1);
+    ASSERT_EQF(output_flow[2 * 5 + 2].y, 0);
+}
+
+void test_functional_vertical_movement() {
+    int width = 5;
+    int height = 5;
+
+    // A red dot moves one to the right
+    unsigned char img_old[5*5*3] = {};
+    img_old[3*(2 * 5 + 2) + 0] = 255;
+    img_old[3*(2 * 5 + 2) + 1] = 255;
+    img_old[3*(2 * 5 + 2) + 2] = 255;
+
+    unsigned char img_new[5*5*3] = {};
+    img_new[3*(3 * 5 + 2) + 0] = 254;
+    img_new[3*(3 * 5 + 2) + 1] = 254;
+    img_new[3*(3 * 5 + 2) + 2] = 254;
+
+    vecf output_flow[5*5];
+
+    int levels = 2;
+
+    CL_kanade(width, height, (char*) img_old, (char*)img_new, output_flow, levels);
+
+    ASSERT_EQF(output_flow[2 * 5 + 2].x, 0);
+    ASSERT_EQF(output_flow[2 * 5 + 2].y, 1);
+}
+
+void test_functional_diagonal_movement() {
     int width = 5;
     int height = 5;
 
@@ -331,7 +380,7 @@ void test_functional_simple() {
 
     vecf output_flow[5*5];
 
-    int levels = 1;
+    int levels = 2;
 
     CL_kanade(width, height, (char*) img_old, (char*)img_new, output_flow, levels);
 
@@ -339,13 +388,184 @@ void test_functional_simple() {
     ASSERT_EQF(output_flow[2 * 5 + 2].y, 1);
 }
 
+class Figure {
+public:
+    unsigned char * img;
+    int width, height;
+
+    Figure(int width, int height) {
+        this->width = width;
+        this->height = height;
+        img = (unsigned char *) malloc(width * height * 3 * sizeof(unsigned char));
+        memset(img, 0, width * height * 3 * sizeof(unsigned char));
+    }
+
+    ~Figure() {
+        free(img);
+    }
+
+
+    char * get_img() {
+        return (char *) img;
+    }
+
+    void paint(int x, int y, float intensity) {
+        img[3*(y * width + x) + 0] = intensity;
+        img[3*(y * width + x) + 1] = intensity;
+        img[3*(y * width + x) + 2] = intensity;
+    }
+
+    void paint(int x, int y) {
+        img[3*(y * width + x) + 0] = 255;
+        img[3*(y * width + x) + 1] = 255;
+        img[3*(y * width + x) + 2] = 255;
+    }
+};
+
+void test_functional_long_horizontal_movement() {
+    int width = 16;
+    int height = 16;
+
+    Figure fig_old = Figure(width, height);
+    fig_old.paint(8, 8);
+
+    Figure fig_new = Figure(width, height);
+    fig_new.paint(11, 8);
+
+    vecf * output_flow = (vecf*) malloc(width*height*sizeof(vecf));
+
+    int levels = 2;
+
+    CL_kanade(width, height, fig_old.get_img(), fig_new.get_img(), output_flow, levels);
+
+    ASSERT_EQF(output_flow[8 * width + 8].x, 3);
+    ASSERT_EQF(output_flow[8 * width + 8].y, 0);
+
+    free(output_flow);
+}
+
+void test_functional_long_vertical_movement() {
+    int width = 16;
+    int height = 16;
+
+    Figure fig_old = Figure(width, height);
+    fig_old.paint(8, 8);
+
+    Figure fig_new = Figure(width, height);
+    fig_new.paint(8, 11);
+
+    vecf * output_flow = (vecf*) malloc(width*height*sizeof(vecf));
+
+    int levels = 2;
+
+    CL_kanade(width, height, fig_old.get_img(), fig_new.get_img(), output_flow, levels);
+
+    ASSERT_EQF(output_flow[8 * width + 8].x, 0);
+    ASSERT_EQF(output_flow[8 * width + 8].y, 3);
+
+    free(output_flow);
+}
+
+void test_functional_super_long_diagonal_movement() {
+    int width = 32;
+    int height = 32;
+
+    Figure fig_old = Figure(width, height);
+    fig_old.paint(16, 16);
+
+    Figure fig_new = Figure(width, height);
+    fig_new.paint(20, 20);
+
+    vecf * output_flow = (vecf*) malloc(width*height*sizeof(vecf));
+
+    int levels = 3;
+
+    CL_kanade(width, height, fig_old.get_img(), fig_new.get_img(), output_flow, levels);
+
+    ASSERT_EQF(output_flow[16 * width + 16].x, 4);
+    ASSERT_EQF(output_flow[16 * width + 16].y, 4);
+
+    free(output_flow);
+}
+
+void test_functional_two_disjoint_points() {
+    int width = 32;
+    int height = 32;
+
+    Figure fig_old = Figure(width, height);
+    fig_old.paint(20, 20);
+    fig_old.paint(15, 15);
+
+    Figure fig_new = Figure(width, height);
+    fig_new.paint(19, 20);
+    fig_new.paint(16, 16);
+
+    vecf * output_flow = (vecf*) malloc(width*height*sizeof(vecf));
+
+    int levels = 1;
+
+    CL_kanade(width, height, fig_old.get_img(), fig_new.get_img(), output_flow, levels);
+
+    ASSERT_EQF(output_flow[20 * width + 20].x, -1);
+    ASSERT_EQF(output_flow[20 * width + 20].y, 0);
+
+    ASSERT_EQF(output_flow[15 * width + 15].x, 1);
+    ASSERT_EQF(output_flow[15 * width + 15].y, 1);
+
+    free(output_flow);
+}
+
+void test_functional_snake_moving() {
+    int width = 32;
+    int height = 32;
+
+    Figure fig_old = Figure(width, height);
+    fig_old.paint(15, 15,  50);
+    fig_old.paint(16, 16,  200);
+
+    Figure fig_new = Figure(width, height);
+    fig_new.paint(16, 15,  50);
+    fig_new.paint(17, 16,  200);
+
+    vecf * output_flow = (vecf*) malloc(width*height*sizeof(vecf));
+
+    int levels = 1;
+
+    CL_kanade(width, height, fig_old.get_img(), fig_new.get_img(), output_flow, levels);
+
+    ASSERT_EQF(output_flow[15 * width + 15].x, 1);
+    ASSERT_EQF(output_flow[15 * width + 15].y, 0);
+
+    ASSERT_EQF(output_flow[16 * width + 16].x, 1);
+    ASSERT_EQF(output_flow[16 * width + 16].y, 0);
+
+    free(output_flow);
+}
+
 
 int main(int argc, char** argv) {
-    //init();
-    //printf("\n");
-    //RUN_TEST(test_intensity);
-    //RUN_TEST(test_get_gradient_t);
-    RUN_TEST(test_functional_simple);
+    init();
+    printf("\n");
+
+    printf("UNIT TESTS\n");
+    RUN_TEST(test_intensity);
+    RUN_TEST(test_get_gradient_t);
+    printf("\n");
+
+    printf("FUNCTIONAL TESTS\n");
+    /*
+    RUN_TEST(test_functional_horizontal_movement);
+    RUN_TEST(test_functional_vertical_movement);
+    RUN_TEST(test_functional_diagonal_movement);
+    RUN_TEST(test_functional_long_horizontal_movement);
+    RUN_TEST(test_functional_long_vertical_movement);
+    RUN_TEST(test_functional_super_long_diagonal_movement);
+    RUN_TEST(test_functional_two_disjoint_points);
+     */
+
+    RUN_TEST(test_functional_snake_moving);
+    printf("\n");
+
     return 0;
 }
 
