@@ -58,8 +58,8 @@ void VideoWindow::show_frame(Mat *frame){
 }
 
 
-VideoWindow::VideoWindow() : _label(new QLabel) {
-    // _label->setMinimumSize(1, 1);
+VideoWindow::VideoWindow(QApplication * app) :
+    _label(new QLabel), _app(app) {
     setCentralWidget(_label);
 };
 
@@ -69,4 +69,10 @@ VideoWindow::~VideoWindow() {
 
 void VideoWindow::xxx() {
     debug_print("xxx\n");
+}
+
+void VideoWindow::keyPressEvent(QKeyEvent * e){
+    if (e->key() == Qt::Key_Escape){
+        _app->quit();
+    }
 }

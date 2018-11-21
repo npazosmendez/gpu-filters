@@ -11,8 +11,6 @@ extern "C" {
 using namespace std;
 using namespace cl;
 
-bool CL_hough_initialized = false;
-
 Buffer cl_hough_counter;
 Buffer cl_image_counter;
 Buffer cl_charImage_;
@@ -27,41 +25,51 @@ Kernel k_find_peaks;
 int threshold = 0;
 
 void initCLHough(int width, int height, int a_ammount, int p_ammount){
-    /* 1. Build PROGRAM from source, for specific context */
-    ifstream sourceFile("opencl/hough.cl");
-    /* NOTE: reading the source code from another file
-    during runtime makes the binary's location important.
-    Not good. */
-    if (!sourceFile.is_open()) {
-        cerr << "Can't open CL kernel source." << endl;
-        exit(1);
+    static int _width = -1, _height = -1;
+    static int _a_ammount = -1, _p_ammount = -1;
+    static bool CL_hough_initialized = false;
+
+    if (not CL_hough_initialized){
+        /* 1. Build PROGRAM from source, for specific context */
+        ifstream sourceFile("opencl/hough.cl");
+        /* NOTE: reading the source code from another file
+        during runtime makes the binary's location important.
+        Not good. */
+        if (!sourceFile.is_open()) {
+            cerr << "Can't open CL kernel source." << endl;
+            exit(1);
+        }
+        string sourceCode(istreambuf_iterator<char>(sourceFile), (istreambuf_iterator<char>()));
+        Program::Sources sources(1, sourceCode);
+        program = Program(context, sources);
+        program.build(context.getInfo<CL_CONTEXT_DEVICES>());
+
+        /*2. Create kernels */
+        k_count_edges = Kernel(program, "edges_counter");
+        k_draw_counter = Kernel(program, "draw_counter");
+        k_find_peaks = Kernel(program, "find_peaks");
+
+        CL_hough_initialized = true;
     }
-    string sourceCode(istreambuf_iterator<char>(sourceFile), (istreambuf_iterator<char>()));
-    Program::Sources sources(1, sourceCode);
-    program = Program(context, sources);
-    program.build(context.getInfo<CL_CONTEXT_DEVICES>());
-
-    /*2. Create kernels */
-    k_count_edges = Kernel(program, "edges_counter");
-    k_draw_counter = Kernel(program, "draw_counter");
-    k_find_peaks = Kernel(program, "find_peaks");
-
-    /* 3. Buffers setup */
-    // OpenCL Image / texture to store image intensity
-    cl_int err = 0;
-    cl_hough_counter = Buffer(context, CL_MEM_READ_WRITE, sizeof(int)*a_ammount*p_ammount, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
-    cl_image_counter = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*3*a_ammount*p_ammount, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
-
-    cl_charImage_ = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
-    clHandleError(__FILE__,__LINE__,err);
-
-    cl_max = Buffer(context, CL_MEM_USE_HOST_PTR, sizeof(int), &threshold, &err);
-    clHandleError(__FILE__,__LINE__,err);
 
 
-    CL_hough_initialized = true;
+    if (_width != width or _height != height or
+        _a_ammount != a_ammount or _p_ammount != p_ammount){
+        /* 3. Buffers setup */
+        // OpenCL Image / texture to store image intensity
+        cl_int err = 0;
+        cl_hough_counter = Buffer(context, CL_MEM_READ_WRITE, sizeof(int)*a_ammount*p_ammount, NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
+        cl_image_counter = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*3*a_ammount*p_ammount, NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
+
+        cl_charImage_ = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err);
+        clHandleError(__FILE__,__LINE__,err);
+
+        cl_max = Buffer(context, CL_MEM_USE_HOST_PTR, sizeof(int), &threshold, &err);
+        clHandleError(__FILE__,__LINE__,err);
+    }
+
     return;
 }
 
@@ -74,7 +82,7 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
     CL_canny(canny_edges, width, height, uthreshold, lthreshold);
 
     if(!openCL_initialized) initCL();
-    if(!CL_hough_initialized) initCLHough(width, height, a_ammount, p_ammount);
+    initCLHough(width, height, a_ammount, p_ammount);
 
 
     cl_int err = 0;

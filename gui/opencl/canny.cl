@@ -138,7 +138,9 @@ inline int roundDirection(float x, float y){
 
 __kernel void intensity_gauss_filter(
         __global const uchar * src,
-        __write_only image2d_t image
+        __write_only image2d_t image,
+        int width,
+        int height
     ) {
     /* Takes the RGB image from buffer 'src' and stores its intensity
     channel in the texture 'image' as floats, smoothened with
@@ -146,6 +148,9 @@ __kernel void intensity_gauss_filter(
 
     const int i = get_global_id(0);
     const int j = get_global_id(1);
+
+    if((i-2) < 0 || (i+2) > width) return;
+    if((j-2) < 0 || (j+2) > height) return;
 
     float intensity = 0;
 
@@ -223,6 +228,12 @@ __kernel void max_edges(
         int x = get_global_id(0);
         int y = get_global_id(1);
 
+        int2 image_dim = get_image_dim(image);
+
+        // Need neighbours gradients -> +-2
+        if((x-2) < 0 || (x+2) > image_dim.x) return;
+        if((y-2) < 0 || (y+2) > image_dim.y) return;
+
         float Gx = x_gradient(image,x,y);
         float Gy = y_gradient(image,x,y);
 
@@ -255,10 +266,16 @@ __kernel void max_edges(
 
 __kernel void hysteresis(
         __global int * intbool,
-        __global float * src
+        __global float * src,
+        int width,
+        int height
     ) {
         int i = get_global_id(0);
         int j = get_global_id(1);
+
+        if((i-1) < 0 || (i+1) > width) return;
+        if((j-1) < 0 || (j+1) > height) return;
+
         if(src[LINEAR(i,j)] == CANDIDATE){
             bool expand = false;
             // NOTE: should I only check the gradient direction?

@@ -105,6 +105,25 @@ void KanadeFilter::process_frame_C(Mat *frame){
     overlay_flow(frame);
 }
 
+void arrowedLine(Mat img, Point pt1, Point pt2, const Scalar& color,
+           int thickness, int line_type = 8, double tipLength = 0.1){
+    // Stolen from OpenCV source (to maintain compatibility with dependencies in README.md)
+    const int shift = 0;
+    const double tipSize = norm(pt1-pt2)*tipLength; // Factor to normalize the size of the tip depending on the length of the arrow
+
+    line(img, pt1, pt2, color, thickness, line_type, shift);
+
+    const double angle = atan2( (double) pt1.y - pt2.y, (double) pt1.x - pt2.x );
+
+    Point p(cvRound(pt2.x + tipSize * cos(angle + CV_PI / 4)),
+        cvRound(pt2.y + tipSize * sin(angle + CV_PI / 4)));
+    line(img, p, pt2, color, thickness, line_type, shift);
+
+    p.x = cvRound(pt2.x + tipSize * cos(angle - CV_PI / 4));
+    p.y = cvRound(pt2.y + tipSize * sin(angle - CV_PI / 4));
+    line(img, p, pt2, color, thickness, line_type, shift);
+}
+
 void KanadeFilter::overlay_flow(Mat* frame){
     int _width = frame->size().width;
     int _height = frame->size().height;
@@ -114,11 +133,13 @@ void KanadeFilter::overlay_flow(Mat* frame){
         displacement.x *= FACTOR;
         displacement.y *= FACTOR;
         if (abs(displacement.x) > 2 || abs(displacement.y) > 2) {
-            cv::line(
+            arrowedLine(
                 *frame,
                 Point(x, y),
                 Point(x + displacement.x, y + displacement.y),
                 Scalar( 0, 200, 0 ),
+                1,
+                8,
                 1);
         }
     }

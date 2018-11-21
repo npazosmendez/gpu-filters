@@ -13,10 +13,13 @@
 class ControlsWindow : public QDialog {
 	Q_OBJECT
 public:
-	ControlsWindow(QWidget *parent = 0);
+	ControlsWindow(QApplication * app, QWidget *parent = 0);
 	void show();
 
 private:
+
+	QApplication * _app;
+
 	VideoWindow * _video_window;
 	VideoStreamer * _camera;
 	ImageFilter * _current_filter;
@@ -33,6 +36,9 @@ private:
 	void disassemble();
 	void assemble();
 	void empty_pipe();
+
+protected:
+	void keyPressEvent(QKeyEvent * e);
 
 public slots:
 	void setFilter(QString);

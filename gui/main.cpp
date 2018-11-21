@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
 	QApplication app(argc, argv);
 
 	debug_print("Creating controls window\n");
-	ControlsWindow controlsWindow;
+	ControlsWindow controlsWindow(&app);
 
 	controlsWindow.show();
 

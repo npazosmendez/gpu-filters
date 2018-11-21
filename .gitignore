@@ -24,6 +24,7 @@ benchmarks/
 .syntastic_cpp_config
 .idea
 cmake-build-debug
+CMakeLists.txt
 
 # Misc
 .DS_Store

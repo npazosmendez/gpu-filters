@@ -5,6 +5,7 @@ extern "C" {
 #include "opencl/opencl-filters.hpp"
 #include <chrono>
 #include <TextTable.h>
+#include <ProgressBar.hpp>
 #include <iomanip>
 #include <sstream>
 #include <set>
@@ -20,6 +21,9 @@ using namespace std;
 
 int width;
 int height;
+
+Mat source_image;
+
 Mat image1;
 Mat image2;
 
@@ -28,6 +32,9 @@ int p_ammount;
 char * counter;
 
 vecf * flow;
+
+bool * mask_ptr;
+int * debug; // TODO: sacar esto. no es tan directo, porque se usa si #ifdef DEBUG
 
 void run_canny_CL(){
     CL_canny((char*)image1.ptr(), width, height, 60, 30);
@@ -50,13 +57,42 @@ void run_kanade_CL(){
     CL_kanade(width, height, (char*)image1.ptr(), (char*)image2.ptr(), flow, 2);
 }
 
+void run_inpainting_C(){
+    inpainting((char*)image1.ptr(), width, height, mask_ptr, debug);
+}
+void run_inpainting_CL(){
+    CL_inpainting((char*)image1.ptr(), width, height, mask_ptr, debug);
+}
+
+void initialize_mask(){
+    memset(mask_ptr, 0, height * width * sizeof(bool));
+    int x = width/2;
+    int y = height/2;
+    int side = width/30;
+    for (int i = -side; i <= side; i++ ) {
+        for (int j = -side; j <= side; j++) {
+            int yi = y + i;
+            int xj = x + j;
+            // int yi = clamp(y + i, 0, height);
+            // int xj = clamp(x + j, 0, width);
+            mask_ptr[yi*width+xj] = true;
+        }
+    }
+}
+
+
+
 string double_to_string(double val){
     stringstream stream;
     stream << fixed << setprecision(2) << val;
     return stream.str();
 }
 
-void print_filter_measurements(string filter_name, double CL_miliseconds, double C_miliseconds, TextTable& text_table){
+void print_filter_measurements(string filter_name, vector<double> &CL_miliseconds_durations, vector<double> &C_miliseconds_durations, TextTable& text_table){
+
+    // TODO: further analize measurements: variance, mean, outliers, etc.
+    double C_miliseconds = *min_element(C_miliseconds_durations.begin(), C_miliseconds_durations.end());
+    double CL_miliseconds = *min_element(CL_miliseconds_durations.begin(), CL_miliseconds_durations.end());
 
     text_table.add( filter_name );
     text_table.add("");
@@ -69,13 +105,12 @@ void print_filter_measurements(string filter_name, double CL_miliseconds, double
 }
 
 
-void time_filter(string filter_name, int warmup_iterations, int time_iterations, double &C_miliseconds_duration, double &CL_miliseconds_duration){
-    // TODO: every call should be done with the same image, not the filtered one
+void time_filter(string filter_name, int warmup_iterations, int time_iterations, vector<double> &C_miliseconds_durations, vector<double> &CL_miliseconds_durations){
+    C_miliseconds_durations = vector<double>();
+    CL_miliseconds_durations = vector<double>();
     cout << "Timing " << filter_name << "..." << endl;
     auto begin = chrono::high_resolution_clock::now();
     auto end = chrono::high_resolution_clock::now();
-    long int C_microsec_duration = 0;
-    long int CL_microsec_duration = 0;
     void (*C_function)();
     void (*CL_function)();
     if (filter_name == "canny"){
@@ -87,28 +122,52 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
     }else if(filter_name == "kanade"){
         C_function = run_kanade_C;
         CL_function = run_kanade_CL;
+    }else if(filter_name == "inpainting"){
+        C_function = run_inpainting_C;
+        CL_function = run_inpainting_CL;
     }
-    Mat backup = image1;
-    REPEAT(warmup_iterations) C_function();
+
+    ProgressBar bar(warmup_iterations + time_iterations);
+    bar.print();
+    REPEAT(warmup_iterations){
+        image1 = source_image.clone();
+        image2 = source_image.clone();
+        C_function();
+        bar.update();
+    }
     for (int i = 0; i < time_iterations; ++i){
-        image1 = backup;
+        image1 = source_image.clone();
+        image2 = source_image.clone();
+        initialize_mask();
         begin = chrono::high_resolution_clock::now();
         C_function();
         end = chrono::high_resolution_clock::now();
-        C_microsec_duration += chrono::duration_cast<chrono::microseconds>(end-begin).count();
+        long int C_microsec_duration = chrono::duration_cast<chrono::microseconds>(end-begin).count();
+        bar.update();
+        C_miliseconds_durations.push_back(C_microsec_duration / 1000.0);
     }
+    bar.finish();
 
-    REPEAT(warmup_iterations) CL_function();
+    bar.print();
+    REPEAT(warmup_iterations){
+        image1 = source_image.clone();
+        image2 = source_image.clone();
+        CL_function();
+        bar.update();
+    }
     for (int i = 0; i < time_iterations; ++i){
-        image1 = backup;
+        image1 = source_image.clone();
+        image2 = source_image.clone();
+        initialize_mask();
         begin = chrono::high_resolution_clock::now();
         CL_function();
         end = chrono::high_resolution_clock::now();
-        CL_microsec_duration += chrono::duration_cast<chrono::microseconds>(end-begin).count();
+        long int CL_microsec_duration = chrono::duration_cast<chrono::microseconds>(end-begin).count();
+        bar.update();
+        CL_miliseconds_durations.push_back(CL_microsec_duration / 1000.0);
     }
+    bar.finish();
 
-    C_miliseconds_duration = C_microsec_duration / time_iterations / 1000.0;
-    CL_miliseconds_duration = CL_microsec_duration / time_iterations / 1000.0;
 }
 
 
@@ -135,13 +194,14 @@ int main(int argc, const char** argv) {
         cout << "Timing application for the filters. For custom timing try:" << endl;
         cout << "\t--filter <filter_name> (canny/hough/kanade)" << endl;
         cout << "\t--iterations <#iterations>" << endl;
+        cout << "\t--warmup <#iterations>" << endl;
         cout << "\t--device <device_nr>" << endl;
         cout << "\t--image <image_path> (needed)" << endl;
         cout << "\t--help" << endl;
         return 0;
     }
 
-    set<string> all_filters = {"canny", "hough", "kanade"};
+    set<string> all_filters = {"canny", "hough", "kanade", "inpainting"};
     set<string> selected_filters;
     if (arguments.count("--filter")){
         string filter = arguments["--filter"];
@@ -154,10 +214,18 @@ int main(int argc, const char** argv) {
         selected_filters = all_filters;
     }
 
-    int warmup_iterations = 10;
-    int time_iterations = 10;
+    // defaults are low because of inpainting
+    int warmup_iterations = 3;
+    int time_iterations = 5;
     if (arguments.count("--iterations")){
         time_iterations = stoi(arguments["--iterations"]);
+        if (time_iterations <= 0){
+            cerr << "Number of iterations should be positive" << endl;
+            abort();
+        }
+    }
+    if (arguments.count("--warmup")){
+        warmup_iterations = stoi(arguments["--warmup"]);
         if (time_iterations <= 0){
             cerr << "Number of iterations should be positive" << endl;
             abort();
@@ -178,15 +246,20 @@ int main(int argc, const char** argv) {
         cerr << "Need an image path through '--image'"<<endl;
         abort();
     }
-    image1 = imread(arguments["--image"], CV_LOAD_IMAGE_COLOR);
-    image2 = image1;
-    width = image1.size().width;
-    height = image1.size().height;
+
+    source_image = imread(arguments["--image"], CV_LOAD_IMAGE_COLOR);
+    width = source_image.size().width;
+    height = source_image.size().height;
 
     a_ammount = 100;
     p_ammount = 100;
     counter = (char*)malloc(a_ammount*p_ammount*3*sizeof(char));
     flow = (vecf*) malloc(sizeof(vecf) * width * height);
+    mask_ptr = (bool*) malloc(width * height * sizeof(bool));
+    initialize_mask();
+
+    debug = (int*) malloc(width * height * sizeof(int));
+    memset(debug, 0, width * height * sizeof(int));
 
     TextTable text_table( '-', '|', '+' );
     text_table.add( "Filter" );
@@ -203,12 +276,12 @@ int main(int argc, const char** argv) {
     initCL(true);
     cout << "\n";
 
-    double C_miliseconds_duration;
-    double CL_miliseconds_duration;
+    vector<double> C_miliseconds_durations;
+    vector<double> CL_miliseconds_durations;
 
     for(string filter_name : selected_filters){
-        time_filter(filter_name, warmup_iterations, time_iterations, C_miliseconds_duration, CL_miliseconds_duration);
-        print_filter_measurements(filter_name, CL_miliseconds_duration, C_miliseconds_duration, text_table);
+        time_filter(filter_name, warmup_iterations, time_iterations, C_miliseconds_durations, CL_miliseconds_durations);
+        print_filter_measurements(filter_name, CL_miliseconds_durations, C_miliseconds_durations, text_table);
     }
 
     cout << text_table;

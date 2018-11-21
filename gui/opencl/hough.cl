@@ -25,9 +25,9 @@ __kernel void find_peaks(
 
     const int i = get_global_id(0);
     const int j = get_global_id(1);
+
     int val = counter[LINEAR(i,j)];
 
-    
     float pithagoras = width*width + height*height;
     float p_max = native_sqrt(pithagoras);
     float p_min = -p_max;
@@ -107,13 +107,15 @@ __kernel void edges_counter(
     const int i = get_global_id(0);
     const int j = get_global_id(1);
 
+    const int width = get_global_size(0);
+    const int height = get_global_size(1);
+
     if(i < 5 || j < 5) return;
-    if(i > get_global_size(0)-5 || j >  get_global_size(1) - 5) return;
+    if(i > width-5 || j >  height - 5) return;
 
     uchar3 rgb = vload3(LINEAR(i,j), src);
     
-    float pithagoras = get_global_size(0)*get_global_size(0) + 
-        get_global_size(1)*get_global_size(1);
+    float pithagoras = width*width + height*height;
     float p_max = native_sqrt(pithagoras);
     float p_min = -p_max;
     float p_step = (p_max-p_min)/p_ammount;
