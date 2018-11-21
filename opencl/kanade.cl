@@ -4,7 +4,7 @@
 
 __constant int2 ZERO = (int2) (0, 0);
 
-__constant int LK_ITERATIONS = 30; // TODO: This many iterations are needed for tests, but recomended is actually TATWTOOTM'5-10'
+__constant int LK_ITERATIONS = 5; // TODO: This many iterations are needed for tests, but recomended is actually TATWTOOTM'5-10'
 __constant int CORNER_WINDOW_RADIUS = 1; // recommended
 __constant int LK_WINDOW_RADIUS = 1;
 __constant double THRESHOLD_CORNER = 0.05;
@@ -311,24 +311,12 @@ __kernel void calculate_flow(
     IN_BOUNDS(index, size);
     bool is_corner = min_eigen[index] / max_min_eigen > THRESHOLD_CORNER;
 
-    //if (is_corner || level != 0) {
-    if (true) {
+    if (is_corner || level != 0) {
 
         // Spatial Gradient Matrix
         float IxIx = 0;
         float IxIy = 0;
         float IyIy = 0;
-
-        if (pos.x == 2 && pos.y == 2) {
-            printf("Intensity Old\n"); print_mat(intensity_old, size, pos);
-            printf("Intensity New\n"); print_mat(intensity_new, size, pos);
-            printf("Gradient X\n"); print_mat(gradient_x, size, pos);
-            printf("Gradient Y\n"); print_mat(gradient_y, size, pos);
-        }
-
-        //if (pos.x == 2 && pos.y == 2)
-        //if (pos.x == 2 && pos.y == 2)
-        //if (pos.x == 2 && pos.y == 2)
 
         int window_diameter = LK_WINDOW_RADIUS * 2 + 1;
         forn(wy, window_diameter) forn(wx, window_diameter) {
@@ -338,11 +326,6 @@ __kernel void calculate_flow(
             IxIx += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_x[LINEAR(in_pos.x, in_pos.y)];
             IxIy += gradient_x[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
             IyIy += gradient_y[LINEAR(in_pos.x, in_pos.y)] * gradient_y[LINEAR(in_pos.x, in_pos.y)];
-
-            if (pos.x == 2 && pos.y == 2) I2VAR(in_pos);
-            if (pos.x == 2 && pos.y == 2) FVAR(IxIx);
-            if (pos.x == 2 && pos.y == 2) FVAR(IxIy);
-            if (pos.x == 2 && pos.y == 2) FVAR(IyIy);
         }
 
 
