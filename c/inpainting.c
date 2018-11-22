@@ -53,6 +53,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
     memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
     memset(n_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
+    memset(debug, 0, width*height*sizeof(int));
 
     // 1. CALCULATE CONTOUR
     // ++++++++++++++++++++
@@ -135,8 +136,8 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
             
             // Normal:
             //  Easy way: Take spaces between edges (take the one who yields higher data)
-            int di[8] = {-1, 0, 1, 1, 1, 0, -1, -1};
-            int dj[8] = {1, 1, 1, 0, -1, -1, -1, 0};
+            int di[8] = {-1, 0, 1, 1,  1,  0, -1, -1};
+            int dj[8] = { 1, 1, 1, 0, -1, -1, -1, 0};
             int k_border = -1;
 
             // Find first edge/masked pixel
@@ -188,6 +189,15 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
             }
 
             n_t[LINEAR(i,j)] = (point) { .x = nx_max, .y = ny_max }; // TODO: Debug
+
+            // draw the n vector every 6 pixels
+            if (i % 6 == 0){
+                for(float s = 1; s < 10; s+=0.5){
+                    int nni = i + ny_max*s;
+                    int nnj = j + nx_max*s;
+                    debug[LINEAR(nni,nnj)] = 2;
+                }
+            }
 
             // Data
             float data = fabsf(gx_t * nx_max + gy_t * ny_max) / ALPHA;
