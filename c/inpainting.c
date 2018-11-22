@@ -116,12 +116,13 @@ point get_ortogonal_to_contour(int x, int y, bool * mask, int width, int height)
     return orthogonal;
 }
 
+
 bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 
     memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
     memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
     memset(n_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
-    memset(debug, 0, width*height*sizeof(int));
+    memset(debug, 0, MAX_BUFFER_SIZE);
 
     // 1. CALCULATE CONTOUR
     // ++++++++++++++++++++
@@ -222,15 +223,6 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
             // take the middle vector as candidate for normal
             point nt = get_ortogonal_to_contour(j, i, mask, width, height);
 
-            // draw the n vector every 6 pixels
-            if (i % 3 == 0){
-                for(float s = 1; s < 10; s+=0.5){
-                    int nni = i + nt.y*s;
-                    int nnj = j + nt.x*s;
-                    debug[LINEAR(nni,nnj)] = 2;
-                }
-            }
-
             // Data
             float data = fabsf(gx_t * nt.x + gy_t * nt.y) / ALPHA;
 
@@ -243,6 +235,13 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
                 max_i = i;
                 max_j = j;
             }
+
+            // Debug
+            debug_data * casted_debug = (debug_data *) debug;
+            casted_debug[LINEAR(i,j)].confidence = confidence[LINEAR(i,j)];
+            casted_debug[LINEAR(i,j)].data = data;
+            casted_debug[LINEAR(i,j)].gradient_t = (point) {gx_t, gy_t};
+            casted_debug[LINEAR(i,j)].normal_t = (point) {nt.x, nt.y};
 
         }
     }

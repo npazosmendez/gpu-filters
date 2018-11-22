@@ -7,6 +7,7 @@
 #include <stdio.h>
 extern "C" {
     #include "c/c-filters.h"
+    #include "c/cutils.h"
 }
 #include "opencl/opencl-filters.hpp"
 
@@ -129,8 +130,8 @@ int main( int argc, char** argv ) {
     mask_ptr = (bool*) malloc(width * height * sizeof(bool));
     memset(mask_ptr, 0, height * width * sizeof(bool));
 
-    debug = (int*) malloc(width * height * sizeof(int));
-    memset(debug, 0, width * height * sizeof(int));
+    debug = (int*) malloc(MAX_BUFFER_SIZE);
+    memset(debug, 0, MAX_BUFFER_SIZE);
 
     // Loop
     namedWindow("picture", WINDOW_AUTOSIZE);
@@ -189,6 +190,7 @@ void inpaint_iteration() {
             is_more = picked_step(width, height, (char*) img_inpainted.ptr(), mask_ptr, debug);
             last_inpaint_iteration = !is_more;
             break;
+
         case 't':
             while (true) {
                 is_more = picked_step(width, height, (char*) img_inpainted.ptr(), mask_ptr, debug);
@@ -198,8 +200,10 @@ void inpaint_iteration() {
                 }
             }
             break;
+
         case 'q':
             quit = true;
+            break;
     }
 
     if (last_inpaint_iteration) {
@@ -213,10 +217,6 @@ void inpaint_iteration() {
 }
 
 
-// Returns value restricted to range [minimum, maximum]
-int clamp(int value, int minimum, int maximum) {
-    return value < minimum ? minimum : value > maximum ? maximum : value;
-}
 
 bool dragging = false;
 void draw_square(Mat img, int i, int j, Vec3b color, int radius = 1);
@@ -297,17 +297,59 @@ void draw_square(bool * mask, int i, int j, bool val, int radius) {
 }
 
 void paint_debug(Mat img) {
-    forn(i, height) forn(j, width) if (debug[LINEAR(i, j)]){
-        int val = debug[LINEAR(i, j)];
+    /*
+    forn(i, height) forn(j, width) {
+        debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
 
-        if (val == 1) {
-            img.at<Vec3b>(Point(j, i)) = BLUE;
-            //draw_square(img, i, j, BLUE);
-        } else if (val == 2) {
-            img.at<Vec3b>(Point(j, i)) = RED;
-            //draw_square(img, i, j, RED);
+        // Nt
+        if (data.normal_t.x * data.normal_t.x + data.normal_t.y * data.normal_t.y > 1e-3) {
+            line(
+                    img,                                                     // mat to draw into
+                    Point(j, i),                                             // origin position
+                    Point(j + data.normal_t.x * 6, i + data.normal_t.y * 6), // arrow tip position
+                    Scalar( 200, 50, 50 ),                                     // color
+                    1                                                        // thickness
+            );
         }
     }
+     */
+
+    /*
+    forn(i, height) forn(j, width) if (i % 2 == 0 && j % 2 == 0) {
+        debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
+
+        // Gt
+        if (data.gradient_t.x * data.gradient_t.x + data.gradient_t.y * data.gradient_t.y > 1e-3) {
+            line(
+                    img,                                                     // mat to draw into
+                    Point(j, i),                                             // origin position
+                    Point(j + data.gradient_t.x / 30.0, i + data.gradient_t.y / 30.0),     // arrow tip position
+                    Scalar( 0, 0, 200 ),                                     // color
+                    1                                                        // thickness
+            );
+        }
+    }
+     */
+
+    forn(i, height) forn(j, width) {
+        debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
+
+        if (abs(data.confidence - 1) > 1e-3) {
+            img.at<Vec3b>(Point(j, i)) = Vec3b(0, (int)data.confidence, (int)data.confidence);
+        }
+    }
+
+    /*
+    forn(i, height) forn(j, width) {
+        debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
+
+        int scaled_data = ((int) (data.data * 255));
+
+        if (data.data != 0) {
+            img.at<Vec3b>(Point(j, i)) = Vec3b(scaled_data, scaled_data, 0);
+        }
+    }
+     */
 }
 
 void overlay(Mat image, string text) {
