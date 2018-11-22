@@ -335,11 +335,11 @@ float masked_convolute(int width, int height, char * img, int i, int j, float ke
     int kernel_diameter = kernel_radius * 2 + 1;
     for (int ki = 0; ki < kernel_diameter; ki++) {
         for (int kj = 0; kj < kernel_diameter; kj++) {
-            int inner_i = clamp(i + ki - kernel_radius, 0, height);
-            int inner_j = clamp(j + kj  - kernel_radius, 0, width);
+            int inner_i = clamp(i + ki - kernel_radius, 0, height-1);
+            int inner_j = clamp(j + kj  - kernel_radius, 0, width-1);
             float avg = 0;
             for (int ci = 0; ci < 3; ci++) {
-                avg += img[LINEAR3(inner_i, inner_j, ci)]; // Isn't backwards?
+                avg += (unsigned char)img[LINEAR3(inner_i, inner_j, ci)]; // Isn't backwards?
             }
             avg /= 3;
             acc += avg * kernel[ki][kj]; // Isn't backwards?
