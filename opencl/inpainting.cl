@@ -20,6 +20,7 @@ typedef struct point {
 } point;
 
 int within(int2 position, int2 size);
+int within_c(int x, int y, int width, int height);
 float squared_distance3(__global uchar * p, __global uchar * q);
 float norm(float x, float y);
 float masked_convolute(int width, int height, __global uchar * img, int i, int j, float kern[], global uchar * mask);
@@ -29,6 +30,10 @@ point vector_bisector(float ax, float ay, float bx, float by);
 int within(int2 position, int2 size) {
     int2 is_within = 0 <= position && position < size;
     return is_within.x && is_within.y;
+}
+
+int within_c(int x, int y, int width, int height) {
+    return x >= 0 && y >= 0 && x < width && y < height;
 }
 
 // Calculates norm of vector
@@ -72,6 +77,70 @@ float masked_convolute(int width, int height, __global uchar * img, int i, int j
     }
 
     return acc;
+}
+
+point get_ortogonal_to_contour(int x, int y, bool * mask, int width, int height) {
+    int dx[8] = {-1, 0, 1, 1, 1, 0, -1, -1};
+    int dy[8] = {1, 1, 1, 0, -1, -1, -1, 0};
+
+    int first_neighbour_contour_di = -1;
+
+    // Find first masked pixel
+    for (int di = 0; di < 8; di++) {
+        int in_x = x + dx[di];
+        int in_y = y + dy[di];
+        int in_index = in_y * width + in_x;
+
+        if (within_c(in_x, in_y, width, height) && mask[in_index]) {
+            first_neighbour_contour_di = di;
+        }
+    }
+
+    // Find orthogonal vector
+    point orthogonal = (point) {0, -1};
+
+    if (first_neighbour_contour_di != -1) {
+
+        // Loop through all the pairs of contour pixels in the (x, y)
+        // neighbourhood without any contour pixels in between
+        int prev_neighbour_contour_di = first_neighbour_contour_di;
+
+        for (int i = 0; i < 8; i++) {
+
+            int di = ((first_neighbour_contour_di + 1) + i) % 8;
+
+            int in_x = x + dx[di];
+            int in_y = y + dy[di];
+            int in_index = in_y * width + in_x;
+
+
+            if (within_c(in_x, in_y, width, height) && mask[in_index]) {
+                int cur_neighbour_contour_di = di;
+
+                float ax = (float) dx[prev_neighbour_contour_di];
+                float ay = (float) dy[prev_neighbour_contour_di];
+                float bx = (float) dx[cur_neighbour_contour_di];
+                float by = (float) dy[cur_neighbour_contour_di];
+
+                point mid = vector_bisector(ax, ay, bx, by);
+
+                // Avoid double borders
+                bool are_adjacent = (cur_neighbour_contour_di == prev_neighbour_contour_di + 1) ||  \
+                                    ((cur_neighbour_contour_di == 0) && (prev_neighbour_contour_di == 7));
+                if (!are_adjacent) {
+                    // TODO: Maybe maximize another criterium?
+                    orthogonal = mid;
+                }
+
+                prev_neighbour_contour_di = di;
+            }
+        }
+    } else {
+        // I take default vector as fallback
+        // TODO: Unlikely case, but this should be parallel to gradient so it gets filled really fast
+    }
+
+    return orthogonal;
 }
 
 
@@ -161,65 +230,11 @@ __kernel void patch_priorities(
     float gx_t = -gy;
     float gy_t = gx;
 
-    //point gradient_t = (point) { .x = gx_t, .y = gy_t }; // TODO: I'm not using this value, lol
-
-
     // Normal
-    //  Easy way: Take spaces between edges (take the one who yields higher data)
-    int di[8] = {-1, 0, 1, 1, 1, 0, -1, -1};
-    int dj[8] = {1, 1, 1, 0, -1, -1, -1, 0};
-    int k_border = -1;
-
-    // Find first edge/masked pixel
-    for (int k = 0; k < 8; k++) {
-        if (!within((int2)(j + dj[k], i + di[k]), (int2)(width, height)) ||  \
-            mask[LINEAR((int2)(j + dj[k], i + di[k]))]) {
-            k_border = k;
-            break;
-        }
-    }
-
-    // Loop around and for every pair of edges/masked pixels
-    // take the middle vector as candidate for normal
-    float nx_max = -1;
-    float ny_max = -1;
-
-    if (k_border != -1) {
-        bool is_out_prev = false;
-        int k_prev = k_border;
-        for (int l = 0; l < 8; l++) {
-            int k = ((k_border + 1) + l) % 8;
-            bool is_out = !within((int2)(j + dj[k], i + di[k]), (int2)(width, height));
-            if ((is_out && !is_out_prev) || (mask[LINEAR((int2)(j + dj[k], i + di[k]))])){
-                int ax = di[k_prev];
-                int ay = dj[k_prev];
-                int bx = di[k];
-                int by = dj[k];
-
-                point mid = vector_bisector(ax, ay, bx, by);
-                int nx = mid.x;
-                int ny = mid.y;
-
-                if (norm(nx, ny) > norm(nx_max, ny_max)) {
-                    nx_max = nx;
-                    ny_max = ny;
-                }
-                k_prev = k;
-
-                if (is_out) is_out_prev = true;
-            }
-        }
-    } else {
-        // Since every vector is equally possible, I take the best
-        float g_norm = norm(gx_t, gy_t);
-        nx_max = gx_t / g_norm;
-        ny_max= gy_t / g_norm;
-    }
-
-    //point n_t = (point) { .x = nx_max, .y = ny_max }; // TODO: Debug
+    point nt = get_ortogonal_to_contour(pos.x, pos.y, mask, size.x, size.y);
 
     // Data
-    float data = fabs(gx_t * nx_max + gy_t * ny_max) / ALPHA;
+    float data = fabs(gx_t * nt.x + gy_t * nt.y) / ALPHA;
 
     // Priority
     priorities[LINEAR((int2)(j,i))] = is_contour ? confidence[LINEAR((int2)(j,i))] * data : -1.0f;
