@@ -219,6 +219,15 @@ int clamp(int value, int minimum, int maximum) {
 }
 
 bool dragging = false;
+void draw_square(Mat img, int i, int j, Vec3b color, int radius = 1);
+void draw_circle(Mat img, int i, int j, Vec3b color, int radius);
+void draw_square(bool * mask, int i, int j, bool val, int radius = 1);
+void draw_circle(bool * mask, int i, int j, bool val, int radius);
+
+const Vec3b BLUE = Vec3b(255, 0, 0);
+const Vec3b GREEN = Vec3b(0, 255, 0);
+const Vec3b RED = Vec3b(0, 0, 255);
+const Vec3b BLACK = Vec3b(0, 0, 0);
 
 void on_mouse(int event, int x, int y, int flags, void* userdata){
     if (fill_mode) {
@@ -229,15 +238,8 @@ void on_mouse(int event, int x, int y, int flags, void* userdata){
         }
 
         if (dragging == true) {
-            
-            for (int i = -cursor_radius; i <= cursor_radius; i++ ) {
-                for (int j = -cursor_radius; j <= cursor_radius; j++) {
-                    int yi = clamp(y + i, 0, height);
-                    int xj = clamp(x + j, 0, width);
-                    mask_ptr[LINEAR(yi, xj)] = true;
-                    img_masked.at<Vec3b>(Point(xj, yi)) = Vec3b(0, 0, 0);
-                }
-            }
+            draw_circle(img_masked, y, x,  BLACK, cursor_radius);
+            draw_circle(mask_ptr, y, x,  true, cursor_radius);
         }
     }
 }
@@ -246,22 +248,50 @@ void paint_mask(Mat img) {
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             if (mask_ptr[LINEAR(i, j)]) {
-                img.at<Vec3b>(Point(j, i)) = Vec3b(0, 0, 0);
+                img.at<Vec3b>(Point(j, i)) = BLACK;
             }
         }
     }
 }
 
-const Vec3b BLUE = Vec3b(255, 0, 0);
-const Vec3b GREEN = Vec3b(0, 255, 0);
-const Vec3b RED = Vec3b(0, 0, 255);
 
-void draw_square(Mat img, int i, int j, Vec3b color, int radius = 1) {
+void draw_circle(Mat img, int i, int j, Vec3b color, int radius) {
     for (int di = -radius; di <= radius; di++) {
         for (int dj = -radius; dj <= radius; dj++) {
-            int local_i = clamp(i + di, 0, height);
-            int local_j = clamp(j + dj, 0, width);
+            int local_i = clamp(i + di, 0, height-1);
+            int local_j = clamp(j + dj, 0, width-1);
+            if ((pow(local_i-i, 2) + pow(local_j-j, 2)) <= pow(radius,2)){
+                img.at<Vec3b>(Point(local_j, local_i)) = color;
+            }
+        }
+    }
+}
+void draw_circle(bool * mask, int i, int j, bool val, int radius) {
+    for (int di = -radius; di <= radius; di++) {
+        for (int dj = -radius; dj <= radius; dj++) {
+            int local_i = clamp(i + di, 0, height-1);
+            int local_j = clamp(j + dj, 0, width-1);
+            if ((pow(local_i-i, 2) + pow(local_j-j, 2)) <= pow(radius,2)){
+                mask[LINEAR(local_i, local_j)] = val;
+            }
+        }
+    }
+}
+void draw_square(Mat img, int i, int j, Vec3b color, int radius) {
+    for (int di = -radius; di <= radius; di++) {
+        for (int dj = -radius; dj <= radius; dj++) {
+            int local_i = clamp(i + di, 0, height-1);
+            int local_j = clamp(j + dj, 0, width-1);
             img.at<Vec3b>(Point(local_j, local_i)) = color;
+        }
+    }
+}
+void draw_square(bool * mask, int i, int j, bool val, int radius) {
+    for (int di = -radius; di <= radius; di++) {
+        for (int dj = -radius; dj <= radius; dj++) {
+            int local_i = clamp(i + di, 0, height-1);
+            int local_j = clamp(j + dj, 0, width-1);
+            mask[LINEAR(local_i, local_j)] = val;
         }
     }
 }
@@ -271,9 +301,11 @@ void paint_debug(Mat img) {
         int val = debug[LINEAR(i, j)];
 
         if (val == 1) {
-            draw_square(img, i, j, BLUE);
+            img.at<Vec3b>(Point(j, i)) = BLUE;
+            //draw_square(img, i, j, BLUE);
         } else if (val == 2) {
-            draw_square(img, i, j, RED);
+            img.at<Vec3b>(Point(j, i)) = RED;
+            //draw_square(img, i, j, RED);
         }
     }
 }
