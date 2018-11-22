@@ -4,7 +4,7 @@
 
 __constant int2 ZERO = (int2) (0, 0);
 
-__constant int LK_ITERATIONS = 30; // TODO: This many iterations are needed for tests, but recomended is actually TATWTOOTM'5-10'
+__constant int LK_ITERATIONS = 10; // TODO: This many iterations are needed for tests, but recomended is actually TATWTOOTM'5-10'
 __constant int CORNER_WINDOW_RADIUS = 1; // recommended
 __constant int LK_WINDOW_RADIUS = 1;
 __constant double THRESHOLD_CORNER = 0.05;

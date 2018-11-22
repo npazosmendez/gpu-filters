@@ -515,6 +515,33 @@ void test_functional_two_disjoint_points() {
     free(output_flow);
 }
 
+void test_functional_line_moving() {
+    int width = 32;
+    int height = 32;
+
+    Figure fig_old = Figure(width, height);
+    fig_old.paint(15, 15,  50);
+    fig_old.paint(16, 15,  200);
+
+    Figure fig_new = Figure(width, height);
+    fig_new.paint(16, 15,  50);
+    fig_new.paint(17, 15,  200);
+
+    vecf * output_flow = (vecf*) malloc(width*height*sizeof(vecf));
+
+    int levels = 1;
+
+    CL_kanade(width, height, fig_old.get_img(), fig_new.get_img(), output_flow, levels);
+
+    ASSERT_EQF(output_flow[15 * width + 15].x, 1);
+    ASSERT_EQF(output_flow[15 * width + 15].y, 0);
+
+    ASSERT_EQF(output_flow[15 * width + 16].x, 1);
+    ASSERT_EQF(output_flow[15 * width + 16].y, 0);
+
+    free(output_flow);
+}
+
 void test_functional_snake_moving() {
     int width = 32;
     int height = 32;
@@ -561,9 +588,12 @@ int main(int argc, char** argv) {
     RUN_TEST(test_functional_long_vertical_movement);
     RUN_TEST(test_functional_super_long_diagonal_movement);
     RUN_TEST(test_functional_two_disjoint_points);
-     */
 
     RUN_TEST(test_functional_snake_moving);
+    */
+
+    RUN_TEST(test_functional_line_moving);
+
     printf("\n");
 
     return 0;
