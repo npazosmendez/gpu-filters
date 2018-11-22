@@ -71,13 +71,7 @@ sudo apt-get install libopencv-dev
 For an advanced GUI only, not actually needed to run the bascis. More information at `gui/readme.md`
 
 # What is left
-- [x] Better line drawing algorithm
-- [x] Lucas-Kanade C version
-- [x] Lucas-Kanade OpenCL version
-- [x] Hough line-detection OpenCL version
-- [x] Inpainting OpenCL version
+- [ ] Debug Inpainting OpenCL/C version
+- [ ] Debug Lucas-Kanade OpenCL/C version
 - [ ] Handle boundaries (image borders) in all algorithms
 - [ ] Optimize all OpenCL code
-- [ ] Test / validate current implementations
-- [x] Create a friendly UI
-- [ ] Fix Canny C bugs
