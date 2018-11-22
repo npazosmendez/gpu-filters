@@ -246,7 +246,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
                     if (within(target_i, 0, height) &&  \
                         within(target_j, 0, width) &&   \
                         !mask[LINEAR(target_i, target_j)]) {
-                        squared_diff += squared_distance3(img + LINEAR(target_i, target_j), img + LINEAR(source_i, source_j));
+                        squared_diff += squared_distance3(img + 3*LINEAR(target_i, target_j), img + 3*LINEAR(source_i, source_j));
                     }
                 }
             }
