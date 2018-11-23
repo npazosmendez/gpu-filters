@@ -117,7 +117,7 @@ point get_ortogonal_to_contour(int x, int y, bool * mask, int width, int height)
 }
 
 
-bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
+int inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 
     memset(contour_mask, 0, height*width*sizeof(bool));
     memset(gradient_t, 0, height*width*sizeof(point)); // TODO: Debug
@@ -249,6 +249,13 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
         }
     }
 
+    int masked_count = 0;
+    for(int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++){
+        for(int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++){
+            if(mask[LINEAR(max_i + ki, max_j + kj)]) masked_count++;
+        }
+    }
+
     // 3. FIND SOURCE PATCH
     // ++++++++++++++++++++
 
@@ -296,7 +303,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
     }
 
     debug_data * casted_debug = (debug_data *) debug;
-    for(int k = -PATCH_RADIUS; k < PATCH_RADIUS; k++){
+    for(int k = -PATCH_RADIUS; k <= PATCH_RADIUS; k++){
         casted_debug[LINEAR(max_source_i - PATCH_RADIUS, max_source_j + k)].source_patch = true;
         casted_debug[LINEAR(max_source_i + PATCH_RADIUS, max_source_j + k)].source_patch = true;
         casted_debug[LINEAR(max_source_i + k, max_source_j - PATCH_RADIUS)].source_patch = true;
@@ -333,7 +340,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
         }
     }
 
-    return 1;
+    return masked_count;
 }
 
 
