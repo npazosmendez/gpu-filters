@@ -177,7 +177,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
                 }
             }
 
-            confidence[LINEAR(i,j)] = sum / (2 * PATCH_RADIUS + 1) * (2 * PATCH_RADIUS + 1);
+            confidence[LINEAR(i,j)] = sum / ((2 * PATCH_RADIUS + 1) * (2 * PATCH_RADIUS + 1));
 
 
             // Gradient:
@@ -198,7 +198,6 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
             float gy = masked_convolute(width, height, img, i, j, sobel_kernel_y, mask);
             float gx_t = -gy;
             float gy_t = gx;
-
             gradient_t[LINEAR(i,j)] = (point) { .x = gx_t, .y = gy_t }; // TODO: Debug
             
             
@@ -222,6 +221,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
             // take the middle vector as candidate for normal
             point nt = get_ortogonal_to_contour(j, i, mask, width, height);
 
+            /*
             // draw the n vector every 6 pixels
             if (i % 3 == 0){
                 for(float s = 1; s < 10; s+=0.5){
@@ -230,13 +230,13 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
                     debug[LINEAR(nni,nnj)] = 2;
                 }
             }
+            */
 
             // Data
             float data = fabsf(gx_t * nt.x + gy_t * nt.y) / ALPHA;
 
             // Priority
             float priority = confidence[LINEAR(i,j)] * data;
-
             // Update max
             if (priority > max_priority) {
                 max_priority = priority;
@@ -292,7 +292,17 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
             }
         }
     }
+    for(int k = -PATCH_RADIUS; k < PATCH_RADIUS; k++){
+        debug[LINEAR(max_source_i - PATCH_RADIUS, max_source_j + k)] = 2;
+        debug[LINEAR(max_source_i + PATCH_RADIUS, max_source_j + k)] = 2;
+        debug[LINEAR(max_source_i + k, max_source_j - PATCH_RADIUS)] = 2;
+        debug[LINEAR(max_source_i + k, max_source_j + PATCH_RADIUS)] = 2;
 
+        debug[LINEAR(max_i - PATCH_RADIUS, max_j + k)] = 1;
+        debug[LINEAR(max_i + PATCH_RADIUS, max_j + k)] = 1;
+        debug[LINEAR(max_i + k, max_j - PATCH_RADIUS)] = 1;
+        debug[LINEAR(max_i + k, max_j + PATCH_RADIUS)] = 1;
+    }
     // 4. COPY
     // +++++++
 
