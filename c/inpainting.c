@@ -280,7 +280,14 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
                     if (within(target_i, 0, height) &&  \
                         within(target_j, 0, width) &&   \
                         !mask[LINEAR(target_i, target_j)]) {
-                        squared_diff += squared_distance3(img + 3*LINEAR(target_i, target_j), img + 3*LINEAR(source_i, source_j));
+
+                        unsigned char * imgu = (unsigned char *) img;
+
+                        float diff_x = imgu[LINEAR3(target_i, target_j, 0)] - imgu[LINEAR3(source_i, source_j, 0)];
+                        float diff_y = imgu[LINEAR3(target_i, target_j, 1)] - imgu[LINEAR3(source_i, source_j, 1)];
+                        float diff_z = imgu[LINEAR3(target_i, target_j, 2)] - imgu[LINEAR3(source_i, source_j, 2)];
+
+                        squared_diff += diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
                     }
                 }
             }
