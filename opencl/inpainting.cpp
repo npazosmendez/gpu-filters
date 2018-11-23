@@ -273,6 +273,7 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     k_copy.setArg(1, b_mask);
     k_copy.setArg(2, target);
     k_copy.setArg(3, source);
+    k_copy.setArg(4, b_confidence);
     err = queue.enqueueNDRangeKernel(
             k_copy,
             NullRange,

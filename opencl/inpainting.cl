@@ -155,7 +155,7 @@ point get_ortogonal_to_contour(int x, int y, bool * mask, int width, int height)
 __kernel void patch_priorities(
         __global uchar * img,
         __global uchar * mask,
-        __global uchar * confidence,
+        __global float * confidence,
         __global float * priorities) {
 
     // STEP 1
@@ -285,7 +285,8 @@ __kernel void copy(
         __global uchar * img,
         __global uchar * mask,
         int2 target_pos,
-        int2 source_pos) {
+        int2 source_pos,
+        __global float * confidence) {
 
     int2 size = (int2)(get_global_size(0), get_global_size(1));
     int2 target_local_pos = (int2)(get_global_id(0), get_global_id(1));
@@ -302,5 +303,6 @@ __kernel void copy(
         img[3*LINEAR(target_local_pos)+1] = img[3*LINEAR(source_local_pos)+1];
         img[3*LINEAR(target_local_pos)+2] = img[3*LINEAR(source_local_pos)+2];
         mask[LINEAR(target_local_pos)] = false;
+        confidence[LINEAR(target_local_pos)] = confidence[LINEAR(target_pos)];
     }
 }

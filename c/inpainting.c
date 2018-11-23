@@ -328,6 +328,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
                 img[LINEAR3(target_i, target_j, 1)] = img[LINEAR3(source_i, source_j, 1)];
                 img[LINEAR3(target_i, target_j, 2)] = img[LINEAR3(source_i, source_j, 2)];
                 mask[LINEAR(target_i, target_j)] = false;
+                confidence[LINEAR(target_i, target_j)] = confidence[LINEAR(max_i, max_j)];
             }
         }
     }
