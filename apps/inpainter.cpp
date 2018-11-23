@@ -302,7 +302,7 @@ void paint_debug(Mat img) {
         debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
 
         // Nt
-        if (data.normal_t.x * data.normal_t.x + data.normal_t.y * data.normal_t.y > 1e-3) {
+        if (data.normal_t.x != FLT_MAX) {
             line(
                     img,                                                     // mat to draw into
                     Point(j, i),                                             // origin position
@@ -319,7 +319,7 @@ void paint_debug(Mat img) {
         debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
 
         // Gt
-        if (data.gradient_t.x * data.gradient_t.x + data.gradient_t.y * data.gradient_t.y > 1e-3) {
+        if (data.gradient_t.x != FLT_MAX) {
             line(
                     img,                                                     // mat to draw into
                     Point(j, i),                                             // origin position
@@ -334,8 +334,8 @@ void paint_debug(Mat img) {
     forn(i, height) forn(j, width) {
         debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
 
-        if (abs(data.confidence - 1) > 1e-3) {
-            img.at<Vec3b>(Point(j, i)) = Vec3b(0, (int)data.confidence, (int)data.confidence);
+        if (data.confidence != FLT_MAX) {
+            img.at<Vec3b>(Point(j, i)) = Vec3b(0, (int)(data.confidence * 255), (int)(data.confidence * 255));
         }
     }
 
@@ -343,9 +343,8 @@ void paint_debug(Mat img) {
     forn(i, height) forn(j, width) {
         debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
 
-        int scaled_data = ((int) (data.data * 255));
-
-        if (data.data != 0) {
+        if (data.data != FLT_MAX) {
+            int scaled_data = ((int) (data.data * 255));
             img.at<Vec3b>(Point(j, i)) = Vec3b(scaled_data, scaled_data, 0);
         }
     }

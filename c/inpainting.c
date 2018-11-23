@@ -163,6 +163,11 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
         for (int j = 0; j < width; j++) {
 
             if (!contour_mask[LINEAR(i,j)]) {
+                debug_data * casted_debug = (debug_data *) debug;
+                casted_debug[LINEAR(i,j)].confidence = FLT_MAX;
+                casted_debug[LINEAR(i,j)].data = FLT_MAX;
+                casted_debug[LINEAR(i,j)].gradient_t = (point) {FLT_MAX, FLT_MAX};
+                casted_debug[LINEAR(i,j)].normal_t = (point) {FLT_MAX, FLT_MAX};
                 continue;
             }
 
