@@ -209,7 +209,7 @@ __kernel void patch_priorities(
         }
     }
 
-    confidence[LINEAR((int2)(j,i))] = sum / (2 * PATCH_RADIUS + 1) * (2 * PATCH_RADIUS + 1);
+    confidence[LINEAR((int2)(j,i))] = sum / ((2 * PATCH_RADIUS + 1) * (2 * PATCH_RADIUS + 1));
 
     // Gradient
     // According to impl I should take one gradient, according to paper I should take the max in the patch.
