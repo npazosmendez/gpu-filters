@@ -119,10 +119,10 @@ point get_ortogonal_to_contour(int x, int y, bool * mask, int width, int height)
 
 bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 
-    memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
-    memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
-    memset(n_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
-    memset(debug, 0, MAX_BUFFER_SIZE);
+    memset(contour_mask, 0, height*width*sizeof(bool));
+    memset(gradient_t, 0, height*width*sizeof(point)); // TODO: Debug
+    memset(n_t, 0, height*width*sizeof(point)); // TODO: Debug
+    memset(debug, 0, height*width*sizeof(debug_data));
 
     // 1. CALCULATE CONTOUR
     // ++++++++++++++++++++
@@ -199,7 +199,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
             float gy = masked_convolute(width, height, img, i, j, sobel_kernel_y, mask);
             float gx_t = -gy;
             float gy_t = gx;
-            gradient_t[LINEAR(i,j)] = (point) { .x = gx_t, .y = gy_t }; // TODO: Debug
+            gradient_t[LINEAR(i,j)] = (point) { .x = gx_t, .y = gy_t };
             
             
             // Normal:
