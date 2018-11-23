@@ -113,7 +113,6 @@ int main( int argc, char** argv ) {
             return 0;
         }
     }
-
     height = img_original.rows;
     width = img_original.cols;
 
@@ -130,8 +129,8 @@ int main( int argc, char** argv ) {
     mask_ptr = (bool*) malloc(width * height * sizeof(bool));
     memset(mask_ptr, 0, height * width * sizeof(bool));
 
-    debug = (int*) malloc(MAX_BUFFER_SIZE);
-    memset(debug, 0, MAX_BUFFER_SIZE);
+    debug = (int*) malloc(width * height * sizeof(debug_data));
+    memset(debug, 0, width * height * sizeof(debug_data));
 
     // Loop
     namedWindow("picture", WINDOW_AUTOSIZE);
