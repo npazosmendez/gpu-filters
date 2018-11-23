@@ -333,6 +333,12 @@ void paint_debug(Mat img) {
     forn(i, height) forn(j, width) {
         debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
 
+        if (data.source_patch) {
+            img.at<Vec3b>(Point(j, i)) = RED;
+        }
+        if (data.target_patch) {
+            img.at<Vec3b>(Point(j, i)) = BLUE;
+        }
         if (data.confidence != FLT_MAX) {
             img.at<Vec3b>(Point(j, i)) = Vec3b(0, (int)(data.confidence * 255), (int)(data.confidence * 255));
         }

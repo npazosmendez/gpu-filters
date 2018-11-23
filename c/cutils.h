@@ -12,6 +12,8 @@ typedef struct debug_data_t {
     float data;
     point gradient_t;
     point normal_t;
+    bool target_patch;
+    bool source_patch;
 } debug_data;
 
 int within(int value, int minimum, int maximum);

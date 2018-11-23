@@ -294,16 +294,18 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
             }
         }
     }
-    for(int k = -PATCH_RADIUS; k < PATCH_RADIUS; k++){
-        debug[LINEAR(max_source_i - PATCH_RADIUS, max_source_j + k)] = 2;
-        debug[LINEAR(max_source_i + PATCH_RADIUS, max_source_j + k)] = 2;
-        debug[LINEAR(max_source_i + k, max_source_j - PATCH_RADIUS)] = 2;
-        debug[LINEAR(max_source_i + k, max_source_j + PATCH_RADIUS)] = 2;
 
-        debug[LINEAR(max_i - PATCH_RADIUS, max_j + k)] = 1;
-        debug[LINEAR(max_i + PATCH_RADIUS, max_j + k)] = 1;
-        debug[LINEAR(max_i + k, max_j - PATCH_RADIUS)] = 1;
-        debug[LINEAR(max_i + k, max_j + PATCH_RADIUS)] = 1;
+    debug_data * casted_debug = (debug_data *) debug;
+    for(int k = -PATCH_RADIUS; k < PATCH_RADIUS; k++){
+        casted_debug[LINEAR(max_source_i - PATCH_RADIUS, max_source_j + k)].source_patch = true;
+        casted_debug[LINEAR(max_source_i + PATCH_RADIUS, max_source_j + k)].source_patch = true;
+        casted_debug[LINEAR(max_source_i + k, max_source_j - PATCH_RADIUS)].source_patch = true;
+        casted_debug[LINEAR(max_source_i + k, max_source_j + PATCH_RADIUS)].source_patch = true;
+
+        casted_debug[LINEAR(max_i - PATCH_RADIUS, max_j + k)].target_patch = true;
+        casted_debug[LINEAR(max_i + PATCH_RADIUS, max_j + k)].target_patch = true;
+        casted_debug[LINEAR(max_i + k, max_j - PATCH_RADIUS)].target_patch = true;
+        casted_debug[LINEAR(max_i + k, max_j + PATCH_RADIUS)].target_patch = true;
     }
     // 4. COPY
     // +++++++
