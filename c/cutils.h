@@ -7,6 +7,13 @@ typedef struct point {
     float x, y;
 } point;
 
+typedef struct debug_data_t {
+    float confidence;
+    float data;
+    point gradient_t;
+    point normal_t;
+} debug_data;
+
 int within(int value, int minimum, int maximum);
 int max(int a, int b);
 int min(int a, int b);
