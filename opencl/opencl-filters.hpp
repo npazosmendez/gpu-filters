@@ -14,7 +14,7 @@ void CL_canny(char * src, int width, int height, float uthreshold, float lthresh
 void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, char* counter);
 
 void CL_inpaint_init(int width, int height, char * ptr, bool * mask_ptr, int * debug);
-bool CL_inpaint_step(int width, int height, char * ptr, bool * mask_ptr, int * debug);
+int CL_inpaint_step(int width, int height, char * ptr, bool * mask_ptr, int * debug);
 void CL_inpainting(char * ptr, int width, int height, bool * mask_ptr, int * debug);
 
 void CL_kanade(int width, int height, char * imgA, char * imgB, vec * flow, int levels);

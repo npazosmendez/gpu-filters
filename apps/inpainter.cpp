@@ -3,6 +3,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <stdlib.h>
 #include <iostream>
+#include <ProgressBar.hpp>
 #include <string>
 #include <stdio.h>
 extern "C" {
@@ -39,7 +40,7 @@ bool fill_mode;
 int cursor_radius;
 
 void (*picked_init)(int, int, char*, bool*, int*);
-bool (*picked_step)(int, int, char*, bool*, int*);
+int (*picked_step)(int, int, char*, bool*, int*);
 
 
 bool quit = false;
@@ -171,7 +172,9 @@ void edit_iteration() {
 
 bool first_inpaint_iteration = true;
 bool last_inpaint_iteration = false;
-bool is_more;
+int is_more;
+int mask_size();
+
 
 void inpaint_iteration() {
     if (first_inpaint_iteration) {
@@ -191,11 +194,16 @@ void inpaint_iteration() {
             break;
 
         case 't':
-            while (true) {
-                is_more = picked_step(width, height, (char*) img_inpainted.ptr(), mask_ptr, debug);
-                if (!is_more) {
-                    last_inpaint_iteration = true;
-                    break;
+            {
+                ProgressBar bar(mask_size());
+                while (true) {
+                    is_more = picked_step(width, height, (char*) img_inpainted.ptr(), mask_ptr, debug);
+                    bar.update(is_more);
+                    if (!is_more) {
+                        last_inpaint_iteration = true;
+                        bar.finish();
+                        break;
+                    }
                 }
             }
             break;
@@ -215,6 +223,11 @@ void inpaint_iteration() {
     }
 }
 
+int mask_size(){
+    int mask_size = 0;
+    for(int i = 0; i < width*height; i++) if(mask_ptr[i]) mask_size++;
+    return mask_size;
+}
 
 
 bool dragging = false;
@@ -296,6 +309,7 @@ void draw_square(bool * mask, int i, int j, bool val, int radius) {
 }
 
 void paint_debug(Mat img) {
+
     /*
     forn(i, height) forn(j, width) {
         debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
