@@ -109,9 +109,8 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug
     clHandleError(__FILE__,__LINE__,err);
 }
 
-
-bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
-
+#define DEBUG
+int CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 #ifdef DEBUG
     memset(debug, 0, width*height*sizeof(int));
 #endif
@@ -159,7 +158,6 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
 
         err = queue.enqueueReadBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
         clHandleError(__FILE__,__LINE__,err);
-
         return 0;
     }
 
@@ -206,6 +204,55 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
             cl_min_source_j = x;
         }
     }
+    int masked_count = 0;
+    for(int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++){
+        for(int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++){
+            if(mask[LINEAR(max_i + ki, max_j + kj)]) masked_count++;
+        }
+    }
+
+    // Draw patches in debug
+    for(int k = -PATCH_RADIUS; k <= PATCH_RADIUS; k++){
+        debug[LINEAR(cl_min_source_i - PATCH_RADIUS, cl_min_source_j + k)] = 2;
+        debug[LINEAR(cl_min_source_i + PATCH_RADIUS, cl_min_source_j + k)] = 2;
+        debug[LINEAR(cl_min_source_i + k, cl_min_source_j - PATCH_RADIUS)] = 2;
+        debug[LINEAR(cl_min_source_i + k, cl_min_source_j + PATCH_RADIUS)] = 2;
+
+        debug[LINEAR(max_i - PATCH_RADIUS, max_j + k)] = 1;
+        debug[LINEAR(max_i + PATCH_RADIUS, max_j + k)] = 1;
+        debug[LINEAR(max_i + k, max_j - PATCH_RADIUS)] = 1;
+        debug[LINEAR(max_i + k, max_j + PATCH_RADIUS)] = 1;
+    }
+    /*
+    cout << "source patch is:" << endl;
+    for(int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++){
+        for(int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++){
+            int r = (unsigned char)img[LINEAR3(cl_min_source_i + ki, cl_min_source_j + kj, 0)];
+            int g = (unsigned char)img[LINEAR3(cl_min_source_i + ki, cl_min_source_j + kj, 1)];
+            int b = (unsigned char)img[LINEAR3(cl_min_source_i + ki, cl_min_source_j + kj, 2)];
+            cout << r << ",";
+            cout << g << ",";
+            cout << b << " ";
+        }
+        cout << endl;
+    }
+    cout << "target patch is:" << endl;
+    for(int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++){
+        for(int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++){
+            if(mask[LINEAR(max_i + ki, max_j + kj)]){
+                cout << "?,?,? ";
+                continue;
+            }
+            int r = (unsigned char)img[LINEAR3(max_i + ki, max_j + kj, 0)];
+            int g = (unsigned char)img[LINEAR3(max_i + ki, max_j + kj, 1)];
+            int b = (unsigned char)img[LINEAR3(max_i + ki, max_j + kj, 2)];
+            cout << r << ",";
+            cout << g << ",";
+            cout << b << " ";
+        }
+        cout << endl;
+    }
+    */
 
 #ifdef PROFILE
     tend = steady_clock::now();
@@ -233,6 +280,7 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     k_copy.setArg(1, b_mask);
     k_copy.setArg(2, target);
     k_copy.setArg(3, source);
+    k_copy.setArg(4, b_confidence);
     err = queue.enqueueNDRangeKernel(
             k_copy,
             NullRange,
@@ -248,7 +296,13 @@ bool CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug
     printf("\n");
 #endif
 
-    return 1;
+    // Just to debug the iteration
+    err = queue.enqueueReadBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
+    clHandleError(__FILE__,__LINE__,err);
+    err = queue.enqueueReadBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
+    clHandleError(__FILE__,__LINE__,err);
+
+    return masked_count;
 }
 
 

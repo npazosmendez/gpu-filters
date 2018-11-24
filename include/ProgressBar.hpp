@@ -25,11 +25,11 @@ public:
 		reset();
 	}
 
-	void update() {
+	void update(int iterations = 1) {
 		// You should call this on every iteration
 		if(!printed) print();
 
-		iteration++;
+		iteration += iterations;
 		int percentage = iteration*100.0 / cycles;
 
 		if(percentage == last_percentage || percentage > 100)

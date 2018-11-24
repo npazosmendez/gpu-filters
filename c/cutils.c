@@ -29,10 +29,10 @@ float norm(float x, float y) {
 }
 
 // Calculates squared distance of two vectors in three dimensions
-float squared_distance3(char p[3], char q[3]) {
-    return (p[0] - q[0]) * (p[0] - q[0]) +  \
-           (p[1] - q[1]) * (p[1] - q[1]) +  \
-           (p[2] - q[2]) * (p[2] - q[2]);
+float squared_distance3(unsigned char p[3], unsigned char q[3]) {
+    return ((float)p[0] - (float)q[0]) * ((float)p[0] - (float)q[0]) +  \
+           ((float)p[1] - (float)q[1]) * ((float)p[1] - (float)q[1]) +  \
+           ((float)p[2] - (float)q[2]) * ((float)p[2] - (float)q[2]);
 }
 
 #define LINEAR(x, y) (y)*width+(x)

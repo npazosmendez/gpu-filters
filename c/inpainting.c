@@ -48,11 +48,81 @@ void inpaint_init(int width, int height, char * img, bool * mask, int * debug) {
     }
 }
 
-bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
+int within_c(int x, int y, int width, int height) {
+    return x >= 0 && y >= 0 && x < width && y < height;
+}
 
-    memset(contour_mask, 0, MAX_LEN*MAX_LEN*sizeof(bool));
-    memset(gradient_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
-    memset(n_t, 0, MAX_LEN*MAX_LEN*sizeof(point)); // TODO: Debug
+point get_ortogonal_to_contour(int x, int y, bool * mask, int width, int height) {
+    int dx[8] = {-1, 0, 1, 1, 1, 0, -1, -1};
+    int dy[8] = {1, 1, 1, 0, -1, -1, -1, 0};
+
+    int first_neighbour_contour_di = -1;
+
+    // Find first masked pixel
+    for (int di = 0; di < 8; di++) {
+        int in_x = x + dx[di];
+        int in_y = y + dy[di];
+        int in_index = in_y * width + in_x;
+
+        if (within_c(in_x, in_y, width, height) && mask[in_index]) {
+            first_neighbour_contour_di = di;
+        }
+    }
+
+    // Find orthogonal vector
+    point orthogonal = (point) {0, -1};
+
+    if (first_neighbour_contour_di != -1) {
+
+        // Loop through all the pairs of contour pixels in the (x, y)
+        // neighbourhood without any contour pixels in between
+        int prev_neighbour_contour_di = first_neighbour_contour_di;
+
+        for (int i = 0; i < 8; i++) {
+
+            int di = ((first_neighbour_contour_di + 1) + i) % 8;
+
+            int in_x = x + dx[di];
+            int in_y = y + dy[di];
+            int in_index = in_y * width + in_x;
+
+
+            if (within_c(in_x, in_y, width, height) && mask[in_index]) {
+                int cur_neighbour_contour_di = di;
+
+                float ax = (float) dx[prev_neighbour_contour_di];
+                float ay = (float) dy[prev_neighbour_contour_di];
+                float bx = (float) dx[cur_neighbour_contour_di];
+                float by = (float) dy[cur_neighbour_contour_di];
+
+                point mid = vector_bisector(ax, ay, bx, by);
+
+                // Avoid double borders
+                bool are_adjacent = (cur_neighbour_contour_di == prev_neighbour_contour_di + 1) ||  \
+                                    ((cur_neighbour_contour_di == 0) && (prev_neighbour_contour_di == 7));
+                if (!are_adjacent) {
+                    // TODO: Maybe maximize another criterium?
+                    orthogonal = mid;
+                }
+
+                prev_neighbour_contour_di = di;
+            }
+        }
+    } else {
+        // I take default vector as fallback
+        // TODO: Unlikely case, but this should be parallel to gradient so it gets filled really fast
+    }
+
+    return orthogonal;
+}
+
+
+int inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
+
+    memset(contour_mask, 0, height*width*sizeof(bool));
+    memset(gradient_t, 0, height*width*sizeof(point)); // TODO: Debug
+    memset(n_t, 0, height*width*sizeof(point)); // TODO: Debug
+    memset(debug, 0, height*width*sizeof(debug_data));
 
     // 1. CALCULATE CONTOUR
     // ++++++++++++++++++++
@@ -93,6 +163,11 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
         for (int j = 0; j < width; j++) {
 
             if (!contour_mask[LINEAR(i,j)]) {
+                debug_data * casted_debug = (debug_data *) debug;
+                casted_debug[LINEAR(i,j)].confidence = FLT_MAX;
+                casted_debug[LINEAR(i,j)].data = FLT_MAX;
+                casted_debug[LINEAR(i,j)].gradient_t = (point) {FLT_MAX, FLT_MAX};
+                casted_debug[LINEAR(i,j)].normal_t = (point) {FLT_MAX, FLT_MAX};
                 continue;
             }
 
@@ -108,7 +183,7 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
                 }
             }
 
-            confidence[LINEAR(i,j)] = sum / (2 * PATCH_RADIUS + 1) * (2 * PATCH_RADIUS + 1);
+            confidence[LINEAR(i,j)] = sum / ((2 * PATCH_RADIUS + 1) * (2 * PATCH_RADIUS + 1));
 
 
             // Gradient:
@@ -129,14 +204,13 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
             float gy = masked_convolute(width, height, img, i, j, sobel_kernel_y, mask);
             float gx_t = -gy;
             float gy_t = gx;
-
-            gradient_t[LINEAR(i,j)] = (point) { .x = gx_t, .y = gy_t }; // TODO: Debug
+            gradient_t[LINEAR(i,j)] = (point) { .x = gx_t, .y = gy_t };
             
             
             // Normal:
             //  Easy way: Take spaces between edges (take the one who yields higher data)
-            int di[8] = {-1, 0, 1, 1, 1, 0, -1, -1};
-            int dj[8] = {1, 1, 1, 0, -1, -1, -1, 0};
+            int di[8] = {-1, 0, 1, 1,  1,  0, -1, -1};
+            int dj[8] = { 1, 1, 1, 0, -1, -1, -1, 0};
             int k_border = -1;
 
             // Find first edge/masked pixel
@@ -151,50 +225,13 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 
             // Loop around and for every pair of edges/masked pixels
             // take the middle vector as candidate for normal
-            float nx_max = -1;
-            float ny_max = -1;
-
-            if (k_border != -1) {
-                bool is_out_prev = false;
-                int k_prev = k_border;
-                for (int l = 0; l < 8; l++) {
-                    int k = ((k_border + 1) + l) % 8;
-                    bool is_out = !within(i + di[k], 0, height) ||  \
-                                  !within(j + dj[k], 0, width);
-                    if ((is_out && !is_out_prev) || (mask[LINEAR(i + di[k], j + dj[k])])){
-                        int ax = di[k_prev];
-                        int ay = dj[k_prev];
-                        int bx = di[k];
-                        int by = dj[k];
-
-                        point mid = vector_bisector(ax, ay, bx, by);
-                        int nx = mid.x;
-                        int ny = mid.y;
-
-                        if (norm(nx, ny) > norm(nx_max, ny_max)) {
-                            nx_max = nx;
-                            ny_max = ny;
-                        }
-                        k_prev = k;
-
-                        if (is_out) is_out_prev = true;
-                    }
-                }
-            } else {
-                // Since every vector is equally possible, I take the best
-                float g_norm = norm(gx_t, gy_t);
-                nx_max = gx_t / g_norm;
-                ny_max= gy_t / g_norm;
-            }
-
-            n_t[LINEAR(i,j)] = (point) { .x = nx_max, .y = ny_max }; // TODO: Debug
+            point nt = get_ortogonal_to_contour(j, i, mask, width, height);
 
             // Data
-            float data = fabsf(gx_t * nx_max + gy_t * ny_max) / ALPHA;
+            float data = fabsf(gx_t * nt.x + gy_t * nt.y) / ALPHA;
 
             // Priority
             float priority = confidence[LINEAR(i,j)] * data;
-
             // Update max
             if (priority > max_priority) {
                 max_priority = priority;
@@ -202,6 +239,20 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
                 max_j = j;
             }
 
+            // Debug
+            debug_data * casted_debug = (debug_data *) debug;
+            casted_debug[LINEAR(i,j)].confidence = confidence[LINEAR(i,j)];
+            casted_debug[LINEAR(i,j)].data = data;
+            casted_debug[LINEAR(i,j)].gradient_t = (point) {gx_t, gy_t};
+            casted_debug[LINEAR(i,j)].normal_t = (point) {nt.x, nt.y};
+
+        }
+    }
+
+    int masked_count = 0;
+    for(int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++){
+        for(int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++){
+            if(mask[LINEAR(max_i + ki, max_j + kj)]) masked_count++;
         }
     }
 
@@ -236,7 +287,14 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
                     if (within(target_i, 0, height) &&  \
                         within(target_j, 0, width) &&   \
                         !mask[LINEAR(target_i, target_j)]) {
-                        squared_diff += squared_distance3(img + LINEAR(target_i, target_j), img + LINEAR(source_i, source_j));
+
+                        unsigned char * imgu = (unsigned char *) img;
+
+                        float diff_x = imgu[LINEAR3(target_i, target_j, 0)] - imgu[LINEAR3(source_i, source_j, 0)];
+                        float diff_y = imgu[LINEAR3(target_i, target_j, 1)] - imgu[LINEAR3(source_i, source_j, 1)];
+                        float diff_z = imgu[LINEAR3(target_i, target_j, 2)] - imgu[LINEAR3(source_i, source_j, 2)];
+
+                        squared_diff += diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
                     }
                 }
             }
@@ -251,6 +309,18 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
         }
     }
 
+    debug_data * casted_debug = (debug_data *) debug;
+    for(int k = -PATCH_RADIUS; k <= PATCH_RADIUS; k++){
+        casted_debug[LINEAR(max_source_i - PATCH_RADIUS, max_source_j + k)].source_patch = true;
+        casted_debug[LINEAR(max_source_i + PATCH_RADIUS, max_source_j + k)].source_patch = true;
+        casted_debug[LINEAR(max_source_i + k, max_source_j - PATCH_RADIUS)].source_patch = true;
+        casted_debug[LINEAR(max_source_i + k, max_source_j + PATCH_RADIUS)].source_patch = true;
+
+        casted_debug[LINEAR(max_i - PATCH_RADIUS, max_j + k)].target_patch = true;
+        casted_debug[LINEAR(max_i + PATCH_RADIUS, max_j + k)].target_patch = true;
+        casted_debug[LINEAR(max_i + k, max_j - PATCH_RADIUS)].target_patch = true;
+        casted_debug[LINEAR(max_i + k, max_j + PATCH_RADIUS)].target_patch = true;
+    }
     // 4. COPY
     // +++++++
 
@@ -272,11 +342,12 @@ bool inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
                 img[LINEAR3(target_i, target_j, 1)] = img[LINEAR3(source_i, source_j, 1)];
                 img[LINEAR3(target_i, target_j, 2)] = img[LINEAR3(source_i, source_j, 2)];
                 mask[LINEAR(target_i, target_j)] = false;
+                confidence[LINEAR(target_i, target_j)] = confidence[LINEAR(max_i, max_j)];
             }
         }
     }
 
-    return 1;
+    return masked_count;
 }
 
 
@@ -325,11 +396,11 @@ float masked_convolute(int width, int height, char * img, int i, int j, float ke
     int kernel_diameter = kernel_radius * 2 + 1;
     for (int ki = 0; ki < kernel_diameter; ki++) {
         for (int kj = 0; kj < kernel_diameter; kj++) {
-            int inner_i = clamp(i + ki - kernel_radius, 0, height);
-            int inner_j = clamp(j + kj  - kernel_radius, 0, width);
+            int inner_i = clamp(i + ki - kernel_radius, 0, height-1);
+            int inner_j = clamp(j + kj  - kernel_radius, 0, width-1);
             float avg = 0;
             for (int ci = 0; ci < 3; ci++) {
-                avg += img[LINEAR3(inner_i, inner_j, ci)]; // Isn't backwards?
+                avg += (unsigned char)img[LINEAR3(inner_i, inner_j, ci)]; // Isn't backwards?
             }
             avg /= 3;
             acc += avg * kernel[ki][kj]; // Isn't backwards?
