@@ -55,14 +55,14 @@ int main(int argc, char** argv) {
                 cerr << "Device name missing after '-d'." << endl;
                 exit(1);
             }
-            int device;
+            int device_number;
             try {
-                device = stoi(argv[i+1]);
+                device_number = stoi(argv[i+1]);
             } catch (int e) {
                 cerr << "Couldn't convert '-d' parameter to number" << endl;
                 return -1;
             }
-            selectDevice(device);
+            selectDevice(device_number);
         } else if (param == "-h") {
             cout << "Usage:\n";
             cout << "  flowcalculator [flags]\n";

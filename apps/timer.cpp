@@ -125,6 +125,9 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
     }else if(filter_name == "inpainting"){
         C_function = run_inpainting_C;
         CL_function = run_inpainting_CL;
+    }else{
+        cerr << "Unknown filter " << filter_name << endl;
+        abort();
     }
 
     ProgressBar bar(warmup_iterations + time_iterations);
