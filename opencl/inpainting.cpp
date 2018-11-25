@@ -224,36 +224,6 @@ int CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug)
         debug[LINEAR(max_i + k, max_j - PATCH_RADIUS)] = 1;
         debug[LINEAR(max_i + k, max_j + PATCH_RADIUS)] = 1;
     }
-    /*
-    cout << "source patch is:" << endl;
-    for(int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++){
-        for(int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++){
-            int r = (unsigned char)img[LINEAR3(cl_min_source_i + ki, cl_min_source_j + kj, 0)];
-            int g = (unsigned char)img[LINEAR3(cl_min_source_i + ki, cl_min_source_j + kj, 1)];
-            int b = (unsigned char)img[LINEAR3(cl_min_source_i + ki, cl_min_source_j + kj, 2)];
-            cout << r << ",";
-            cout << g << ",";
-            cout << b << " ";
-        }
-        cout << endl;
-    }
-    cout << "target patch is:" << endl;
-    for(int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++){
-        for(int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++){
-            if(mask[LINEAR(max_i + ki, max_j + kj)]){
-                cout << "?,?,? ";
-                continue;
-            }
-            int r = (unsigned char)img[LINEAR3(max_i + ki, max_j + kj, 0)];
-            int g = (unsigned char)img[LINEAR3(max_i + ki, max_j + kj, 1)];
-            int b = (unsigned char)img[LINEAR3(max_i + ki, max_j + kj, 2)];
-            cout << r << ",";
-            cout << g << ",";
-            cout << b << " ";
-        }
-        cout << endl;
-    }
-    */
 
 #ifdef PROFILE
     tend = steady_clock::now();
