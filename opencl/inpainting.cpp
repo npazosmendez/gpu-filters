@@ -143,6 +143,7 @@ int CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug)
     int max_j = -1;
     float max_priority = -1.0;
 
+    // TODO: take this to GPU
     forn(x, width) forn(y, height) {
         if (priority[LINEAR(y,x)] > max_priority) {
             max_priority = priority[LINEAR(y,x)];

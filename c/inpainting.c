@@ -242,6 +242,11 @@ int inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
         }
     }
 
+    if (max_i == -1 || max_j == -1){
+        fprintf(stderr, "ERROR: could not find source patch.\n");
+        abort();
+    }
+
     int masked_count = 0;
     for(int ki = -PATCH_RADIUS; ki <= PATCH_RADIUS; ki++){
         for(int kj = -PATCH_RADIUS; kj <= PATCH_RADIUS; kj++){
