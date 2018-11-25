@@ -208,21 +208,6 @@ int inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
             
             
             // Normal:
-            //  Easy way: Take spaces between edges (take the one who yields higher data)
-            int di[8] = {-1, 0, 1, 1,  1,  0, -1, -1};
-            int dj[8] = { 1, 1, 1, 0, -1, -1, -1, 0};
-            int k_border = -1;
-
-            // Find first edge/masked pixel
-            for (int k = 0; k < 8; k++) {
-                if (!within(i + di[k], 0, height) || \
-                    !within(j + dj[k], 0, width) ||  \
-                    mask[LINEAR(i + di[k], j + dj[k])]) {
-                    k_border = k;
-                    break;
-                }
-            }
-
             // Loop around and for every pair of edges/masked pixels
             // take the middle vector as candidate for normal
             point nt = get_ortogonal_to_contour(j, i, mask, width, height);
