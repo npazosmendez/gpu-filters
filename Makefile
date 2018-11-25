@@ -23,7 +23,7 @@ ifeq ($(shell uname -s),Linux)
 endif
 
 # Apps
-APPS := inpainter linedetector flowcalculator tests timer
+APPS := inpainter linedetector flowcalculator tests timer filter
 
 apps: CPPFLAGS += -O3 -g
 apps: $(APPS)
