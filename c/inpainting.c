@@ -32,9 +32,6 @@ static point n_t[MAX_LEN*MAX_LEN];
     - Loop until image is filled
 */
 
-// TODO: Don't use clock it's not clock time!!
-//clock_t start, end;
-//float count;
 
 void inpaint_init(int width, int height, char * img, bool * mask, int * debug) {
 
@@ -120,9 +117,14 @@ point get_ortogonal_to_contour(int x, int y, bool * mask, int width, int height)
 int inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
 
     memset(contour_mask, 0, height*width*sizeof(bool));
-    memset(gradient_t, 0, height*width*sizeof(point)); // TODO: Debug
-    memset(n_t, 0, height*width*sizeof(point)); // TODO: Debug
-    memset(debug, 0, height*width*sizeof(debug_data));
+    memset(gradient_t, 0, height*width*sizeof(point));
+    memset(n_t, 0, height*width*sizeof(point));
+
+    #ifdef DEBUG
+    if (debug){
+        memset(debug, 0, height*width*sizeof(debug_data));
+    }
+    #endif
 
     // 1. CALCULATE CONTOUR
     // ++++++++++++++++++++
@@ -163,11 +165,15 @@ int inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
         for (int j = 0; j < width; j++) {
 
             if (!contour_mask[LINEAR(i,j)]) {
-                debug_data * casted_debug = (debug_data *) debug;
-                casted_debug[LINEAR(i,j)].confidence = FLT_MAX;
-                casted_debug[LINEAR(i,j)].data = FLT_MAX;
-                casted_debug[LINEAR(i,j)].gradient_t = (point) {FLT_MAX, FLT_MAX};
-                casted_debug[LINEAR(i,j)].normal_t = (point) {FLT_MAX, FLT_MAX};
+                #ifdef DEBUG
+                if (debug){
+                    debug_data * casted_debug = (debug_data *) debug;
+                    casted_debug[LINEAR(i,j)].confidence = FLT_MAX;
+                    casted_debug[LINEAR(i,j)].data = FLT_MAX;
+                    casted_debug[LINEAR(i,j)].gradient_t = (point) {FLT_MAX, FLT_MAX};
+                    casted_debug[LINEAR(i,j)].normal_t = (point) {FLT_MAX, FLT_MAX};
+                }
+                #endif
                 continue;
             }
 
@@ -224,13 +230,15 @@ int inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
                 max_j = j;
             }
 
-            // Debug
-            debug_data * casted_debug = (debug_data *) debug;
-            casted_debug[LINEAR(i,j)].confidence = confidence[LINEAR(i,j)];
-            casted_debug[LINEAR(i,j)].data = data;
-            casted_debug[LINEAR(i,j)].gradient_t = (point) {gx_t, gy_t};
-            casted_debug[LINEAR(i,j)].normal_t = (point) {nt.x, nt.y};
-
+            #ifdef DEBUG
+            if (debug){
+                debug_data * casted_debug = (debug_data *) debug;
+                casted_debug[LINEAR(i,j)].confidence = confidence[LINEAR(i,j)];
+                casted_debug[LINEAR(i,j)].data = data;
+                casted_debug[LINEAR(i,j)].gradient_t = (point) {gx_t, gy_t};
+                casted_debug[LINEAR(i,j)].normal_t = (point) {nt.x, nt.y};
+            }
+            #endif
         }
     }
 
@@ -294,18 +302,22 @@ int inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
         }
     }
 
-    debug_data * casted_debug = (debug_data *) debug;
-    for(int k = -PATCH_RADIUS; k <= PATCH_RADIUS; k++){
-        casted_debug[LINEAR(max_source_i - PATCH_RADIUS, max_source_j + k)].source_patch = true;
-        casted_debug[LINEAR(max_source_i + PATCH_RADIUS, max_source_j + k)].source_patch = true;
-        casted_debug[LINEAR(max_source_i + k, max_source_j - PATCH_RADIUS)].source_patch = true;
-        casted_debug[LINEAR(max_source_i + k, max_source_j + PATCH_RADIUS)].source_patch = true;
-
-        casted_debug[LINEAR(max_i - PATCH_RADIUS, max_j + k)].target_patch = true;
-        casted_debug[LINEAR(max_i + PATCH_RADIUS, max_j + k)].target_patch = true;
-        casted_debug[LINEAR(max_i + k, max_j - PATCH_RADIUS)].target_patch = true;
-        casted_debug[LINEAR(max_i + k, max_j + PATCH_RADIUS)].target_patch = true;
+    #ifdef DEBUG
+    if (debug){
+        debug_data * casted_debug = (debug_data *) debug;
+        for(int k = -PATCH_RADIUS; k <= PATCH_RADIUS; k++){
+            casted_debug[LINEAR(max_source_i - PATCH_RADIUS, max_source_j + k)].source_patch = true;
+            casted_debug[LINEAR(max_source_i + PATCH_RADIUS, max_source_j + k)].source_patch = true;
+            casted_debug[LINEAR(max_source_i + k, max_source_j - PATCH_RADIUS)].source_patch = true;
+            casted_debug[LINEAR(max_source_i + k, max_source_j + PATCH_RADIUS)].source_patch = true;
+            casted_debug[LINEAR(max_i - PATCH_RADIUS, max_j + k)].target_patch = true;
+            casted_debug[LINEAR(max_i + PATCH_RADIUS, max_j + k)].target_patch = true;
+            casted_debug[LINEAR(max_i + k, max_j - PATCH_RADIUS)].target_patch = true;
+            casted_debug[LINEAR(max_i + k, max_j + PATCH_RADIUS)].target_patch = true;
+        }
     }
+    #endif
+
     // 4. COPY
     // +++++++
 
