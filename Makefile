@@ -12,18 +12,8 @@ OBJECTS = $(CSOURCES:.c=.o) $(CXXSOURCES:.cpp=.o)
 # https://stackoverflow.com/questions/44942225/opencl-vector-types-cant-access-unioned-components-x-y-z-with-c11-enabled
 CPPFLAGS += -U__STRICT_ANSI__
 
-ifeq ($(shell uname -s),Darwin)
 LIBS = `pkg-config --cflags --libs opencv` \
 	-lpthread
-endif
-ifeq ($(shell uname -s),Linux)
-LIBS = -I /usr/include/opencv2 \
-    -L /usr/lib \
-    -lopencv_video \
-    -lopencv_core -lopencv_highgui \
-    -lpthread
-endif
-
 
 ifeq ($(shell uname -s),Darwin)
 	LIBS += -framework OpenCL
