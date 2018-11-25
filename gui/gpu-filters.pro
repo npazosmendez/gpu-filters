@@ -1,3 +1,5 @@
+TARGET = ../gpu-filters
+
 # Qt used components
 QT += gui core widgets
 
