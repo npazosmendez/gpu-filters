@@ -71,7 +71,6 @@ sudo apt-get install libopencv-dev
 For an advanced GUI only, not actually needed to run the bascis. More information at `gui/readme.md`
 
 # What is left
-- [ ] Debug Inpainting OpenCL/C version
 - [ ] Debug Lucas-Kanade OpenCL/C version
 - [ ] Handle boundaries (image borders) in all algorithms
 - [ ] Optimize all OpenCL code
