@@ -130,6 +130,7 @@ __kernel void edges_counter(
             int p_index = round((p-p_min)/p_step);
             int index = ai+p_index*a_ammount;
             atomic_inc(counter+index);
+            // TODO: este max de aca abajo podría primero hacerse localmente y despues establecer el global, afuera de este ciclo?
             atomic_max(max_count, *(counter+index));
         }
     }
