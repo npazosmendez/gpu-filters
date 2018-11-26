@@ -109,8 +109,11 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug
     clHandleError(__FILE__,__LINE__,err);
 }
 
-#define DEBUG
-int CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug) {
+int CL_inpaint_step(int width, int height, char * img, bool * mask_ptr, int * debug){
+    return CL_inpaint_step(width, height, img, mask_ptr, debug, false);
+}
+
+int CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug, bool write_every_iteration) {
 #ifdef DEBUG
     memset(debug, 0, width*height*sizeof(int));
 #endif
@@ -267,11 +270,12 @@ int CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug)
     printf("\n");
 #endif
 
-    // Just to debug the iteration
-    err = queue.enqueueReadBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
-    clHandleError(__FILE__,__LINE__,err);
-    err = queue.enqueueReadBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
-    clHandleError(__FILE__,__LINE__,err);
+    if (write_every_iteration){
+        err = queue.enqueueReadBuffer(b_img, CL_TRUE, 0, sizeof(char)*width*height*3, img);
+        clHandleError(__FILE__,__LINE__,err);
+        err = queue.enqueueReadBuffer(b_mask, CL_TRUE, 0, sizeof(char)*width*height, mask);
+        clHandleError(__FILE__,__LINE__,err);
+    }
 
     return masked_count;
 }
