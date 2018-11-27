@@ -43,6 +43,8 @@ int main(int argc, char** argv) {
 
     void (*picked_kanade)(int, int, char*, char*, vec*, int) = kanade;
 
+    VideoCapture stream = VideoCapture(0);
+
     for (int i = 1; i < argc; i++) {
         string param = argv[i];
         if (param == "-cl") {
@@ -51,24 +53,34 @@ int main(int argc, char** argv) {
             picked_kanade = CL_kanade;
         } else if (param == "-d") {
             /* device selection */
-            if (i+1 == argc) {
+            if (i + 1 == argc) {
                 cerr << "Device name missing after '-d'." << endl;
-                exit(1);
+                return -1;
             }
             int device_number;
             try {
-                device_number = stoi(argv[i+1]);
+                device_number = stoi(argv[i + 1]);
             } catch (int e) {
                 cerr << "Couldn't convert '-d' parameter to number" << endl;
                 return -1;
             }
             selectDevice(device_number);
+        } else if (param == "-v") {
+            /* video playback */
+            try {
+                std::string filename = std::string(argv[i + 1]);
+                stream = VideoCapture(filename);
+            } catch (int e) {
+                cerr << "Couldn't initialize video stream from '-v' parameter" << endl;
+                return -1;
+            }
         } else if (param == "-h") {
             cout << "Usage:\n";
             cout << "  flowcalculator [flags]\n";
             cout << "Flags\n";
             cout << "  -cl: Uses OpenCL implementation instead of the C implementation\n";
             cout << "  -d <number>: Picks device to use for the computation\n";
+            cout << "  -v <filename>: Applies filter to a video instead of the webcam feed\n";
             cout << "\n";
 
             return 0;
@@ -76,8 +88,6 @@ int main(int argc, char** argv) {
     }
 
     // Initialize stuff
-
-    VideoCapture stream = VideoCapture(0);
     stream.set(CV_CAP_PROP_FRAME_WIDTH, WIDTH);
     stream.set(CV_CAP_PROP_FRAME_HEIGHT, HEIGHT);
 
