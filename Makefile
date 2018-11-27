@@ -5,7 +5,7 @@ CFLAGS = -std=c99
 CXXFLAGS = -std=c++11
 CPPFLAGS = $(EXFLAGS) -Wall -Wshadow -Wno-missing-braces -DCL_HPP_TARGET_OPENCL_VERSION=120 -DCL_HPP_MINIMUM_OPENCL_VERSION=120 -I . -I include/
 CSOURCES = $(wildcard c/*.c)
-CXXSOURCES = $(wildcard opencl/*.cpp)
+CXXSOURCES = $(wildcard opencl/*.cpp test/utils.cpp)
 
 OBJECTS = $(CSOURCES:.c=.o) $(CXXSOURCES:.cpp=.o)
 
@@ -25,6 +25,8 @@ endif
 # Apps
 APPS := inpainter linedetector flowcalculator tests timer filter
 
+TESTS := canny_test hough_test
+
 apps: CPPFLAGS += -O3 -g
 apps: $(APPS)
 
@@ -34,8 +36,11 @@ dapps: $(APPS)
 $(APPS): % : $(OBJECTS) $(addprefix apps/, %.o)
 	$(CXX) $(CPPFLAGS) -g $(CXXFLAGS) $^ $(LIBS) -o $@
 
+$(TESTS): % : $(OBJECTS) $(addprefix test/, %.o)
+	$(CXX) $(CPPFLAGS) -g $(CXXFLAGS) $^ $(LIBS) -o $@
+
 clean:
-	rm -f $(OBJECTS) $(APPS) $(addprefix apps/, $(APPS:=.o))
+	rm -f $(OBJECTS) $(APPS) $(TESTS) $(addprefix apps/, $(APPS:=.o)) $(addprefix tests/, $(TESTS:=.o))
 
 .PHONY: apps clean
 

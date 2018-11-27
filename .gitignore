@@ -14,6 +14,10 @@ linedetector
 flowcalculator
 tests
 filter
+canny_test
+hough_test
+kanade_test
+inpainting_test
 
 # Directories
 docs/
