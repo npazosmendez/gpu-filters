@@ -123,19 +123,18 @@ __kernel void edges_counter(
     float a_min = 0;
     float a_step = (a_max-a_min)/a_ammount;
 
-
+    int max_count_local = 0;
     if(rgb.x > 0){
         for (int ai = 0; ai < a_ammount; ++ai){
             float p = i*native_cos(a_min+a_step*ai)+j*native_sin(a_min+a_step*ai);
             int p_index = round((p-p_min)/p_step);
             int index = ai+p_index*a_ammount;
             atomic_inc(counter+index);
-            // TODO: este max de aca abajo podría primero hacerse localmente y despues establecer el global, afuera de este ciclo?
-            atomic_max(max_count, *(counter+index));
+            max_count_local = max(max_count_local, *(counter+index));
         }
     }
 
-
+    atomic_max(max_count, max_count_local);
 
 }
 
