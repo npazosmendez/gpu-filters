@@ -1,9 +1,5 @@
 # Extensions
 *.o
-*.mp4
-*.jpeg
-*.png
-*.bmp
 *.swp
 
 # Bins
@@ -23,9 +19,6 @@ inpainting_test
 docs/
 vids/
 benchmarks/
-
-# Reincorpore entrega
-!entrega/*
 
 # Ide
 .vscode
