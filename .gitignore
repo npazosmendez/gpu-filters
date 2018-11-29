@@ -24,6 +24,9 @@ docs/
 vids/
 benchmarks/
 
+# Reincorpore entrega
+!entrega/*
+
 # Ide
 .vscode
 .syntastic_cpp_config
@@ -33,3 +36,4 @@ CMakeLists.txt
 
 # Misc
 .DS_Store
+
