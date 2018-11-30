@@ -38,5 +38,5 @@ clean:
 	rm -f $(OBJECTS) timer_app/timer.o timer inpainter_app/inpainter.o inpainter realtime
 	cd realtime_app; make clean; cd ..
 
-.PHONY: apps clean
+.PHONY: clean
 
