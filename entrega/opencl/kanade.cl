@@ -6,7 +6,7 @@ __constant int2 ZERO = (int2) (0, 0);
 
 __constant int LK_ITERATIONS = 8;
 __constant int LK_WINDOW_RADIUS = 2;
-__constant double THRESHOLD_CORNER = 1e7;
+__constant double THRESHOLD_CORNER = 1e8;
 
 __constant int KSIZE = 3;
 
@@ -112,7 +112,9 @@ __kernel void calculate_flow(
     int2 size = (int2)(get_global_size(0), get_global_size(1));
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
 
-    float2 previous_guess = previous_flow ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2: (float2) ( 0, 0 );
+    bool has_previous_level = previous_width != -1;
+
+    float2 previous_guess = has_previous_level ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2: (float2) ( 0, 0 );
     float2 iter_guess = (float2) ( 0, 0 );
 
     for (int i = 0; i < LK_ITERATIONS; i++) {
@@ -232,5 +234,5 @@ __kernel void calculate_intensity(
 
     char3 pixel = vload3(i, src);
 
-    dst[i] = (pixel.x + pixel.y + pixel.z) / 3.0f;
+    dst[i] = (((unsigned char)pixel.x) + ((unsigned char)pixel.y) + ((unsigned char)pixel.z)) / 3.0f; // TODO: omgg char can be signeddd
 }

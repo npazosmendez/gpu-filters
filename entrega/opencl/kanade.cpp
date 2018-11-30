@@ -184,7 +184,11 @@ static void calculate_flow(int pi, int levels) {
     k_calculate_flow.setArg(6, *b_flow);
     k_calculate_flow.setArg(7, previous_width);
     k_calculate_flow.setArg(8, previous_height);
-    k_calculate_flow.setArg(9, *b_previous_flow);
+    if (b_previous_flow != NULL) {
+        k_calculate_flow.setArg(9, *b_previous_flow);
+    } else {
+        k_calculate_flow.setArg(9, NULL);
+    }
 
     err = queue.enqueueNDRangeKernel(
             k_calculate_flow,
