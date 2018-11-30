@@ -168,7 +168,7 @@ void edit_iteration() {
         case 'c':
             fill_mode = !fill_mode;
             break;
-        case 'i':
+        case ' ':
             if (fill_mode) inpaint_mode = true;
             break;
         case 'q':
@@ -193,25 +193,15 @@ void inpaint_iteration() {
     paint_debug(img_step);
     imshow("picture", img_step);
 
-    switch ((char) cv::waitKey(5)) {
-        case ' ':
-            {
-                ProgressBar bar(mask_size());
-                while (true) {
-                    is_more = picked_step(width, height, (char*) img_inpainted.ptr(), mask_ptr, debug);
-                    bar.update(is_more);
-                    if (!is_more) {
-                        last_inpaint_iteration = true;
-                        bar.finish();
-                        break;
-                    }
-                }
-            }
+    ProgressBar bar(mask_size());
+    while (true) {
+        is_more = picked_step(width, height, (char*) img_inpainted.ptr(), mask_ptr, debug);
+        bar.update(is_more);
+        if (!is_more) {
+            last_inpaint_iteration = true;
+            bar.finish();
             break;
-
-        case 'q':
-            quit = true;
-            break;
+        }
     }
 
     if (last_inpaint_iteration) {
