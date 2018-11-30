@@ -99,7 +99,7 @@ int main( int argc, char** argv ) {
             return 0;
         }
     }
-    cout << "Inpainting App" << endl;
+    cout << "\nINPAINTING APP" << endl;
     cout << "Dibuje la máscara con el mouse y presione SPACEBAR para rellenarla." << endl;
     cout << "Para alternar entre la imagen original y la filtrada presione C." << endl;
     height = img_original.rows;
@@ -167,6 +167,7 @@ void inpaint_iteration() {
     if (first_inpaint_iteration) {
         picked_init(width, height, (char*) img_inpainted.ptr(), mask_ptr, debug);
         first_inpaint_iteration = false;
+        cout << "\nRellenando máscara..." << endl;
     }
 
     img_step = img_inpainted.clone();
@@ -182,6 +183,8 @@ void inpaint_iteration() {
             break;
         }
     }
+
+    cout << "Listo!" << endl;
 
     memset(mask_ptr, 0, height * width * sizeof(bool));
     img_masked = img_inpainted.clone();
