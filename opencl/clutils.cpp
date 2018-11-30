@@ -19,6 +19,10 @@ void initCL(bool verbose){
     /* Find PLATFORM */
     cl::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
+    if (platforms.size() == 0){
+        cerr << "No OpenCL platforms found." << endl;
+        abort();
+    }
     if (verbose){
         cout << "Available platforms:" << endl;
         for (unsigned int i = 0; i < platforms.size(); i++)
@@ -29,6 +33,10 @@ void initCL(bool verbose){
     /* Find available DEVICES */
     cl::vector<Device> devices;
     platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
+    if (devices.size() == 0){
+        cerr << "No OpenCL devices found." << endl;
+        abort();
+    }
     if (verbose){
         cout << "Available devices:" << endl;
         for (unsigned int i = 0; i < devices.size(); i++)
@@ -61,7 +69,7 @@ void createProgram(string filename) {
     Not good. */
     ifstream sourceFile(std::string("opencl/") + filename);
     if (!sourceFile.is_open()) {
-        cerr << "Can't open CL kernel source." << endl;
+        cerr << "Can't open CL kernel source at opencl/. Are you running at root dir?" << endl;
         exit(1);
     }
     string sourceCode(istreambuf_iterator<char>(sourceFile), (istreambuf_iterator<char>()));
