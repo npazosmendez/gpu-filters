@@ -15,6 +15,7 @@ canny_test
 hough_test
 kanade_test
 inpainting_test
+realtime
 
 # Directories
 docs/
