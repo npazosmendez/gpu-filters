@@ -40,9 +40,9 @@ Diciembre 2018
 ################################ USO ##################################
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-Hay tres aplicaciones que pueden correrse. Todos los binarios se crean
-en el directorio raíz, y **deben ser ejecutados desde allí** (se leen
-los archivos *.cl en tiempo de ejecución).
+Hay tres aplicaciones que pueden correrse. Para compilarlas basta con hacer
+'make' en el directorio raiz. Todos los binarios se crean allí y **deben ser
+ejecutados desde allí** (pues se leen los archivos *.cl en tiempo de ejecución).
 
 * inpainter
   ~~~~~~~~~
@@ -51,28 +51,15 @@ los archivos *.cl en tiempo de ejecución).
 	La ruta de la imagen se pasa por consola, para info específica
 	correr `./inpainter --help`
 
-	- Compilación
-		cd inpainter_app/
-		make
-
 * timer
   ~~~~~
   	Toma mediciones de los filtros en sus distintas implementaciones.
   	Para info específica correr `./timer --help`
 
-	- Compilación
-		cd timer_app/
-		make
-
 * realtime
   ~~~~~~~~
   	Aplicación gráfica interactiva para correr los filtros de Canny,
   	Hough y Lucas-Kanade en tiempo real para videos o para la webcam.
-
-	- Compilación
-		cd realtime_app/
-		qmake
-		make -j4
 
 	NOTA: ante algún error de compilación/linkeo para esta app,
 	se recomienda un `make clean` antes de reintentar.
