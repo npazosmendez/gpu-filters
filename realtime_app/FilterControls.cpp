@@ -14,13 +14,13 @@ HoughControls::HoughControls(ImageFilter* filter, QWidget *parent)
 	 {
 
 	_main_layout.addWidget(&_checkBox);
-	_main_layout.addWidget(&_higher_canny_slider);
-	_main_layout.addWidget(&_lower_canny_slider);
 
 	QObject::connect(&_checkBox, SIGNAL(stateChanged(int)), filter, SLOT(toggle_CL(int)));
 
-	QObject::connect(&_higher_canny_slider, SIGNAL(valueChanged(int)), _filter, SLOT(setCannyHigherThreshold(int)));
-	QObject::connect(&_lower_canny_slider, SIGNAL(valueChanged(int)), _filter, SLOT(setCannyLowerThreshold(int)));
+	// _main_layout.addWidget(&_higher_canny_slider);
+	// _main_layout.addWidget(&_lower_canny_slider);
+	// QObject::connect(&_higher_canny_slider, SIGNAL(valueChanged(int)), _filter, SLOT(setCannyHigherThreshold(int)));
+	// QObject::connect(&_lower_canny_slider, SIGNAL(valueChanged(int)), _filter, SLOT(setCannyLowerThreshold(int)));
 
 	_checkBox.setChecked(true);
 	setLayout(&_main_layout);
