@@ -21,7 +21,6 @@ using namespace std;
 void edit_iteration();
 void inpaint_iteration();
 void paint_mask(Mat img);
-void paint_debug(Mat img);
 void overlay(Mat image, string text);
 void on_mouse(int event, int x, int y, int flags, void* userdata);
 
@@ -44,24 +43,6 @@ int (*picked_step)(int, int, char*, bool*, int*);
 
 
 bool quit = false;
-
-    /*
-   Two modes:
-    - Original
-    - Filled
-
-    In Original mode you can't do anything.
-    In Filled mode you can draw a mask with the mouse,
-    which will be used for the inpainting algorithm.
-
-    With 'I', we attempt to Inpaint with the mask.
-    Inpainting is done in steps. Every time we press
-    'I' again, we do a single step of the algorithm.
-    Pressing 'T' will Terminate the inpaint mode by
-    running the algorithm until the end.
-
-    With 'C' we can Chance between these two modes
-    */
 
 void print_help(){
     cout << "Aplicación para correr el algoritmo de inpainting. Con el mouse dibuje la máscara sobre la imagen. Luego presione SPACEBAR." << endl;
@@ -119,7 +100,8 @@ int main( int argc, char** argv ) {
         }
     }
     cout << "Inpainting App" << endl;
-    cout << "Dibuje la máscara con el mouse y presione SPACEBAR" << endl;
+    cout << "Dibuje la máscara con el mouse y presione SPACEBAR para rellenarla." << endl;
+    cout << "Para alternar entre la imagen original y la filtrada presione C." << endl;
     height = img_original.rows;
     width = img_original.cols;
 
@@ -177,7 +159,6 @@ void edit_iteration() {
 }
 
 bool first_inpaint_iteration = true;
-bool last_inpaint_iteration = false;
 int is_more;
 int mask_size();
 
@@ -190,7 +171,6 @@ void inpaint_iteration() {
 
     img_step = img_inpainted.clone();
     paint_mask(img_step);
-    paint_debug(img_step);
     imshow("picture", img_step);
 
     ProgressBar bar(mask_size());
@@ -198,20 +178,16 @@ void inpaint_iteration() {
         is_more = picked_step(width, height, (char*) img_inpainted.ptr(), mask_ptr, debug);
         bar.update(is_more);
         if (!is_more) {
-            last_inpaint_iteration = true;
             bar.finish();
             break;
         }
     }
 
-    if (last_inpaint_iteration) {
-        memset(mask_ptr, 0, height * width * sizeof(bool));
-        img_masked = img_inpainted.clone();
-        overlay(img_masked, "Filled");
-        first_inpaint_iteration = true;
-        last_inpaint_iteration = false;
-        inpaint_mode = false;
-    }
+    memset(mask_ptr, 0, height * width * sizeof(bool));
+    img_masked = img_inpainted.clone();
+    overlay(img_masked, "Filled");
+    first_inpaint_iteration = true;
+    inpaint_mode = false;
 }
 
 int mask_size(){
@@ -279,87 +255,6 @@ void draw_circle(bool * mask, int i, int j, bool val, int radius) {
             }
         }
     }
-}
-void draw_square(Mat img, int i, int j, Vec3b color, int radius) {
-    for (int di = -radius; di <= radius; di++) {
-        for (int dj = -radius; dj <= radius; dj++) {
-            int local_i = clamp(i + di, 0, height-1);
-            int local_j = clamp(j + dj, 0, width-1);
-            img.at<Vec3b>(Point(local_j, local_i)) = color;
-        }
-    }
-}
-void draw_square(bool * mask, int i, int j, bool val, int radius) {
-    for (int di = -radius; di <= radius; di++) {
-        for (int dj = -radius; dj <= radius; dj++) {
-            int local_i = clamp(i + di, 0, height-1);
-            int local_j = clamp(j + dj, 0, width-1);
-            mask[LINEAR(local_i, local_j)] = val;
-        }
-    }
-}
-
-void paint_debug(Mat img) {
-
-    /*
-    forn(i, height) forn(j, width) {
-        debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
-
-        // Nt
-        if (data.normal_t.x != FLT_MAX) {
-            line(
-                    img,                                                     // mat to draw into
-                    Point(j, i),                                             // origin position
-                    Point(j + data.normal_t.x * 6, i + data.normal_t.y * 6), // arrow tip position
-                    Scalar( 200, 50, 50 ),                                     // color
-                    1                                                        // thickness
-            );
-        }
-    }
-     */
-
-    /*
-    forn(i, height) forn(j, width) if (i % 2 == 0 && j % 2 == 0) {
-        debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
-
-        // Gt
-        if (data.gradient_t.x != FLT_MAX) {
-            line(
-                    img,                                                     // mat to draw into
-                    Point(j, i),                                             // origin position
-                    Point(j + data.gradient_t.x / 30.0, i + data.gradient_t.y / 30.0),     // arrow tip position
-                    Scalar( 0, 0, 200 ),                                     // color
-                    1                                                        // thickness
-            );
-        }
-    }
-     */
-/*
-    forn(i, height) forn(j, width) {
-        debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
-
-        if (data.source_patch) {
-            img.at<Vec3b>(Point(j, i)) = RED;
-        }
-        if (data.target_patch) {
-            img.at<Vec3b>(Point(j, i)) = BLUE;
-        }
-
-        if (data.confidence != FLT_MAX) {
-            img.at<Vec3b>(Point(j, i)) = Vec3b(0, (int)(data.confidence * 255), (int)(data.confidence * 255));
-        }
-    }
-*/
-    /*
-    forn(i, height) forn(j, width) {
-        debug_data data = ((debug_data *) debug)[LINEAR(i, j)];
-
-        if (data.data != FLT_MAX) {
-            int scaled_data = ((int) (data.data * 255));
-            img.at<Vec3b>(Point(j, i)) = Vec3b(scaled_data, scaled_data, 0);
-        }
-    }
-     */
 }
 
 void overlay(Mat image, string text) {

@@ -215,6 +215,7 @@ int CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug,
         }
     }
 
+#ifdef DEBUG
     // Draw patches in debug
     for(int k = -PATCH_RADIUS; k <= PATCH_RADIUS; k++){
         debug[LINEAR(cl_min_source_i - PATCH_RADIUS, cl_min_source_j + k)] = 2;
@@ -227,6 +228,7 @@ int CL_inpaint_step(int width, int height, char * img, bool * mask, int * debug,
         debug[LINEAR(max_i + k, max_j - PATCH_RADIUS)] = 1;
         debug[LINEAR(max_i + k, max_j + PATCH_RADIUS)] = 1;
     }
+#endif
 
 #ifdef PROFILE
     tend = steady_clock::now();

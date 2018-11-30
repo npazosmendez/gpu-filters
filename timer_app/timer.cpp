@@ -34,7 +34,6 @@ char * counter;
 vec * flow;
 
 bool * mask_ptr;
-int * debug; // TODO: sacar esto. no es tan directo, porque se usa si #ifdef DEBUG
 
 void run_canny_CL(){
     CL_canny((char*)image1.ptr(), width, height, 60, 30);
@@ -58,23 +57,21 @@ void run_kanade_CL(){
 }
 
 void run_inpainting_C(){
-    inpainting((char*)image1.ptr(), width, height, mask_ptr, debug);
+    inpainting((char*)image1.ptr(), width, height, mask_ptr, NULL);
 }
 void run_inpainting_CL(){
-    CL_inpainting((char*)image1.ptr(), width, height, mask_ptr, debug);
+    CL_inpainting((char*)image1.ptr(), width, height, mask_ptr, NULL);
 }
 
 void initialize_mask(){
     memset(mask_ptr, 0, height * width * sizeof(bool));
     int x = width/2;
     int y = height/2;
-    int side = width/10;
+    int side = width/15;
     for (int i = -side; i <= side; i++ ) {
         for (int j = -side; j <= side; j++) {
             int yi = y + i;
             int xj = x + j;
-            // int yi = clamp(y + i, 0, height);
-            // int xj = clamp(x + j, 0, width);
             mask_ptr[yi*width+xj] = true;
         }
     }
@@ -90,7 +87,6 @@ string double_to_string(double val){
 
 void print_filter_measurements(string filter_name, vector<double> &CL_miliseconds_durations, vector<double> &C_miliseconds_durations, TextTable& text_table){
 
-    // TODO: further analize measurements: variance, mean, outliers, etc.
     double C_miliseconds = *min_element(C_miliseconds_durations.begin(), C_miliseconds_durations.end());
     double CL_miliseconds = *min_element(CL_miliseconds_durations.begin(), CL_miliseconds_durations.end());
 
@@ -268,8 +264,6 @@ int main(int argc, const char** argv) {
     mask_ptr = (bool*) malloc(width * height * sizeof(bool));
     initialize_mask();
 
-    debug = (int*) malloc(width * height * sizeof(int));
-    memset(debug, 0, width * height * sizeof(int));
 
     TextTable text_table( '-', '|', '+' );
     text_table.add( "Filter" );
