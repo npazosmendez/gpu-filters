@@ -4,7 +4,7 @@ Filtros de Imágenes en OpenCL, para GPU
 	- Detección de bordes (Canny)
 	- Detección de líneas (Hough)
 	- Estimación de optical flow (Lucas-Kanade)
-	- Inpainting
+	- Remoción de objetos / Inpainting
 
 Pazos Méndez, Nicolás Javier
 Reyes Mesarra, Darío René
@@ -45,8 +45,10 @@ los archivos *.cl en tiempo de ejecución).
 
 * inpainter
   ~~~~~~~~~
-  	Corre el inpainter para una imagen pasada por parámetro.
-  	Para info específica correr `./inpainter --help`
+  	Aplicación gráfica para enmascarar y remover partes de una imagen
+	con el filtro de 'Inpainting'.
+	La ruta de la imagen se pasa por consola, para info específica
+	correr `./inpainter --help`
 
 	- Compilación
 		cd inpainter_app/
