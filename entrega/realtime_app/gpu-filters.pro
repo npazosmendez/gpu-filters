@@ -1,4 +1,4 @@
-TARGET = ../gpu-filters
+TARGET = ../realtime
 
 # Qt used components
 QT += gui core widgets
