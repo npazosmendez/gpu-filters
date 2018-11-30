@@ -189,18 +189,24 @@ map<string, string> parse_args(int argc, const char** argv){
     return result;
 }
 
+void print_help(){
+    cout << "Aplicación para medir el tiempo de los algoritmos en sus distintas versiones."<< endl;
+    cout << endl;
+    cout << "Úsese con las imágenes en timer_app/resources/ y las siguientes opciones:" << endl;
+    cout << "   --image <image_path> (necesario)" << endl;
+    cout << "   --filter <filter_name> (canny/hough/kanade/inpainting)" << endl;
+    cout << "   --iterations <#iterations>" << endl;
+    cout << "   --warmup <#iterations>" << endl;
+    cout << "   --device <device_nr>" << endl;
+    cout << "   --help" << endl;
+}
+
 int main(int argc, const char** argv) {
 
     map<string, string> arguments = parse_args(argc, argv);
 
     if (arguments.count("--help")){
-        cout << "Timing application for the filters. For custom timing try:" << endl;
-        cout << "\t--filter <filter_name> (canny/hough/kanade)" << endl;
-        cout << "\t--iterations <#iterations>" << endl;
-        cout << "\t--warmup <#iterations>" << endl;
-        cout << "\t--device <device_nr>" << endl;
-        cout << "\t--image <image_path> (needed)" << endl;
-        cout << "\t--help" << endl;
+        print_help();
         return 0;
     }
 
@@ -209,7 +215,7 @@ int main(int argc, const char** argv) {
     if (arguments.count("--filter")){
         string filter = arguments["--filter"];
         if(not all_filters.count(filter)){
-            cerr << "Unkown filter '" << filter << "'" << endl;
+            cerr << "Error. Filtro desconocido '" << filter << "'" << endl;
             abort();
         }
         selected_filters.insert(filter);
@@ -223,14 +229,14 @@ int main(int argc, const char** argv) {
     if (arguments.count("--iterations")){
         time_iterations = stoi(arguments["--iterations"]);
         if (time_iterations <= 0){
-            cerr << "Number of iterations should be positive" << endl;
+            cerr << "Error. La cantidad de iteraciones debe ser positiva." << endl;
             abort();
         }
     }
     if (arguments.count("--warmup")){
         warmup_iterations = stoi(arguments["--warmup"]);
         if (time_iterations <= 0){
-            cerr << "Number of iterations should be positive" << endl;
+            cerr << "Error. La cantidad de iteraciones debe ser positiva." << endl;
             abort();
         }
     }
@@ -239,14 +245,15 @@ int main(int argc, const char** argv) {
     if (arguments.count("--device")) {
         selected_device = stoi(arguments["--device"]);
         if (selected_device < 0) {
-            cerr << "Device number should be non negative" << endl;
+            cerr << "Error. El device debe ser mayor o igual a cero." << endl;
             abort();
         }
     }
     selectDevice(selected_device);
 
     if (not arguments.count("--image")){
-        cerr << "Need an image path through '--image'"<<endl;
+        cerr << "Error. Se necesita '--image'"<<endl;
+        print_help();
         abort();
     }
 

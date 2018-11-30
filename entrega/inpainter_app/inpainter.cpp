@@ -63,13 +63,23 @@ bool quit = false;
     With 'C' we can Chance between these two modes
     */
 
+void print_help(){
+    cout << "Aplicación para correr el algoritmo de inpainting. Con el mouse dibuje la máscara sobre la imagen. Luego presione SPACEBAR." << endl;
+    cout << endl;
+    cout << "Úsese con las imágenes en inpainter_app/resources/ de la siguiente manera:" << endl;
+    cout << "   inpainter <image_path> [flags]\n";
+    cout << "Flags\n";
+    cout << "   -cl: Usar la versión en OpenCL del inpainting en vez de la de C\n";
+    cout << "   -d <number>: Elige el número de device de OpenCL a usar (default: 0)\n";
+    cout << "\n";
+}
 
 int main( int argc, char** argv ) {
 
     // Read Images
     if (argc == 1) {
-        cout << "Requires image path as parameter" << endl;
-        cout << "Usage: inpainter image_path [optional flags]" << endl;
+        cout << "Error. Faltan argumentos." << endl;
+        print_help();
         return -1;
     }
 
@@ -103,17 +113,13 @@ int main( int argc, char** argv ) {
                 return -1;
             }
             selectDevice(device_number);
-        } else if (param == "-h") {
-            cout << "Usage:\n";
-            cout << "  inpainter image_path [flags]\n";
-            cout << "Flags\n";
-            cout << "  -cl: Uses OpenCL implementation instead of the C implementation\n";
-            cout << "  -d <number>: Picks device to use for the computation\n";
-            cout << "\n";
-
+        } else if (param == "--help") {
+            print_help();
             return 0;
         }
     }
+    cout << "Inpainting App" << endl;
+    cout << "Dibuje la máscara con el mouse y presione SPACEBAR" << endl;
     height = img_original.rows;
     width = img_original.cols;
 
@@ -188,12 +194,7 @@ void inpaint_iteration() {
     imshow("picture", img_step);
 
     switch ((char) cv::waitKey(5)) {
-        case 'i':
-            is_more = picked_step(width, height, (char*) img_inpainted.ptr(), mask_ptr, debug);
-            last_inpaint_iteration = !is_more;
-            break;
-
-        case 't':
+        case ' ':
             {
                 ProgressBar bar(mask_size());
                 while (true) {

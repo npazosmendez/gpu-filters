@@ -1,6 +1,7 @@
 # Extensions
 *.o
 *.swp
+*.gch
 
 # Bins
 timer
@@ -30,3 +31,5 @@ CMakeLists.txt
 # Misc
 .DS_Store
 
+# Qt
+moc_*
