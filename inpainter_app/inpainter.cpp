@@ -159,6 +159,7 @@ void edit_iteration() {
 }
 
 bool first_inpaint_iteration = true;
+bool last_inpaint_iteration = false;
 int is_more;
 int mask_size();
 
@@ -179,18 +180,20 @@ void inpaint_iteration() {
         is_more = picked_step(width, height, (char*) img_inpainted.ptr(), mask_ptr, debug);
         bar.update(is_more);
         if (!is_more) {
+            last_inpaint_iteration = true;
             bar.finish();
             break;
         }
     }
 
-    cout << "Listo!" << endl;
-
-    memset(mask_ptr, 0, height * width * sizeof(bool));
-    img_masked = img_inpainted.clone();
-    overlay(img_masked, "Filled");
-    first_inpaint_iteration = true;
-    inpaint_mode = false;
+    if (last_inpaint_iteration) {
+        memset(mask_ptr, 0, height * width * sizeof(bool));
+        img_masked = img_inpainted.clone();
+        overlay(img_masked, "Filled");
+        first_inpaint_iteration = true;
+        last_inpaint_iteration = false;
+        inpaint_mode = false;
+    }
 }
 
 int mask_size(){
