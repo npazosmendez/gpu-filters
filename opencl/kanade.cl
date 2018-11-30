@@ -112,7 +112,9 @@ __kernel void calculate_flow(
     int2 size = (int2)(get_global_size(0), get_global_size(1));
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
 
-    float2 previous_guess = previous_flow ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2: (float2) ( 0, 0 );
+    bool has_previous_level = previous_width != -1;
+
+    float2 previous_guess = has_previous_level ? previous_flow[(pos.y/2) * previous_width + (pos.x/2)] * 2: (float2) ( 0, 0 );
     float2 iter_guess = (float2) ( 0, 0 );
 
     for (int i = 0; i < LK_ITERATIONS; i++) {
