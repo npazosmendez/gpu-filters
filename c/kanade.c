@@ -165,10 +165,6 @@ static void init(int in_width, int in_height, int levels) {
     }
 }
 
-static void finish() {
-    // TODO free buffers
-}
-
 static int is_corner(double tensor[2][2]) {
     double determinant = tensor[0][0] * tensor[1][1] - tensor[0][1] * tensor[1][0];
     double trace = tensor[0][0] + tensor[1][1];
