@@ -6,7 +6,7 @@ __constant int2 ZERO = (int2) (0, 0);
 
 __constant int LK_ITERATIONS = 8;
 __constant int LK_WINDOW_RADIUS = 2;
-__constant double THRESHOLD_CORNER = 1e7;
+__constant double THRESHOLD_CORNER = 1e8;
 
 __constant int KSIZE = 3;
 
@@ -232,5 +232,5 @@ __kernel void calculate_intensity(
 
     char3 pixel = vload3(i, src);
 
-    dst[i] = (pixel.x + pixel.y + pixel.z) / 3.0f;
+    dst[i] = (((unsigned char)pixel.x) + ((unsigned char)pixel.y) + ((unsigned char)pixel.z)) / 3.0f; // TODO: omgg char can be signeddd
 }
