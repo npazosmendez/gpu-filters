@@ -268,7 +268,7 @@ __kernel void target_diffs(
             // TODO: Ideally, I'd early return here, but it wouldn't be working
             full_patch = full_patch && (within(local_pos, size) && !mask[LINEAR(local_pos)]);
 
-            if (within(target_local_pos, size) && !mask[LINEAR(target_local_pos)]) {
+            if (full_patch && within(target_local_pos, size) && !mask[LINEAR(target_local_pos)]) {
                 squared_diff += squared_distance3(img + 3*LINEAR(target_local_pos),  \
                                                   img + 3*LINEAR(local_pos));
             }
