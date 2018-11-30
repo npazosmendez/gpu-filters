@@ -18,6 +18,7 @@ Diciembre 2018
 * OpenCL 1.2 (lib)
   ~~~~~~
 	sudo apt install ocl-icd-libopencl1
+	sudo apt-get install ocl-icd-opencl-dev
 	sudo apt install opencl-headers
 
 * OpenCL (drivers y runtime)
