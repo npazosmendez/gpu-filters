@@ -85,3 +85,7 @@ ejecutados desde allí** (pues se leen los archivos *.cl en tiempo de ejecución
 * timer_app/
 	La aplicación para obtener mediciones comparativas entre las
 	implementaciones C vs OpenCL de todos los filtros.
+
+* resources/
+	Los imágenes y videos sobre los que aplicar filtros, disponibles
+	para usar en las aplicaciones
