@@ -22,11 +22,11 @@ ifeq ($(shell uname -s),Linux)
 	LIBS += -lOpenCL
 endif
 
-timer: $(OBJECTS) timer.o
-	$(CXX) $(CPPFLAGS) -g $(CXXFLAGS) $^ $(LIBS) -o timer
+../timer: $(OBJECTS) timer.o
+	$(CXX) $(CPPFLAGS) -g $(CXXFLAGS) $^ $(LIBS) -o ../timer
 
 clean:
-	rm -f $(OBJECTS) timer.o timer
+	rm -f $(OBJECTS) timer.o ../timer
 
-.PHONY: apps clean
+.PHONY: ../timer clean
 

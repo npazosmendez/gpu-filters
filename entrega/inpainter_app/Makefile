@@ -22,11 +22,11 @@ ifeq ($(shell uname -s),Linux)
 	LIBS += -lOpenCL
 endif
 
-inpainter: $(OBJECTS) inpainter.o
-	$(CXX) $(CPPFLAGS) -g $(CXXFLAGS) $^ $(LIBS) -o inpainter
+../inpainter: $(OBJECTS) inpainter.o
+	$(CXX) $(CPPFLAGS) -g $(CXXFLAGS) $^ $(LIBS) -o ../inpainter
 
 clean:
-	rm -f $(OBJECTS) inpainter.o inpainter
+	rm -f $(OBJECTS) inpainter.o ../inpainter
 
-.PHONY: apps clean
+.PHONY: ../inpainter clean
 
