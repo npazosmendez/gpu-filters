@@ -69,8 +69,3 @@ sudo apt-get install libopencv-dev
 
 * ### Qt 4.8
 For an advanced GUI only, not actually needed to run the bascis. More information at `gui/readme.md`
-
-# What is left
-- [ ] Debug Lucas-Kanade OpenCL/C version
-- [ ] Handle boundaries (image borders) in all algorithms
-- [ ] Optimize all OpenCL code
