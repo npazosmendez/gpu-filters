@@ -19,6 +19,10 @@ void initCL(bool verbose){
     /* Find PLATFORM */
     cl::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
+    if(platforms.empty()){
+        cerr << "No OpenCL platforms found, aborting." << endl;
+        exit(1);
+    }
     if (verbose){
         cout << "Available platforms:" << endl;
         for (unsigned int i = 0; i < platforms.size(); i++)
