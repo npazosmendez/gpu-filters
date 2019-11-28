@@ -44,7 +44,7 @@ void initCLCanny(int width, int height){
     if (_width != width or _height != height){
         /* 3. Buffers setup */
         // OpenCL Image / texture to store image intensity
-        clImage = Image2D(context, CL_MEM_READ_WRITE, ImageFormat(CL_INTENSITY, CL_FLOAT), width, height, 0, NULL, &err);
+        clImage = Image2D(context, CL_MEM_READ_WRITE, ImageFormat(CL_DEPTH, CL_FLOAT), width, height, 0, NULL, &err);
         clHandleError(__FILE__,__LINE__,err);
 
         // Buffer for the temp float result
