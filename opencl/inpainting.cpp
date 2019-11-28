@@ -70,13 +70,17 @@ void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug
     // OpenCL initialization
     if(!openCL_initialized) initCL();
 
-    // Program object
-    createProgram("inpainting.cl");
+    static bool inpaint_initialized = false;
 
-    // Kernels
-    k_patch_priorities = Kernel(program, "patch_priorities");
-    k_target_diffs = Kernel(program, "target_diffs");
-    k_copy = Kernel(program, "copy");
+    if(not inpaint_initialized){
+        // Program object
+        createProgram("inpainting.cl");
+
+        // Kernels
+        k_patch_priorities = Kernel(program, "patch_priorities");
+        k_target_diffs = Kernel(program, "target_diffs");
+        k_copy = Kernel(program, "copy");
+    }
 
     // Buffers
     b_img = Buffer(context, CL_MEM_READ_WRITE, sizeof(char)*width*height*3, NULL, &err); // image in rgb (uchar3)

@@ -79,7 +79,7 @@ float masked_convolute(int width, int height, __global uchar * img, int i, int j
     return acc;
 }
 
-point get_ortogonal_to_contour(int x, int y, bool * mask, int width, int height) {
+point get_ortogonal_to_contour(int x, int y, __global uchar * mask, int width, int height) {
     int dx[8] = {-1, 0, 1, 1, 1, 0, -1, -1};
     int dy[8] = {1, 1, 1, 0, -1, -1, -1, 0};
 
