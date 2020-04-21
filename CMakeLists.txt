@@ -17,9 +17,8 @@ find_package( OpenCL REQUIRED )
 
 # Sources and headers
 file(GLOB FILTER_SOURCES c/*.c opencl/*.cpp)
-# TODO: marking include/ as SYSTEM makes gcc ignore warnings from those headers. Make sure include/ only has headers we do not own
 include_directories(SYSTEM include)
-include_directories( . ${OpenCL_INCLUDE_DIRS})
+include_directories( . utils ${OpenCL_INCLUDE_DIRS})
 
 # Apps targets
 set(APPS filter tests flowcalculator inpainter linedetector timer)
