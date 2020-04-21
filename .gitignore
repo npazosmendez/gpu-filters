@@ -3,20 +3,8 @@
 *.swp
 *.gch
 
-# Bins
-timer
-gpu-filters
-inpainter
-linedetector
-flowcalculator
-tests
-filter
-canny_test
-hough_test
-kanade_test
-inpainting_test
-
 # Directories
+bin/
 docs/
 vids/
 benchmarks/
@@ -25,11 +13,16 @@ benchmarks/
 .vscode
 .syntastic_cpp_config
 .idea
-cmake-build-debug
-CMakeLists.txt
 
 # Misc
 .DS_Store
 
 # Qt
 moc_*
+
+# CMake
+CMakeFiles/
+cmake_install.cmake
+Makefile
+cmake-build-debug
+CMakeCache.txt
