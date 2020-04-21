@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <kernels.h>
 
 using namespace std;
 using namespace cl;
@@ -26,7 +27,7 @@ void initCLCanny(int width, int height){
     cl_int err = 0;
     if (not canny_initialized){
         /* 1. Build PROGRAM from source, for specific context */
-        createProgram("canny.cl");
+        createProgram2((char*)canny_cl);
 
         /*2. Create kernels */
         k_intensity_gauss = Kernel(program, "intensity_gauss_filter");

@@ -81,7 +81,18 @@ void createProgram(string filename) {
     clHandleError(__FILE__, __LINE__, err);
 }
 
+void createProgram2(char* sourceCode) {
+    Program::Sources sources(1, sourceCode);
 
+    // Build program
+    cl_int err = 0;
+    program = Program(context, sources, &err);
+    clHandleError(__FILE__, __LINE__, err);
+    //const char* options = "-Werror";
+    const char* options = "";
+    err = program.build(context.getInfo<CL_CONTEXT_DEVICES>(), options);
+    clHandleError(__FILE__, __LINE__, err);
+}
 
 void printImageFormat(ImageFormat format){
     #define CASE(order) case order: cout << #order; break;

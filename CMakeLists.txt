@@ -28,7 +28,7 @@ ADD_CUSTOM_COMMAND(
     OUTPUT ${GENERATED_KERNELS_PATH}
     COMMENT "Generating kernels."
     DEPENDS generate_kernels.sh
-    COMMAND /bin/sh generate_kernels.sh ${GENERATED_KERNELS_PATH}
+    COMMAND /bin/bash generate_kernels.sh ${GENERATED_KERNELS_PATH}
 )
 add_library(filters STATIC ${FILTER_SOURCES} ${GENERATED_KERNELS_PATH})
 target_link_libraries(filters ${OpenCL_LIBRARY})

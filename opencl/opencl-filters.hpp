@@ -38,5 +38,6 @@ void clHandleError(std::string file, int line, cl_int err);
 void clHandleError(cl_int err);
 
 void createProgram(std::string filename);
+void createProgram2(char* sourceCode);
 
 #endif
