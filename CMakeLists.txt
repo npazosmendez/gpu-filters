@@ -18,12 +18,19 @@ find_package( OpenCL REQUIRED )
 # -- Sources -- #
 file(GLOB FILTER_SOURCES c/*.c opencl/*.cpp)
 include_directories(SYSTEM include)
-include_directories( . utils ${OpenCL_INCLUDE_DIRS})
+include_directories( . utils ${OpenCL_INCLUDE_DIRS} generated)
 
 # -- Targets -- #
 
 # Filters
-add_library(filters STATIC ${FILTER_SOURCES})
+set(GENERATED_KERNELS_PATH ${CMAKE_BINARY_DIR}/generated/kernels.h)
+ADD_CUSTOM_COMMAND(
+    OUTPUT ${GENERATED_KERNELS_PATH}
+    COMMENT "Generating kernels."
+    DEPENDS generate_kernels.sh
+    COMMAND /bin/sh generate_kernels.sh ${GENERATED_KERNELS_PATH}
+)
+add_library(filters STATIC ${FILTER_SOURCES} ${GENERATED_KERNELS_PATH})
 target_link_libraries(filters ${OpenCL_LIBRARY})
 
 # Apps

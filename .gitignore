@@ -9,6 +9,7 @@ lib/
 docs/
 vids/
 benchmarks/
+generated/
 
 # Ide
 .vscode
