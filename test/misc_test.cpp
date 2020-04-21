@@ -27,7 +27,7 @@ using namespace cl;
 
 
 // TEST MACROS
-static char _err[1000];
+__attribute__((unused)) static char _err[1000];
 
 #define ANSI_RED     "\x1b[31m"
 #define ANSI_GREEN   "\x1b[32m"
@@ -158,7 +158,7 @@ void test_get_contour() {
 
 
 
-int main(int argc, char** argv) {
+int main() {
     RUN_TEST(test_get_contour);
     return 0;
 }

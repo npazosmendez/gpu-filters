@@ -17,14 +17,14 @@ float MSE(Mat& image1, Mat& image2){
 			Vec3b pix1 = image1.at<Vec3b>(i,j);
 			Vec3b pix2 = image2.at<Vec3b>(i,j);
 			float r, g, b;
-			r = pow((float)pix1[0] - (float)pix2[0], 2.0);
-			g = pow((float)pix1[1] - (float)pix2[1], 2.0);
-			b = pow((float)pix1[2] - (float)pix2[2], 2.0);
+			r = (float)pow((float)pix1[0] - (float)pix2[0], 2.0);
+			g = (float)pow((float)pix1[1] - (float)pix2[1], 2.0);
+			b = (float)pow((float)pix1[2] - (float)pix2[2], 2.0);
 			mse += r+g+b;
 		}
 	}
-	float size = image1.size().width * image1.size().height * 3;
-	return mse / size;
+	int size = image1.size().width * image1.size().height * 3;
+	return mse / (float)size;
 }
 
 void print_mse(float mse){

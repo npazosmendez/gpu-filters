@@ -241,7 +241,7 @@ const Vec3b GREEN = Vec3b(0, 255, 0);
 const Vec3b RED = Vec3b(0, 0, 255);
 const Vec3b BLACK = Vec3b(0, 0, 0);
 
-void on_mouse(int event, int x, int y, int flags, void* userdata){
+void on_mouse(int event, int x, int y, __attribute__((unused)) int flags, __attribute__((unused)) void* userdata){
     if (fill_mode) {
         if (event == EVENT_LBUTTONDOWN) {
             dragging = true;
@@ -308,7 +308,7 @@ void draw_square(bool * mask, int i, int j, bool val, int radius) {
     }
 }
 
-void paint_debug(Mat img) {
+void paint_debug(__attribute__((unused)) Mat img) {
 
     /*
     forn(i, height) forn(j, width) {

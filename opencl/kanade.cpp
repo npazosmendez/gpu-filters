@@ -28,18 +28,6 @@ using namespace cl;
 #define LINEAR(x, y) (y)*width+(x)
 #define forn(i,n) for(int i=0; i<(n); i++)
 
-
-static int SOBEL_KERNEL_RADIUS = 1;
-
-
-#define SOBEL_KERNEL_DIAMETER (2*SOBEL_KERNEL_RADIUS+1)
-
-static float KERNEL_GAUSSIAN_BLUR[] = {
-        1/16.0, 1/8.0 , 1/16.0,
-        1/8.0 , 1/4.0 , 1/8.0 ,
-        1/16.0, 1/8.0 , 1/16.0
-};
-
 static bool initialized = false;
 
 static int * pyramidal_widths;

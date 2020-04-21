@@ -91,8 +91,8 @@ int main(int argc, char** argv) {
     stream.set(CV_CAP_PROP_FRAME_WIDTH, WIDTH);
     stream.set(CV_CAP_PROP_FRAME_HEIGHT, HEIGHT);
 
-    width = stream.get(CV_CAP_PROP_FRAME_WIDTH);
-    height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
+    width = (int)stream.get(CV_CAP_PROP_FRAME_WIDTH);
+    height = (int)stream.get(CV_CAP_PROP_FRAME_HEIGHT);
 
     if (!stream.isOpened()) {
         cerr << "Failed to open stream." << endl;
@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
                         Point(x, y),                                   // origin position
                         Point(x + displacement.x, y + displacement.y), // arrow tip position
                         Scalar( 0, 200, 0 ),                           // color
-                        1.2                                           // thickness
+                        1                                              // thickness
                 );
             }
         }

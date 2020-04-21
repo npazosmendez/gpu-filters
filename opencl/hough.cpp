@@ -115,7 +115,7 @@ void CL_hough(char * src, int width, int height, int a_ammount, int p_ammount, c
     err = queue.enqueueReadBuffer(cl_max, CL_TRUE, 0, sizeof(int), &threshold);
     clHandleError(__FILE__,__LINE__,err);
 
-    threshold = threshold * 0.5;
+    threshold = (int)(threshold * 0.5);
 
     /* draw counter in buffer */
     if (counter != NULL){

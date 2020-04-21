@@ -147,7 +147,7 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
         end = chrono::high_resolution_clock::now();
         long int C_microsec_duration = chrono::duration_cast<chrono::microseconds>(end-begin).count();
         bar.update();
-        C_miliseconds_durations.push_back(C_microsec_duration / 1000.0);
+        C_miliseconds_durations.push_back((float)C_microsec_duration / 1000.0f);
     }
     bar.finish();
 
@@ -167,7 +167,7 @@ void time_filter(string filter_name, int warmup_iterations, int time_iterations,
         end = chrono::high_resolution_clock::now();
         long int CL_microsec_duration = chrono::duration_cast<chrono::microseconds>(end-begin).count();
         bar.update();
-        CL_miliseconds_durations.push_back(CL_microsec_duration / 1000.0);
+        CL_miliseconds_durations.push_back((float)CL_microsec_duration / 1000.0f);
     }
     bar.finish();
 

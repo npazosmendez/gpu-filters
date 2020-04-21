@@ -29,7 +29,7 @@ condition_variable condition_var;
 mutex mtx;
 
 
-void* flush_stream(void *arg){
+void* flush_stream(__attribute__((unused)) void *arg){
     while(true){
         if (!frame_requested){
             free_zone = false;
@@ -54,8 +54,8 @@ int main(int argc, char** argv) {
     }else{
         /* open webcam */
         stream = VideoCapture(0); // video device number 0
-        width = stream.get(CV_CAP_PROP_FRAME_WIDTH);
-        height = stream.get(CV_CAP_PROP_FRAME_HEIGHT);
+        width = (int)stream.get(CV_CAP_PROP_FRAME_WIDTH);
+        height = (int)stream.get(CV_CAP_PROP_FRAME_HEIGHT);
 
         if (!stream.isOpened()) {
             cerr << "Failed to open stream." << endl;
@@ -105,8 +105,7 @@ int main(int argc, char** argv) {
         imshow("counter", counter); // show frame
         imshow("video", frame1); // show frame
         int time = 1000000;
-        (char)cv::waitKey(time);
-
+        cv::waitKey(time);
     }
     
 

@@ -65,7 +65,7 @@ duration<double> time_span;
 // ALGORITHM
 // +++++++++
 
-void CL_inpaint_init(int width, int height, char * img, bool * mask, int * debug) {
+void CL_inpaint_init(int width, int height, char * img, bool * mask, __attribute__((unused)) int * debug) {
 
     // OpenCL initialization
     if(!openCL_initialized) initCL();
