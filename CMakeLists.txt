@@ -4,8 +4,9 @@ project("gpu-filters")
 # Compilation
 set(DEBUG_FLAGS -"D_GLIBCXX_DEBUG")
 set(CMAKE_C_FLAGS "-std=c99")
-# TODO: compile c++11, need to update cl headers for that
-set(CMAKE_CXX_FLAGS "-Wconversion -Wshadow -Wall -Wextra -Wno-missing-braces -DCL_HPP_TARGET_OPENCL_VERSION=200 -DCL_HPP_MINIMUM_OPENCL_VERSION=200")
+set(CMAKE_CXX_FLAGS "-std=c++11 -Wconversion -Wshadow -Wall -Wextra -Wno-missing-braces -DCL_HPP_TARGET_OPENCL_VERSION=200 -DCL_HPP_MINIMUM_OPENCL_VERSION=200")
+# https://stackoverflow.com/questions/44942225/opencl-vector-types-cant-access-unioned-components-x-y-z-with-c11-enabled
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -U__STRICT_ANSI__")
 
 # Libraries
 find_package( OpenCV REQUIRED )
