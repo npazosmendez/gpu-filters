@@ -5,6 +5,7 @@
 
 # Directories
 bin/
+lib/
 docs/
 vids/
 benchmarks/
