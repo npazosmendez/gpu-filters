@@ -21,14 +21,14 @@ include_directories(SYSTEM include)
 include_directories( . utils ${OpenCL_INCLUDE_DIRS})
 
 # Apps targets
-set(APPS filter tests flowcalculator inpainter linedetector timer)
+set(APPS filter flowcalculator inpainter linedetector timer)
 foreach( app ${APPS})
     add_executable(${app} apps/${app}.cpp ${FILTER_SOURCES})
     target_link_libraries(${app} ${OpenCV_LIBS} ${OpenCL_LIBRARY} pthread)
 endforeach( app )
 
 # Tests targets
-set(TESTS hough_test canny_test)
+set(TESTS hough_test canny_test misc_test)
 foreach( test ${TESTS})
     add_executable(${test} test/${test}.cpp test/utils.cpp ${FILTER_SOURCES})
     target_link_libraries(${test} ${OpenCV_LIBS} ${OpenCL_LIBRARY})
