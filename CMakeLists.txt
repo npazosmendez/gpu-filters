@@ -27,8 +27,8 @@ set(GENERATED_KERNELS_PATH ${CMAKE_BINARY_DIR}/generated/kernels.h)
 ADD_CUSTOM_COMMAND(
     OUTPUT ${GENERATED_KERNELS_PATH}
     COMMENT "Generating kernels."
-    DEPENDS generate_kernels.sh
-    COMMAND /bin/bash generate_kernels.sh ${GENERATED_KERNELS_PATH}
+    DEPENDS generate_kernels.py opencl/*.cl
+    COMMAND python3 generate_kernels.py ${GENERATED_KERNELS_PATH}
 )
 add_library(filters STATIC ${FILTER_SOURCES} ${GENERATED_KERNELS_PATH})
 target_link_libraries(filters ${OpenCL_LIBRARY})
