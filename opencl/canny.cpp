@@ -4,7 +4,6 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-#include <kernels.h>
 
 using namespace std;
 using namespace cl;
