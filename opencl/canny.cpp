@@ -27,7 +27,7 @@ void initCLCanny(int width, int height){
     cl_int err = 0;
     if (not canny_initialized){
         /* 1. Build PROGRAM from source, for specific context */
-        createProgram2((char*)canny_cl);
+        createProgram("canny.cl");
 
         /*2. Create kernels */
         k_intensity_gauss = Kernel(program, "intensity_gauss_filter");
