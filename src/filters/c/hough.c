@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "debug.h"
+#include "utils/debug.h"
 
 #define M_PI 3.14159265358979323846
 #define LINEAR(x,y) (y)*width+(x)

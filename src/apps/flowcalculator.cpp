@@ -11,9 +11,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 extern "C" {
-#include "c/c-filters.h"
+#include "filters/c/c-filters.h"
 }
-#include "opencl/opencl-filters.hpp"
+#include "filters/opencl/opencl-filters.hpp"
 
 using namespace cv;
 using namespace std;

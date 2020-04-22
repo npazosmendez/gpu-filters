@@ -1,10 +1,10 @@
 
 #include <iostream>
 extern "C" {
-    #include "../c/cutils.h"
-    #include "../c/c-filters.h"
+    #include "filters/c/cutils.h"
+    #include "filters/c/c-filters.h"
 }
-#include "opencl/opencl-filters.hpp"
+#include "filters/opencl/opencl-filters.hpp"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>

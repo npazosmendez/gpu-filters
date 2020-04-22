@@ -16,10 +16,10 @@
 #include <iomanip>
 #include <stdio.h>
 extern "C" {
-#include "../c/cutils.h"
-#include "../c/c-filters.h"
+#include "filters/c/cutils.h"
+#include "filters/c/c-filters.h"
 }
-#include "opencl/opencl-filters.hpp"
+#include "filters/opencl/opencl-filters.hpp"
 
 //using namespace std; // makes some math definition ambiguous in my compiler. Ur ambiguous.
 using namespace std::chrono;
