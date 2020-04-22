@@ -7,7 +7,7 @@ QT += gui core widgets
 PRECOMPILED_HEADER = static_headers.hpp
 
 # include search paths
-INCLUDEPATH += .. ../include
+INCLUDEPATH += .. ../include ../utils
 
 # Config
 DEFINES += "CL_HPP_TARGET_OPENCL_VERSION=120"
