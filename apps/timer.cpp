@@ -1,8 +1,8 @@
 #include <iostream>
 extern "C" {
-  #include "filters/c/c-filters.h"
+  #include "c/c-filters.h"
 }
-#include "filters/opencl/opencl-filters.hpp"
+#include "opencl/opencl-filters.hpp"
 #include <chrono>
 #include <TextTable.h>
 #include <ProgressBar.hpp>

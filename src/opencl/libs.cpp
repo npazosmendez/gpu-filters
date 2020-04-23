@@ -15,6 +15,7 @@ void CL_convoluion2D(float* src, int width, int height, float * kernel_img, int 
 
     assert(openCL_initialized);
 
+    // TODO: use utils for this
     /* Build PROGRAM from source, for specific context */
     cl::Program conv_program;
     ifstream sourceFile("libs/convolution2D.cl");

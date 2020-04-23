@@ -30,7 +30,8 @@ void initCLHough(int width, int height, int a_ammount, int p_ammount){
     static bool CL_hough_initialized = false;
 
     if (not CL_hough_initialized){
-        /* 1. Build PROGRAM from source, for specific context */
+        // TODO: use utils for this
+        /* 1. Build PROGRAM from source, for specific context z*/
         ifstream sourceFile("opencl/hough.cl");
         /* NOTE: reading the source code from another file
         during runtime makes the binary's location important.

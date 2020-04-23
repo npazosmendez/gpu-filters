@@ -63,9 +63,10 @@ void createProgram(string filename) {
     /* NOTE: reading the source code from another file
     during runtime makes the binary's location important.
     Not good. */
-    ifstream sourceFile(std::string("opencl/") + filename);
+    string file_path = "src/opencl/" + filename;
+    ifstream sourceFile(file_path);
     if (!sourceFile.is_open()) {
-        cerr << "Can't open CL kernel source." << endl;
+        cerr << "Can't open CL kernel source: " << file_path << "." << endl;
         exit(1);
     }
     string sourceCode(istreambuf_iterator<char>(sourceFile), (istreambuf_iterator<char>()));

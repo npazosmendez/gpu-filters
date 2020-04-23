@@ -7,10 +7,10 @@
 #include <string>
 #include <stdio.h>
 extern "C" {
-    #include "filters/c/c-filters.h"
-    #include "filters/c/cutils.h"
+    #include "c/c-filters.h"
+    #include "c/cutils.h"
 }
-#include "filters/opencl/opencl-filters.hpp"
+#include "opencl/opencl-filters.hpp"
 
 using namespace cv;
 using namespace std;
