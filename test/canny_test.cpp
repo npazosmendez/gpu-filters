@@ -2,9 +2,9 @@
 #include <iostream>
 extern "C" {
     #include "c/cutils.h"
-    #include "c/c-filters.h"
+    #include <c-filters.h>
 }
-#include "opencl/opencl-filters.hpp"
+#include <opencl-filters.hpp>
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>

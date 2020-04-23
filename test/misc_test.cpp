@@ -17,9 +17,9 @@
 #include <stdio.h>
 extern "C" {
 #include "c/cutils.h"
-#include "c/c-filters.h"
+#include <c-filters.h>
 }
-#include "opencl/opencl-filters.hpp"
+#include <opencl-filters.hpp>
 
 //using namespace std; // makes some math definition ambiguous in my compiler. Ur ambiguous.
 using namespace std::chrono;

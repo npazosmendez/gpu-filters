@@ -16,7 +16,7 @@
 #include <iomanip>
 extern "C" {
     #include "../c/cutils.h"
-    #include "../c/c-filters.h"
+    #include <c-filters.h>
 }
 #include "opencl-filters.hpp"
 

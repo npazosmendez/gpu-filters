@@ -8,9 +8,9 @@
 #include <iomanip>
 #include <chrono>
 extern "C" {
-#include "c/c-filters.h"
+#include <c-filters.h>
 }
-#include "opencl/opencl-filters.hpp"
+#include <opencl-filters.hpp>
 
 using namespace cv;
 using namespace std;

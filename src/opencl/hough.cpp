@@ -6,7 +6,7 @@
 #include <fstream>
 #include <cmath>
 extern "C" {
-    #include "../c/c-filters.h"
+    #include <c-filters.h>
 }
 using namespace std;
 using namespace cl;

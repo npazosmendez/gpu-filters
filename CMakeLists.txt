@@ -18,7 +18,7 @@ find_package( OpenCL REQUIRED )
 # -- Sources -- #
 file(GLOB FILTER_SOURCES src/c/*.c src/opencl/*.cpp)
 include_directories(SYSTEM src/libs)
-include_directories( src ${OpenCL_INCLUDE_DIRS} generated)
+include_directories( src include ${OpenCL_INCLUDE_DIRS} generated)
 
 # -- Targets -- #
 

@@ -3,7 +3,7 @@
 
 #include <string>
 extern "C" {
-    #include "../c/c-filters.h"
+    #include <c-filters.h>
 }
 
 /* Image filters */

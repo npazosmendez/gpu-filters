@@ -2,7 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencl/opencl-filters.hpp>
+#include <<opencl-filters.hpp>>
 #include "ImageFilter.hpp"
 #include "VideoStreamer.hpp"
 #include "debug.h"
