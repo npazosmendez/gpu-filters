@@ -28,6 +28,7 @@ TEST(ComparisonTest, Canny_C) {
     Mat expected_image = read_image("test/data/canny_expected.png");
 
     canny((char*)input_image.ptr(), input_image.size().width, input_image.size().height, 100, 70);
+    imwrite("test/results/canny_c.png", input_image);
     compare(input_image, expected_image);
 }
 
@@ -36,6 +37,7 @@ TEST(ComparisonTest, Canny_CL) {
     Mat expected_image = read_image("test/data/canny_expected.png");
 
     CL_canny((char*)input_image.ptr(), input_image.size().width, input_image.size().height, 100, 70);
+    imwrite("test/results/canny_cl.png", input_image);
     compare(input_image, expected_image);
 }
 
@@ -46,7 +48,7 @@ TEST(ComparisonTest, Hough_CL) {
 
     CL_hough((char*)input_image.ptr(), input_image.size().width, input_image.size().height, 300, 300, counter);
     free(counter);
-    imwrite("test/results/hough_cl.png", expected_image);
+    imwrite("test/results/hough_cl.png", input_image);
     compare(input_image, expected_image);
 }
 
@@ -57,7 +59,7 @@ TEST(ComparisonTest, Hough_C) {
 
     hough((char*)input_image.ptr(), input_image.size().width, input_image.size().height, 300, 300, counter);
     free(counter);
-    imwrite("test/results/hough_c.png", expected_image);
+    imwrite("test/results/hough_c.png", input_image);
     compare(input_image, expected_image);
 }
 
