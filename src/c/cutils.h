@@ -24,3 +24,7 @@ float norm(float x, float y);
 float squared_distance3(unsigned char p[3], unsigned char q[3]);
 
 void convoluion2D(float * src, int width, int height, float * kernel, int ksize, float * dst);
+
+point get_ortogonal_to_contour(int x, int y, bool * mask, int width, int height);
+static point vector_bisector(float ax, float ay, float bx, float by);
+int within_c(int x, int y, int width, int height);
