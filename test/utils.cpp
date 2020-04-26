@@ -34,5 +34,5 @@ void compare(Mat& image1, Mat& image2){
 		FAIL() << "Sizes do not match";
 	}
     float mse = MSE(image1, image2);
-    ASSERT_LE(mse, 0.1);
+    ASSERT_LE(mse, 1.0);
 }

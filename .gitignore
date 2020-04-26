@@ -8,6 +8,7 @@ bin/
 lib/
 docs/
 vids/
+test/results/
 benchmarks/
 generated/
 googletest/
