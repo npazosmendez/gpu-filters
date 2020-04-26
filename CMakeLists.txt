@@ -63,7 +63,7 @@ foreach( app ${APPS})
 endforeach( app )
 
 # Tests
-set(TESTS hough_test canny_test misc_test)
+set(TESTS misc_test comparison_tests)
 foreach( test ${TESTS})
     add_executable(${test} test/${test}.cpp test/utils.cpp)
     target_link_libraries(${test} ${OpenCV_LIBS} filters gtest)

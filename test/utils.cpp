@@ -6,6 +6,7 @@ using namespace cv;
 using namespace std;
 
 #include "utils.hpp"
+#include <gtest/gtest.h>
 
 float MSE(Mat& image1, Mat& image2){
 	Mat diff = image1 - image2;
@@ -27,21 +28,11 @@ float MSE(Mat& image1, Mat& image2){
 	return mse / (float)size;
 }
 
-void print_mse(float mse){
-	if (mse > 0.1){
-        cout << ANSI_RED;
-    }else{
-        cout << ANSI_GREEN;
-    }
-    cout << "MSE: " << mse << ANSI_RESET << endl;
-}
-
 void compare(Mat& image1, Mat& image2){
 	if (image1.size().height != image2.size().height
 		or image1.size().width != image2.size().width){
-		cerr << ANSI_RED << "Sizes do not match" << ANSI_RESET << endl;
-		abort();
+		FAIL() << "Sizes do not match";
 	}
     float mse = MSE(image1, image2);
-    print_mse(mse);
+    ASSERT_LE(mse, 0.1);
 }
