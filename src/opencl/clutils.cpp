@@ -176,6 +176,12 @@ char *getCLErrorString(cl_int err) {
         case CL_INVALID_GL_OBJECT:                return (char *) "CL_INVALID_GL_OBJECT: Invalid OpenGL object";
         case CL_INVALID_BUFFER_SIZE:              return (char *) "CL_INVALID_BUFFER_SIZE: Invalid buffer size";
         case CL_INVALID_MIP_LEVEL:                return (char *) "CL_INVALID_MIP_LEVEL: Invalid mip-map level";
+        case CL_INVALID_GLOBAL_WORK_SIZE:         return (char*) "CL_INVALID_GLOBAL_WORK_SIZE";
+        case CL_INVALID_PROPERTY:                 return (char*) "CL_INVALID_PROPERTY";
+        case CL_INVALID_IMAGE_DESCRIPTOR:         return (char*) "CL_INVALID_IMAGE_DESCRIPTOR";
+        case CL_INVALID_COMPILER_OPTIONS:         return (char*) "CL_INVALID_COMPILER_OPTIONS";
+        case CL_INVALID_LINKER_OPTIONS:           return (char*) "CL_INVALID_LINKER_OPTIONS";
+        case CL_INVALID_DEVICE_PARTITION_COUNT:   return (char*) "CL_INVALID_DEVICE_PARTITION_COUNT";
         default:                                  return (char *) "Unknown";
     }
 }
