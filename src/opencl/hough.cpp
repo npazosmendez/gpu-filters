@@ -32,18 +32,7 @@ void initCLHough(int width, int height, int a_ammount, int p_ammount){
     if (not CL_hough_initialized){
         // TODO: use utils for this
         /* 1. Build PROGRAM from source, for specific context z*/
-        ifstream sourceFile("opencl/hough.cl");
-        /* NOTE: reading the source code from another file
-        during runtime makes the binary's location important.
-        Not good. */
-        if (!sourceFile.is_open()) {
-            cerr << "Can't open CL kernel source." << endl;
-            exit(1);
-        }
-        string sourceCode(istreambuf_iterator<char>(sourceFile), (istreambuf_iterator<char>()));
-        Program::Sources sources(1, sourceCode);
-        program = Program(context, sources);
-        program.build(context.getInfo<CL_CONTEXT_DEVICES>());
+        createProgram("hough.cl");
 
         /*2. Create kernels */
         k_count_edges = Kernel(program, "edges_counter");
