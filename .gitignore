@@ -10,6 +10,7 @@ docs/
 vids/
 benchmarks/
 generated/
+googletest/
 
 # Ide
 .vscode

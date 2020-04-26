@@ -15,6 +15,28 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 find_package( OpenCV REQUIRED )
 find_package( OpenCL REQUIRED )
 
+# Setup gtest
+configure_file(CMakeLists.txt.in.gtest googletest/download/CMakeLists.txt)
+execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+  RESULT_VARIABLE result
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/googletest/download )
+if(result)
+  message(FATAL_ERROR "CMake step for googletest failed: ${result}")
+endif()
+execute_process(COMMAND ${CMAKE_COMMAND} --build .
+  RESULT_VARIABLE result
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/googletest/download )
+if(result)
+  message(FATAL_ERROR "Build step for googletest failed: ${result}")
+endif()
+# Prevent overriding compiler/linker settings on Windows
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+# This defines the gtest and gtest_main targets.
+add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest/src
+                ${CMAKE_CURRENT_BINARY_DIR}/googletest/build
+                 EXCLUDE_FROM_ALL)
+include_directories("${gtest_SOURCE_DIR}/include")
+
 # -- Sources -- #
 file(GLOB FILTER_SOURCES src/c/*.c src/opencl/*.cpp)
 include_directories(SYSTEM src/libs)
@@ -44,5 +66,5 @@ endforeach( app )
 set(TESTS hough_test canny_test misc_test)
 foreach( test ${TESTS})
     add_executable(${test} test/${test}.cpp test/utils.cpp)
-    target_link_libraries(${test} ${OpenCV_LIBS} filters)
+    target_link_libraries(${test} ${OpenCV_LIBS} filters gtest)
 endforeach( test )
