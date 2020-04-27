@@ -1,3 +1,6 @@
+#ifndef _CUTILS_H
+#define _CUTILS_H
+
 #include "stdbool.h"
 #include "time.h"
 
@@ -28,3 +31,5 @@ void convoluion2D(float * src, int width, int height, float * kernel, int ksize,
 point get_ortogonal_to_contour(int x, int y, bool * mask, int width, int height);
 static point vector_bisector(float ax, float ay, float bx, float by);
 int within_c(int x, int y, int width, int height);
+
+#endif
