@@ -10,7 +10,8 @@ docs/
 vids/
 test/results/
 benchmarks/
-generated/
+/generated/
+!/generated/.keep
 googletest/
 
 # Ide
