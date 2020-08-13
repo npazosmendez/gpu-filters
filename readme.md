@@ -24,10 +24,10 @@ Raw                        |  Processed
 
 Raw                        |  Processed
 :-------------------------:|:-------------------------:
-![](readme/kanade_raw.png)  |  ![](readme/kanade_raw.png)
+![](readme/kanade_raw.gif)  |  ![](readme/kanade.gif)
 
 # Dependencies
-* ### OpenCL 1.2 with C++ bindings 
+* ### OpenCL 1.2 with C++ bindings
 
 <img src="readme/opencl.png" alt="drawing" width="180" align="right"/>
 
