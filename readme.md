@@ -14,17 +14,17 @@ Raw                        |  Processed
 :-------------------------:|:-------------------------:
 ![](readme/hough_raw.png)  |  ![](readme/hough.png)
 
-**Region Filling** via exemplar-based image inpainting
-
-Raw                        |  Processed
-:-------------------------:|:-------------------------:
-![](readme/inpainting_raw.png)  |  ![](readme/inpainting_raw.png)
-
 **Dense Optical Flow** with Lucas-Kanade
 
 Raw                        |  Processed
 :-------------------------:|:-------------------------:
 ![](readme/kanade_raw.gif)  |  ![](readme/kanade.gif)
+
+**Region Filling** via exemplar-based image inpainting
+
+Raw                        |  Processed
+:-------------------------:|:-------------------------:
+![](readme/inpainting_raw.png)  |  ![](readme/inpainting.png)
 
 # Dependencies
 * ### OpenCL 1.2 with C++ bindings
